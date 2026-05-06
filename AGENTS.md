@@ -44,3 +44,123 @@ Quality over speed. Small steps compound into big progress.
 - Prefer explicit returns on functions
 - Use descriptive variable names
 - Keep functions small and focused
+
+## Project Workflow Commands
+
+### Setup
+
+Install all dependencies (including dev):
+```bash
+make install
+# or
+uv sync --dev
+```
+
+### Testing
+
+Run the pytest test suite:
+```bash
+make test
+# or
+uv run pytest
+```
+
+### Linting
+
+Run the ruff linter:
+```bash
+make lint
+# or
+uv run ruff check .
+```
+
+Run the ruff formatter:
+```bash
+make format
+# or
+uv run ruff format .
+```
+
+### Docker
+
+Start the application and database services:
+```bash
+make up
+# or
+docker compose up -d
+```
+
+Stop all services:
+```bash
+make down
+# or
+docker compose down
+```
+
+Build Docker images:
+```bash
+make build
+```
+
+Follow web service logs:
+```bash
+make logs
+```
+
+Open a bash shell inside the web container:
+```bash
+make shell
+# or
+docker compose exec web bash
+```
+
+The Django development server runs on port `8000`.
+
+### Database Migrations
+
+Generate new migrations:
+```bash
+make makemigrations
+# or
+docker compose exec web python manage.py makemigrations
+```
+
+Apply migrations:
+```bash
+make migrate
+# or
+docker compose exec web python manage.py migrate
+```
+
+Rollback migrations:
+```bash
+make unmigrate app=<app_name> migration=<migration_name_or_zero>
+```
+
+Create a superuser:
+```bash
+make createsuperuser
+```
+
+### Pre-commit
+
+Install pre-commit and commit-msg hooks:
+```bash
+make pre-commit-install
+```
+
+Commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) format:
+```
+type(scope): description
+```
+
+Examples:
+```
+feat: add user model
+fix(core): resolve pagination bug
+```
+
+On every commit the hooks will:
+1. Validate the commit message format (`conventional-pre-commit`)
+2. Run ruff linter and formatter on staged files
+3. Run the full pytest suite
