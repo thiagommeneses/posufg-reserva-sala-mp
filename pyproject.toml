@@ -12,6 +12,7 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-django",
+    "pytest-cov",
     "ruff",
     "pre-commit",
     "conventional-pre-commit",
@@ -21,6 +22,7 @@ dev = [
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "--cov=. --cov-report=term-missing --cov-fail-under=80"
 
 [tool.ruff]
 target-version = "py312"
@@ -36,6 +38,28 @@ select = ["E", "F", "W", "I", "N", "UP", "C90", "D", "S", "ASYNC", "PERF", "T20"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.coverage.run]
+omit = [
+    "*/migrations/*",
+    "manage.py",
+    "config/wsgi.py",
+    "config/asgi.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
 
 [tool.commitizen]
 version = "0.1.0"
