@@ -6,6 +6,7 @@
 # - network (to reach LLM providers)
 # - git + common build tooling
 #
+# Includes: Python 3.12, uv, Node.js 22 LTS + npm, Go 1.24, opencode.
 # Runs as non-root user `ralph` (UID/GID configurable via build args).
 
 FROM ubuntu:24.04
@@ -13,22 +14,54 @@ FROM ubuntu:24.04
 ARG UID=1000
 ARG GID=1000
 ARG USERNAME=ralph
+ARG NODE_MAJOR=22
+ARG GO_VERSION=1.24.3
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
+# --- System packages + Python 3.12 (native in Ubuntu 24.04) ---
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        wget \
         bash \
         git \
         unzip \
+        make \
         sudo \
         passwd \
+        gnupg \
+        python3.12 \
+        python3.12-venv \
+        python3.12-dev \
+        python3-pip \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1 \
     && rm -rf /var/lib/apt/lists/*
 
+# --- Node.js 22 LTS + npm ---
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && node --version && npm --version
+
+# --- Go ---
+RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" \
+    | tar -C /usr/local -xzf - \
+    && /usr/local/go/bin/go version
+
+ENV PATH=/usr/local/go/bin:${PATH}
+
+# --- uv (Python package manager) ---
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.local/bin/uv /usr/local/bin/uv \
+    && mv /root/.local/bin/uvx /usr/local/bin/uvx \
+    && uv --version
+
+# --- Create non-root user ---
 # ubuntu:24.04 ships with a default `ubuntu` user at UID 1000. If our target
 # UID/GID collides with it, remove it so we can create our own user cleanly.
 RUN set -eux; \
@@ -46,12 +79,13 @@ RUN set -eux; \
     chmod 0440 "/etc/sudoers.d/${USERNAME}"
 
 ENV HOME=/home/ralph \
-    PATH=/home/ralph/.opencode/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    PATH=/home/ralph/.opencode/bin:/home/ralph/.local/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    GOPATH=/home/ralph/go
 
 USER ralph
 WORKDIR /home/ralph
 
-# Install opencode as the ralph user (installer writes to $HOME/.opencode).
+# --- Install opencode as ralph ---
 RUN curl -fsSL https://opencode.ai/install | bash \
     && /home/ralph/.opencode/bin/opencode --version
 
