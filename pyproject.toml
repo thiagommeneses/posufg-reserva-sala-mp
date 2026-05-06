@@ -15,6 +15,7 @@ dev = [
     "ruff",
     "pre-commit",
     "conventional-pre-commit",
+    "commitizen",
 ]
 
 [tool.pytest.ini_options]
@@ -35,3 +36,8 @@ select = ["E", "F", "W", "I", "N", "UP", "C90", "D", "S", "ASYNC", "PERF", "T20"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.commitizen]
+version = "0.1.0"
+tag_format = "v$version"
+version_files = ["pyproject.toml:version"]
