@@ -111,3 +111,14 @@ Task: Verify complete project setup works end-to-end (prd.json item 9)
 - Ran lint feedback loop and it passed
 - Committed: test: verify complete project setup end-to-end
 Files changed: prd.json, .ralph-workflow/progress.txt
+
+Task: Configure commitizen for semantic versioning and release management (prd.json item 10)
+- Added `commitizen` to dependency-groups.dev in pyproject.toml
+- Added [tool.commitizen] section to pyproject.toml with version="0.1.0", tag_format="v$version", version_files=["pyproject.toml:version"]
+- Ran `uv sync --dev` to install commitizen
+- Verified `uv run cz version --project` outputs 0.1.0 (current project version)
+- Verified `uv run cz check --message "feat: test"` passes validation
+- Verified `uv run cz check --message "invalid message"` fails validation
+- Ran lint feedback loop (`uv run ruff check .`) and it passed
+- Committed: feat: configure commitizen for semantic versioning and release management
+Files changed: pyproject.toml, uv.lock

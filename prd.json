@@ -123,5 +123,71 @@
       "Attempt a commit with conventional message and verify pre-commit accepts it"
     ],
     "passes": true
+  },
+  {
+    "category": "architectural",
+    "description": "Configure commitizen for semantic versioning and release management",
+    "steps": [
+      "Add `commitizen` to dependency-groups.dev in pyproject.toml",
+      "Add [tool.commitizen] section to pyproject.toml with version, tag_format='v$version', version_files pointing to pyproject.toml",
+      "Verify `uv run cz version` outputs the current project version",
+      "Verify `uv run cz check --message 'feat: test'` passes validation",
+      "Verify `uv run cz check --message 'invalid message'` fails validation"
+    ],
+    "passes": true
+  },
+  {
+    "category": "functional",
+    "description": "Add Makefile targets for release workflow (release-rc, release, changelog)",
+    "steps": [
+      "Add `release-rc` target to Makefile: `docker compose exec web uv run cz bump --prerelease rc`",
+      "Add `release` target to Makefile: `docker compose exec web uv run cz bump`",
+      "Add `changelog` target to Makefile: `docker compose exec web uv run cz changelog`",
+      "Update `make help` to document release-rc, release, and changelog targets",
+      "Update .PHONY to include release-rc, release, changelog"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Configure pytest-cov with 80% minimum coverage threshold",
+    "steps": [
+      "Add `pytest-cov` to dependency-groups.dev in pyproject.toml",
+      "Add coverage configuration to [tool.pytest.ini_options]: addopts = '--cov=. --cov-report=term-missing --cov-fail-under=80'",
+      "Add [tool.coverage.run] section to pyproject.toml with omit patterns (migrations, manage.py, config/wsgi.py, config/asgi.py)",
+      "Add [tool.coverage.report] section with exclude_lines for common non-testable patterns (if __name__, pragma: no cover)",
+      "Run `uv sync --dev` to install pytest-cov",
+      "Run `uv run pytest` and verify coverage report is displayed",
+      "Verify that the test run fails if coverage drops below 80%"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Update AGENTS.md with release workflow and coverage documentation",
+    "steps": [
+      "Add 'Release and Versioning' section to AGENTS.md documenting the release flow",
+      "Document `make release-rc` command and its effect (creates RC tag)",
+      "Document `make release` command and its effect (creates final version tag)",
+      "Document `make changelog` command",
+      "Document the `git push origin main --tags` step after release commands",
+      "Document that tags trigger CI/CD production deploy",
+      "Add 'Code Coverage' section documenting the 80% threshold and how to check coverage",
+      "Document that `make test` automatically includes coverage reporting"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "Verify release workflow and coverage enforcement work end-to-end",
+    "steps": [
+      "Run `uv sync --dev` and verify commitizen and pytest-cov are installed",
+      "Run `uv run pytest` and verify coverage report is shown with percentage",
+      "Verify coverage threshold enforcement by checking that tests fail if coverage is below 80%",
+      "Run `uv run cz version` and verify it returns the current version from pyproject.toml",
+      "Verify `make help` includes release-rc, release, and changelog targets",
+      "Verify `make changelog` generates or updates CHANGELOG.md"
+    ],
+    "passes": false
   }
 ]
