@@ -42,7 +42,7 @@
       "Run `uv run ruff check .` and verify it passes",
       "Run `uv run ruff format --check .` and verify it passes"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "architectural",
@@ -88,7 +88,7 @@
       "Verify ruff hook runs on staged files",
       "Verify pytest hook runs the full suite before commit completes"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

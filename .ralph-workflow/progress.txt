@@ -62,3 +62,28 @@ Task: Create Makefile with common development commands (prd.json item 6)
 - Docker runtime not available in this environment; up, down, build, logs, shell, migrate, makemigrations, unmigrate, createsuperuser verification skipped
 - Ran lint feedback loop and it passed
 - Files changed: Makefile
+
+Task: Configure ruff linter and formatter in pyproject.toml (prd.json item 4)
+- Updated pyproject.toml [tool.ruff] to line-length=100 and select=["E", "F", "W", "I", "N", "UP", "C90", "D", "S", "ASYNC", "PERF", "T20", "RET", "PT"] per PRD
+- Added per-file-ignores for S101 in test files to allow assert statements (PT009 compliance)
+- Ran `uv run ruff check . --fix` to auto-fix D212 and D411 issues
+- Added missing docstrings (D100, D101, D104) to config/__init__.py, core/__init__.py, core/migrations/__init__.py, core/admin.py, core/apps.py, core/models.py, core/views.py, core/tests.py
+- Fixed PT009 by replacing self.assertTrue with assert in core/tests.py
+- Ran `uv run ruff format .` to reformat config/settings.py with line-length 100
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all 13 files are formatted
+- Ran `uv run pytest` and all tests passed
+- Committed: feat: align ruff config with PRD (line-length 100, full rule set) and fix all lint issues
+- Files changed: pyproject.toml, config/__init__.py, config/asgi.py, config/settings.py, config/urls.py, config/wsgi.py, core/__init__.py, core/admin.py, core/apps.py, core/migrations/__init__.py, core/models.py, core/tests.py, core/views.py, prd.json
+
+Task: Configure pre-commit with conventional commits, ruff and pytest (prd.json item 7)
+- Verified pre-commit and conventional-pre-commit already in dependency-groups.dev in pyproject.toml
+- Created .pre-commit-config.yaml with hooks: conventional-pre-commit (commit-msg stage), ruff (check + format), local pytest hook (pass_filenames=false, always_run=true)
+- Ran `uv run pre-commit install --hook-type commit-msg --hook-type pre-commit`
+- Verified pre-commit hooks installed at .git/hooks/commit-msg and .git/hooks/pre-commit
+- Ran `uv run pre-commit run --all-files`: ruff passed, ruff-format passed, pytest passed
+- Verified non-conventional commit message "bad message" is rejected by conventional-pre-commit
+- Verified conventional commit message "feat: add pre-commit configuration" is accepted
+- Ran lint feedback loop and it passed
+- Committed: feat: configure pre-commit with conventional commits, ruff, and pytest
+- Files changed: .pre-commit-config.yaml
