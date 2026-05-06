@@ -36,7 +36,7 @@ docker compose ps --status running --format "{{.Name}}" | grep -q web || docker 
 Wait for the db to be healthy before proceeding:
 
 ```bash
-docker compose exec -T web bash -c "echo 'Container ready'"
+docker compose exec -T web echo 'Container ready'
 ```
 
 If this fails, run `docker compose up -d` and wait for services to be healthy.
@@ -55,7 +55,7 @@ Execute the commit inside the web container. The `.gitconfig` mounted at `/root/
 provides author identity and safe.directory configuration:
 
 ```bash
-docker compose exec -T web bash -c 'cd /app && git commit -m "<message>"'
+docker compose exec -T web git commit -m "<message>"
 ```
 
 The commit message must follow Conventional Commits format:
@@ -91,7 +91,7 @@ If a hook fails:
 After the commit, verify it was created correctly:
 
 ```bash
-docker compose exec -T web bash -c "cd /app && git log --oneline -1"
+docker compose exec -T web git log --oneline -1
 ```
 
 ## Infrastructure Details
@@ -144,7 +144,8 @@ docker compose exec -T db pg_isready -U postgres
 ### "pre-commit not found" (on host)
 
 This error means you accidentally tried to commit from the host. Always commit inside the
-container using `docker compose exec -T web bash -c 'cd /app && git commit -m "..."'`.
+container using `docker compose exec -T web git commit -m "..."`.
+
 
 ### "dubious ownership" error
 
@@ -165,5 +166,5 @@ Fix the issue in the source code, re-stage the files, and try the commit again. 
 # Full commit workflow (copy-paste ready)
 docker compose ps --status running --format "{{.Name}}" | grep -q web || docker compose up -d
 git add <files>
-docker compose exec -T web bash -c 'cd /app && git commit -m "type(scope): description"'
+docker compose exec -T web git commit -m "type(scope): description"
 ```
