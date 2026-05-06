@@ -1,6 +1,6 @@
 [project]
 name = "django-template"
-version = "0.1.0"
+version = "0.2.0"
 description = "Django project template with uv, pytest, Docker, and developer tooling"
 requires-python = ">=3.12"
 dependencies = [
@@ -62,6 +62,6 @@ exclude_lines = [
 ]
 
 [tool.commitizen]
-version = "0.1.0"
+version = "0.2.0"
 tag_format = "v$version"
 version_files = ["pyproject.toml:version"]
