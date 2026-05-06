@@ -134,3 +134,16 @@ Task: Add Makefile targets for release workflow (prd.json item 11)
 - Verified `make help` lists all 17 targets correctly
 - Committed: feat: add Makefile targets for release workflow (release-rc, release, changelog)
 Files changed: Makefile, prd.json, .ralph-workflow/progress.txt
+
+Task: Configure pytest-cov with 80% minimum coverage threshold (prd.json item 12)
+- Added `pytest-cov` to dependency-groups.dev in pyproject.toml
+- Added `addopts = "--cov=. --cov-report=term-missing --cov-fail-under=80"` to [tool.pytest.ini_options]
+- Added [tool.coverage.run] section with omit patterns for migrations, manage.py, config/wsgi.py, config/asgi.py
+- Added [tool.coverage.report] section with exclude_lines for common non-testable patterns
+- Ran `uv sync --dev` to install pytest-cov
+- Ran `uv run pytest` and coverage report displayed 86.11% (above 80% threshold)
+- Verified coverage enforcement by creating temporary uncovered file and running pytest; confirmed it fails with "Coverage failure: total of 76 is less than fail-under=80"
+- Removed temporary file and re-ran pytest; confirmed tests pass at 86.11%
+- Ran lint feedback loop (`uv run ruff check .`) and it passed
+- Committed: feat: configure pytest-cov with 80% minimum coverage threshold
+Files changed: pyproject.toml, uv.lock, prd.json, .ralph-workflow/progress.txt
