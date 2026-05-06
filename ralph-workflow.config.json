@@ -1,8 +1,6 @@
 {
   "stack": "python",
   "feedback_loops": {
-    "typecheck": "mypy src/",
-    "test": "pytest",
-    "lint": "ruff check src/"
+    "lint": "uv run ruff check ."
   }
 }

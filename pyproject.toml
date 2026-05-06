@@ -1,0 +1,17 @@
+[project]
+name = "django-template"
+version = "0.1.0"
+description = "Django project template with uv, pytest, Docker, and developer tooling"
+requires-python = ">=3.12"
+dependencies = [
+    "Django>=5.2,<5.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-django",
+    "ruff",
+    "pre-commit",
+    "conventional-pre-commit",
+]
