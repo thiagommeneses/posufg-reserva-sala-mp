@@ -32,7 +32,7 @@
       "Create a basic smoke test in core/tests.py",
       "Run `uv run pytest` and verify it passes"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -58,7 +58,7 @@
       "Run `docker compose exec web python manage.py check` successfully",
       "Run `docker compose down` and verify clean shutdown"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "integration",

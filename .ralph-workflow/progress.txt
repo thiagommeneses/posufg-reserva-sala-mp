@@ -18,3 +18,26 @@ Task: Create Django project structure (prd.json item 2)
 - Created root .gitignore to exclude __pycache__, .venv, db.sqlite3, .env, etc.
 - Committed: feat: create Django project structure with config and core app
 Files changed: .gitignore, config/, core/, manage.py
+
+Task: Configure pytest for Django testing (prd.json item 3)
+- Added [tool.pytest.ini_options] to pyproject.toml with DJANGO_SETTINGS_MODULE=config.settings
+- Configured python_files pattern: tests.py, test_*.py, *_tests.py
+- Created SmokeTestCase in core/tests.py verifying Django settings are loaded
+- Ran `uv run pytest` and 1 test passed
+- Ran lint feedback loop and it passed
+- Committed: feat: configure pytest with Django settings and add smoke test
+Files changed: pyproject.toml, core/tests.py
+
+Task: Add Docker environment with docker-compose (prd.json item 5)
+- Added psycopg2-binary to pyproject.toml dependencies
+- Created Dockerfile based on python:3.12-slim with uv and UV_PROJECT_ENVIRONMENT=/opt/venv
+- Created docker-compose.yml with web (Django app) and db (PostgreSQL) services
+- Configured named volume postgres_data for database persistence
+- Configured .env.example with DATABASE_URL, DEBUG, SECRET_KEY, ALLOWED_HOSTS
+- Updated config/settings.py to read database config from DATABASE_URL environment variable
+- Ran `uv sync` to update uv.lock with psycopg2-binary
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run pytest` and all tests passed
+- Ran `uv run python manage.py check` and it passed with no issues
+- Docker runtime not available in this environment; docker compose build/up/down verification skipped
+- Files changed: pyproject.toml, uv.lock, config/settings.py, Dockerfile, docker-compose.yml, .env.example
