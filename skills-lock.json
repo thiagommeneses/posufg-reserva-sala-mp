@@ -7,6 +7,12 @@
       "skillPath": "caveman/SKILL.md",
       "computedHash": "259cb6ef69b4e9eeb07155c925ce9895ed509b0feb6a7e29cbc9e70d3c7bcfb2"
     },
+    "context7": {
+      "source": "netresearch/context7-skill",
+      "sourceType": "github",
+      "skillPath": "skills/context7/SKILL.md",
+      "computedHash": "22713d2e1cc542c6d421f1cfd4ac665e1c92646ca848d2670c54c5bd4e2e443c"
+    },
     "django-expert": {
       "source": "vintasoftware/django-ai-plugins",
       "sourceType": "github",

@@ -1,206 +1,442 @@
 [
   {
     "category": "architectural",
-    "description": "Initialize project structure with uv",
+    "description": "Install Django REST Framework and configure API base",
     "steps": [
-      "Create pyproject.toml with project metadata and dependencies (Django>=5.2,<5.3 LTS)",
-      "Define dependency-groups.dev with pytest, pytest-django, ruff, pre-commit, conventional-pre-commit",
-      "Run `uv sync --dev` and verify .venv is created",
-      "Verify `uv run python --version` returns Python 3.12.x",
-      "Verify `uv run python -c \"import django; print(django.get_version())\"` returns 5.2.x"
-    ],
-    "passes": true
-  },
-  {
-    "category": "functional",
-    "description": "Create Django project structure",
-    "steps": [
-      "Run `uv run django-admin startproject config .`",
-      "Verify manage.py, config/settings.py, config/urls.py, config/wsgi.py, config/asgi.py exist",
-      "Run `uv run python manage.py startapp core`",
-      "Add 'core' to INSTALLED_APPS in config/settings.py",
+      "Add djangorestframework and django-filter to project dependencies in pyproject.toml",
+      "Run `uv sync --dev` and verify packages install correctly",
+      "Add 'rest_framework' and 'django_filters' to INSTALLED_APPS in config/settings.py",
+      "Configure DEFAULT_PERMISSION_CLASSES to IsAuthenticated in REST_FRAMEWORK settings",
+      "Configure DEFAULT_FILTER_BACKENDS with DjangoFilterBackend",
+      "Add api/ URL namespace to config/urls.py",
       "Run `uv run python manage.py check` and verify it passes"
     ],
-    "passes": true
-  },
-  {
-    "category": "functional",
-    "description": "Configure pytest for Django testing in pyproject.toml",
-    "steps": [
-      "Add [tool.pytest.ini_options] to pyproject.toml with DJANGO_SETTINGS_MODULE=config.settings",
-      "Configure python_files pattern (tests.py, test_*.py, *_tests.py)",
-      "Create a basic smoke test in core/tests.py",
-      "Run `uv run pytest` and verify it passes"
-    ],
-    "passes": true
-  },
-  {
-    "category": "functional",
-    "description": "Configure ruff linter and formatter in pyproject.toml",
-    "steps": [
-      "Add [tool.ruff] configuration to pyproject.toml (target-version=py312, line-length=100, select=[\"E\", \"F\", \"W\", \"I\", \"N\", \"UP\", \"C90\", \"D\", \"S\", \"ASYNC\", \"PERF\", \"T20\", \"RET\", \"PT\"])",
-      "Run `uv run ruff check .` and verify it passes",
-      "Run `uv run ruff format --check .` and verify it passes"
-    ],
-    "passes": true
+    "passes": false
   },
   {
     "category": "architectural",
-    "description": "Add Docker environment with docker-compose (web + PostgreSQL)",
+    "description": "Install HTMX + DaisyUI and configure template infrastructure",
     "steps": [
-      "Create Dockerfile using python:3.12-slim and uv",
-      "Create docker-compose.yml with services `web` (Django app) and `db` (PostgreSQL) with named volume `postgres_data`",
-      "Configure volume mounts for hot-reload (source code) and db data persistence",
-      "Configure environment variables (DATABASE_URL, DEBUG, SECRET_KEY) via .env.example",
-      "Update config/settings.py to read database config from environment",
-      "Run `docker compose build` and verify image builds successfully",
-      "Run `docker compose up -d` and verify both services are healthy",
-      "Run `docker compose exec web python manage.py check` successfully",
-      "Run `docker compose down` and verify clean shutdown"
+      "Add django-htmx to project dependencies in pyproject.toml",
+      "Run `uv sync --dev` and verify package installs correctly",
+      "Add 'django_htmx' to INSTALLED_APPS and HtmxMiddleware to MIDDLEWARE",
+      "Create templates/ directory at project root and configure TEMPLATES DIRS in settings",
+      "Create base.html with: Tailwind CSS CDN, DaisyUI CDN plugin, HTMX CDN script, block structure (content, title, extra_css, extra_js), DaisyUI theme data-theme attribute",
+      "Create base_user.html extending base.html with DaisyUI navbar component (Spaces, My Reservations, Logout), DaisyUI drawer for mobile",
+      "Create base_admin.html extending base.html with DaisyUI navbar + drawer sidebar (Dashboard, Spaces, Reservations, Maintenance)",
+      "Create partials/_messages.html template using DaisyUI alert and toast components for Django messages framework",
+      "Configure STATIC_URL and STATICFILES_DIRS in settings",
+      "Verify Tailwind + DaisyUI classes render correctly in browser",
+      "Verify HTMX requests work (test with a simple hx-get partial swap)",
+      "Run `uv run python manage.py check` and verify it passes"
     ],
-    "passes": true
-  },
-  {
-    "category": "integration",
-    "description": "Create Makefile with common development commands",
-    "steps": [
-      "Create Makefile with targets: install, test, lint, format, up, down, build, logs, shell, migrate, makemigrations, unmigrate, createsuperuser, createsuperuser-auto, pre-commit-install, help",
-      "Verify `make help` lists all targets with descriptions",
-      "Verify `make test` runs pytest successfully",
-      "Verify `make lint` runs ruff check successfully",
-      "Verify `make up` starts docker compose services",
-      "Verify `make down` stops docker compose services",
-      "Verify `make shell` opens a bash shell in the web container",
-      "Verify `make makemigrations` and `make migrate` work against the db container",
-      "Verify `make unmigrate app=<name> migration=<name>` rolls back a migration",
-      "Verify `make createsuperuser-auto username=<name> email=<email> password=<pass>` creates a superuser non-interactively"
-    ],
-    "passes": true
-  },
-  {
-    "category": "integration",
-    "description": "Configure pre-commit with conventional commits, ruff and pytest",
-    "steps": [
-      "Add pre-commit and conventional-pre-commit to dependency-groups.dev",
-      "Create .pre-commit-config.yaml with hooks: conventional-pre-commit (commit-msg stage), ruff (check + format), local hook for pytest with pass_filenames=false and always_run=true",
-      "Run `uv run pre-commit install --hook-type commit-msg --hook-type pre-commit`",
-      "Verify a non-conventional commit message is rejected",
-      "Verify a conventional commit message (e.g. 'feat: add X') is accepted",
-      "Verify ruff hook runs on staged files",
-      "Verify pytest hook runs the full suite before commit completes"
-    ],
-    "passes": true
-  },
-  {
-    "category": "functional",
-    "description": "Generate AGENTS.md documenting main project commands",
-    "steps": [
-      "Create/update AGENTS.md with sections: Setup, Testing, Linting, Docker, Database Migrations, Pre-commit",
-      "Document: `make test` and `uv run pytest`",
-      "Document: `make lint`, `make format`, `uv run ruff check .`",
-      "Document: `make up` / `docker compose up -d` to start the app",
-      "Document: `make down` / `docker compose down` to stop the app",
-      "Document: `make shell` / `docker compose exec web bash` to access the container",
-      "Document: `make makemigrations`, `make migrate`, `make unmigrate app=<> migration=<>` for migrations",
-      "Document: `make createsuperuser` (interactive) and `make createsuperuser-auto username=<> email=<> password=<>` (non-interactive) for creating superusers",
-      "Document: `make pre-commit-install` and how conventional commits work",
-      "Verify AGENTS.md renders correctly and all commands are copy-pasteable"
-    ],
-    "passes": true
-  },
-  {
-    "category": "testing",
-    "description": "Verify complete project setup works end-to-end",
-    "steps": [
-      "Run `make install` from a clean checkout",
-      "Run `make lint` and verify it passes",
-      "Run `make test` and verify all tests pass",
-      "Run `make up` and verify web service responds on configured port",
-      "Run `make shell` and verify bash is accessible",
-      "Run `make migrate` and verify migrations apply against PostgreSQL",
-      "Run `make down` and verify clean shutdown",
-      "Attempt a commit with invalid message and verify pre-commit rejects it",
-      "Attempt a commit with conventional message and verify pre-commit accepts it"
-    ],
-    "passes": true
+    "passes": false
   },
   {
     "category": "architectural",
-    "description": "Configure commitizen for semantic versioning and release management",
+    "description": "Create accounts app with authentication views",
     "steps": [
-      "Add `commitizen` to dependency-groups.dev in pyproject.toml",
-      "Add [tool.commitizen] section to pyproject.toml with version, tag_format='v$version', version_files pointing to pyproject.toml",
-      "Verify `uv run cz version` outputs the current project version",
-      "Verify `uv run cz check --message 'feat: test'` passes validation",
-      "Verify `uv run cz check --message 'invalid message'` fails validation"
+      "Create Django app 'accounts' and add to INSTALLED_APPS",
+      "Create login view and template at /accounts/login/ using DaisyUI card as form container, form-control for inputs, btn-primary for submit (centered hero layout)",
+      "Create registration view and template at /accounts/register/ (username, email, password) with same DaisyUI card layout",
+      "Create logout view at /accounts/logout/ (redirect to login)",
+      "Style form validation errors using DaisyUI input-error class and label-text-alt for error messages",
+      "Configure LOGIN_URL, LOGIN_REDIRECT_URL, LOGOUT_REDIRECT_URL in settings",
+      "Register accounts URLs in config/urls.py",
+      "Write tests: login page renders (200)",
+      "Write tests: valid registration creates user and redirects",
+      "Write tests: login with valid credentials authenticates and redirects",
+      "Write tests: protected page redirects unauthenticated user to login",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": true
+    "passes": false
+  },
+  {
+    "category": "architectural",
+    "description": "Create spaces app with Space and Attribute models",
+    "steps": [
+      "Create Django app 'spaces' and add to INSTALLED_APPS",
+      "Define Space model with fields: name (CharField), description (TextField nullable), capacity (PositiveIntegerField), location (CharField), is_active (BooleanField default=True), created_at, updated_at",
+      "Define Attribute model with fields: name (CharField unique)",
+      "Define SpaceAttribute M2M through model with space FK and attribute FK",
+      "Add __str__ methods to all models",
+      "Create and apply migrations",
+      "Enable btree_gist extension via migration (needed for future exclusion constraint)",
+      "Run `uv run python manage.py check` and verify it passes",
+      "Run `uv run pytest` and verify tests pass"
+    ],
+    "passes": false
+  },
+  {
+    "category": "architectural",
+    "description": "Create reservations app with Reservation model and state machine",
+    "steps": [
+      "Create Django app 'reservations' and add to INSTALLED_APPS",
+      "Define ReservationStatus choices: confirmed, cancelled, checked_in, completed, no_show",
+      "Define Reservation model with fields: space (FK), user (FK to auth.User), start_time (DateTimeField), end_time (DateTimeField), status (CharField with choices, default=confirmed), checked_in_at (DateTimeField nullable), created_at, updated_at",
+      "Add ExclusionConstraint using btree_gist to prevent overlapping reservations for the same space (only for non-cancelled statuses)",
+      "Define MaintenanceBlock model with fields: space (FK), start_time, end_time, reason (CharField), created_by (FK to auth.User)",
+      "Add __str__ methods and Meta ordering",
+      "Create and apply migrations",
+      "Run `uv run python manage.py check` and verify it passes",
+      "Run `uv run pytest` and verify tests pass"
+    ],
+    "passes": false
   },
   {
     "category": "functional",
-    "description": "Add Makefile targets for release workflow (release-rc, release, changelog)",
+    "description": "Implement Space API with attribute-based filtering",
     "steps": [
-      "Add `release-rc` target to Makefile: `docker compose exec web uv run cz bump --prerelease rc`",
-      "Add `release` target to Makefile: `docker compose exec web uv run cz bump`",
-      "Add `changelog` target to Makefile: `docker compose exec web uv run cz changelog`",
-      "Update `make help` to document release-rc, release, and changelog targets",
-      "Update .PHONY to include release-rc, release, changelog"
+      "Create SpaceSerializer and AttributeSerializer in spaces/serializers.py",
+      "Create SpaceViewSet with list, retrieve, create, update actions",
+      "Create SpaceFilterSet with filters: min_capacity, max_capacity, attributes (by name), is_active, location",
+      "Register Space URLs in spaces/urls.py using DRF router",
+      "Include spaces URLs in config/urls.py under api/ prefix",
+      "Verify GET /api/spaces/ returns list of spaces",
+      "Verify GET /api/spaces/?min_capacity=5&attributes=TV filters correctly",
+      "Verify admin can POST /api/spaces/ to create a space",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "category": "functional",
-    "description": "Configure pytest-cov with 80% minimum coverage threshold",
+    "description": "Implement real-time availability check for spaces",
     "steps": [
-      "Add `pytest-cov` to dependency-groups.dev in pyproject.toml",
-      "Add coverage configuration to [tool.pytest.ini_options]: addopts = '--cov=. --cov-report=term-missing --cov-fail-under=80'",
-      "Add [tool.coverage.run] section to pyproject.toml with omit patterns (migrations, manage.py, config/wsgi.py, config/asgi.py)",
-      "Add [tool.coverage.report] section with exclude_lines for common non-testable patterns (if __name__, pragma: no cover)",
-      "Run `uv sync --dev` to install pytest-cov",
-      "Run `uv run pytest` and verify coverage report is displayed",
-      "Verify that the test run fails if coverage drops below 80%"
+      "Create availability service function: check_availability(space_id, date) returns list of available time slots",
+      "Service must consider existing confirmed/checked_in reservations AND maintenance blocks",
+      "Create availability endpoint: GET /api/spaces/{id}/availability/?date=YYYY-MM-DD",
+      "Endpoint returns list of occupied slots and free slots for the given date",
+      "Write tests: availability reflects existing reservations correctly",
+      "Write tests: availability reflects maintenance blocks correctly",
+      "Write tests: cancelled reservations do NOT block availability",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "category": "functional",
-    "description": "Update AGENTS.md with release workflow and coverage documentation",
+    "description": "Implement reservation creation with conflict validation",
     "steps": [
-      "Add 'Release and Versioning' section to AGENTS.md documenting the release flow",
-      "Document `make release-rc` command and its effect (creates RC tag)",
-      "Document `make release` command and its effect (creates final version tag)",
-      "Document `make changelog` command",
-      "Document the `git push origin main --tags` step after release commands",
-      "Document that tags trigger CI/CD production deploy",
-      "Add 'Code Coverage' section documenting the 80% threshold and how to check coverage",
-      "Document that `make test` automatically includes coverage reporting"
+      "Create ReservationSerializer in reservations/serializers.py with validation",
+      "Create reservation service: create_reservation(user, space, start_time, end_time) with conflict check",
+      "Service must validate: space is_active, no overlapping confirmed/checked_in reservations, no overlapping maintenance blocks, end_time > start_time",
+      "Create ReservationViewSet with create action (POST /api/reservations/)",
+      "Automatically set user from request.user and status to 'confirmed'",
+      "Register reservation URLs and include in config/urls.py",
+      "Write tests: successful reservation creation",
+      "Write tests: conflict returns 409 or 400 with clear error message",
+      "Write tests: reservation on inactive space is rejected",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": true
+    "passes": false
   },
   {
-    "category": "testing",
-    "description": "Verify release workflow and coverage enforcement work end-to-end",
+    "category": "functional",
+    "description": "Implement self-service cancellation and rescheduling",
     "steps": [
-      "Run `uv sync --dev` and verify commitizen and pytest-cov are installed",
-      "Run `uv run pytest` and verify coverage report is shown with percentage",
-      "Verify coverage threshold enforcement by checking that tests fail if coverage is below 80%",
-      "Run `uv run cz version` and verify it returns the current version from pyproject.toml",
-      "Verify `make help` includes release-rc, release, and changelog targets",
-      "Verify `make changelog` generates or updates CHANGELOG.md"
+      "Add cancel action to ReservationViewSet: PATCH /api/reservations/{id}/cancel/",
+      "Cancel service: only reservation owner can cancel, only confirmed/checked_in status can be cancelled",
+      "Add reschedule action: PATCH /api/reservations/{id}/reschedule/ with new start_time and end_time",
+      "Reschedule service: validates new slot availability, updates times, keeps status confirmed",
+      "Write tests: owner can cancel their own reservation",
+      "Write tests: non-owner cannot cancel another user's reservation (403)",
+      "Write tests: cannot cancel already cancelled reservation",
+      "Write tests: reschedule to conflicting slot is rejected",
+      "Write tests: successful reschedule updates times and slot becomes available",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": true
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement check-in mechanism",
+    "steps": [
+      "Add check-in action to ReservationViewSet: POST /api/reservations/{id}/check-in/",
+      "Check-in service: validates reservation is 'confirmed', current time is within reservation window (or up to 15 min before start), sets status to 'checked_in' and checked_in_at timestamp",
+      "Only reservation owner can check-in",
+      "Write tests: successful check-in within valid time window",
+      "Write tests: check-in before valid window is rejected",
+      "Write tests: check-in on non-confirmed reservation is rejected",
+      "Write tests: check-in by non-owner is rejected (403)",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement auto-release of no-show reservations",
+    "steps": [
+      "Create service function: auto_release_no_shows(threshold_minutes=15) that marks overdue reservations as 'no_show'",
+      "Service finds all 'confirmed' reservations where start_time + threshold < now and no check-in",
+      "Service sets status to 'no_show' for each matching reservation",
+      "Service returns count of released reservations",
+      "Create management command: release_no_shows (with optional --threshold argument)",
+      "Write tests: reservation past threshold without check-in is marked no_show",
+      "Write tests: reservation within threshold is NOT marked no_show",
+      "Write tests: checked_in reservation is NOT affected",
+      "Write tests: already cancelled reservation is NOT affected",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement admin maintenance blocks",
+    "steps": [
+      "Create MaintenanceBlockSerializer in reservations/serializers.py",
+      "Create MaintenanceBlockViewSet with create, list, delete actions (admin only)",
+      "Validate that maintenance block does not overlap with existing confirmed reservations",
+      "Register endpoint: POST /api/admin/maintenance-blocks/",
+      "Add IsAdminUser permission to admin endpoints",
+      "Write tests: admin can create maintenance block on free slot",
+      "Write tests: non-admin cannot create maintenance block (403)",
+      "Write tests: maintenance block overlapping existing reservation is rejected",
+      "Write tests: maintenance block appears in availability check",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement admin occupancy overview endpoint",
+    "steps": [
+      "Create endpoint: GET /api/admin/occupancy/?date=YYYY-MM-DD",
+      "Returns all spaces with their reservations and maintenance blocks for the given date",
+      "Include reservation status in response to distinguish confirmed vs checked_in vs no_show",
+      "Add IsAdminUser permission",
+      "Write tests: admin can view occupancy for a given date",
+      "Write tests: non-admin gets 403",
+      "Write tests: response includes all spaces even if they have no reservations",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement user reservation listing with filtering",
+    "steps": [
+      "Add list action to ReservationViewSet: GET /api/reservations/",
+      "Filter by authenticated user (users see only their own reservations)",
+      "Add filters: status, space, date range (start_time__gte, start_time__lte)",
+      "Order by start_time descending (most recent first)",
+      "Write tests: user sees only their own reservations",
+      "Write tests: filters work correctly (by status, by date range)",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement user-facing space search page",
+    "steps": [
+      "Create view: SpaceListView (ListView) at /spaces/ with LoginRequiredMixin",
+      "Create template spaces/space_list.html extending base_user.html",
+      "Implement filter form using DaisyUI form-control, select, and checkbox components: capacity (min), attributes (checkboxes), location (dropdown)",
+      "Display space cards using DaisyUI card component with name, capacity (badge), location, attributes (badge outline), and btn-primary 'Reserve' button",
+      "Use HTMX hx-get with hx-target for filter submission (partial page update of card grid without full reload)",
+      "Add DaisyUI loading/skeleton indicator during HTMX requests (hx-indicator)",
+      "Create partial template spaces/_space_list_results.html for HTMX swap target",
+      "Write tests: authenticated user gets 200 on /spaces/",
+      "Write tests: unauthenticated user is redirected to login",
+      "Write tests: filters return correct subset of spaces in context",
+      "Write tests: HTMX request returns partial without base layout",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement user-facing space detail and availability page",
+    "steps": [
+      "Create view: SpaceDetailView (DetailView) at /spaces/{id}/ with LoginRequiredMixin",
+      "Create template spaces/space_detail.html using DaisyUI card for space info, badge for attributes, and a timeline/calendar section for availability",
+      "Display availability for selected date (default: today) using existing availability service",
+      "Use DaisyUI input[type=date] with hx-get and hx-trigger='change' to reload availability when user changes date",
+      "Create partial template spaces/_availability.html showing time slots: DaisyUI btn-success for available, btn-disabled for occupied, btn-warning for maintenance",
+      "Available slots link to /reservations/new/?space={id}&start={time}",
+      "Write tests: page renders with space info and availability data",
+      "Write tests: HTMX request returns partial template with availability for requested date",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement user-facing reservation creation page",
+    "steps": [
+      "Create view: ReservationCreateView at /reservations/new/?space={id} with LoginRequiredMixin",
+      "Create template reservations/reservation_form.html using DaisyUI card as form container, form-control for inputs, btn-primary for submit",
+      "Show space info summary (DaisyUI card compact) at the top",
+      "Use DaisyUI input[type=date] and input[type=time] for start/end selection",
+      "Pre-fill space from query parameter and start time if provided, user from request.user",
+      "On submit, call create_reservation service; on success redirect to reservation detail",
+      "On conflict, re-render form with DaisyUI alert-error showing conflict message",
+      "Write tests: GET renders form with space pre-selected",
+      "Write tests: valid POST creates reservation and redirects",
+      "Write tests: conflicting POST re-renders form with error",
+      "Write tests: unauthenticated user is redirected to login",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement user-facing reservation list and detail pages",
+    "steps": [
+      "Create view: UserReservationListView at /reservations/ with LoginRequiredMixin",
+      "Create template reservations/reservation_list.html using DaisyUI tabs component to group by status (Active, Past, Cancelled)",
+      "Each reservation shown as DaisyUI card with: space name, date/time, status badge (badge-success for confirmed, badge-info for checked_in, badge-error for no_show, badge-ghost for cancelled)",
+      "Create view: ReservationDetailView at /reservations/{id}/ with LoginRequiredMixin",
+      "Create template reservations/reservation_detail.html using DaisyUI card with status badge, space info, timeline of events",
+      "Show btn-error 'Cancel' for confirmed/checked_in reservations",
+      "Show btn-success 'Check-in' for confirmed reservations within valid time window",
+      "Show btn-warning 'Reschedule' for confirmed reservations",
+      "Only allow access to own reservations (404 for others)",
+      "Write tests: user sees only their own reservations",
+      "Write tests: detail page shows correct reservation data",
+      "Write tests: user cannot access another user's reservation (404)",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement user-facing cancel, reschedule, and check-in actions",
+    "steps": [
+      "Create view: ReservationCancelView (POST) at /reservations/{id}/cancel/ with LoginRequiredMixin",
+      "Use hx-post with hx-confirm (DaisyUI modal confirmation) before cancellation",
+      "On success, use hx-swap to update reservation card/status inline OR redirect with success message",
+      "Create view: ReservationRescheduleView at /reservations/{id}/reschedule/ with DaisyUI form (date/time inputs)",
+      "Create view: ReservationCheckInView (POST) at /reservations/{id}/check-in/ with LoginRequiredMixin",
+      "Check-in page uses DaisyUI hero section with large btn-success for one-tap check-in (optimized for mobile QR Code access)",
+      "All actions reuse existing service layer (same validation as API)",
+      "Use Django messages framework rendered via DaisyUI toast/alert for success/error feedback",
+      "Write tests: cancel changes status and shows success message",
+      "Write tests: reschedule with valid times updates reservation",
+      "Write tests: check-in within valid window succeeds",
+      "Write tests: actions on other user's reservations return 404",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement admin dashboard with real-time occupancy overview",
+    "steps": [
+      "Create Django app 'dashboard' and add to INSTALLED_APPS",
+      "Create view: AdminDashboardView at /admin-dashboard/ with StaffRequiredMixin",
+      "Create template dashboard/index.html extending base_admin.html with DaisyUI drawer sidebar layout",
+      "Show DaisyUI stats component with summary metrics: total spaces, occupied now, available now, no-shows today",
+      "Show grid of DaisyUI cards for each space with current status: badge-success (free), badge-error (occupied), badge-warning (maintenance)",
+      "Use hx-trigger='every 30s' with hx-get on a partial template to auto-refresh occupancy data",
+      "Create partial template dashboard/_occupancy_grid.html for HTMX swap",
+      "Write tests: staff user gets 200 on /admin-dashboard/",
+      "Write tests: non-staff user gets 403",
+      "Write tests: context contains correct occupancy data",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement admin space management pages",
+    "steps": [
+      "Create view: AdminSpaceListView at /admin-dashboard/spaces/ with StaffRequiredMixin",
+      "Create view: AdminSpaceCreateView at /admin-dashboard/spaces/new/ with form for space + attributes",
+      "Create view: AdminSpaceUpdateView at /admin-dashboard/spaces/{id}/ with edit form",
+      "List template using DaisyUI table component with columns: name, capacity, location, status (badge), actions (dropdown with edit/toggle)",
+      "Form templates using DaisyUI form-control, input, textarea, checkbox group for attributes",
+      "Use hx-patch for toggle is_active (inline swap of badge without page reload)",
+      "Write tests: staff can list, create, and update spaces",
+      "Write tests: non-staff gets 403 on all admin space pages",
+      "Write tests: creating space with attributes persists correctly",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement admin reservation management page",
+    "steps": [
+      "Create view: AdminReservationListView at /admin-dashboard/reservations/ with StaffRequiredMixin",
+      "Create template using DaisyUI table with columns: user, space, start/end, status (badge), actions (dropdown)",
+      "Add filter bar using DaisyUI select and input components: status, space, date range, user search",
+      "Use hx-get with hx-push-url for filter changes (partial table update without reload)",
+      "Add admin action: cancel any reservation via hx-post with hx-confirm modal",
+      "Inline row update after cancel (hx-swap='outerHTML' on table row)",
+      "Write tests: staff can view all reservations",
+      "Write tests: staff can cancel any user's reservation",
+      "Write tests: non-staff gets 403",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Implement admin maintenance block management pages",
+    "steps": [
+      "Create view: AdminMaintenanceListView at /admin-dashboard/maintenance/ with StaffRequiredMixin",
+      "Create view: AdminMaintenanceCreateView at /admin-dashboard/maintenance/new/ with form",
+      "List template using DaisyUI table with columns: space, start, end, reason, actions (btn-error delete)",
+      "Form template using DaisyUI form-control: space (select), date/time inputs, reason (textarea)",
+      "Validate no overlap with confirmed reservations on creation; show DaisyUI alert-error on conflict",
+      "Delete action via hx-delete with hx-confirm and hx-swap to remove row inline",
+      "Write tests: staff can list and create maintenance blocks",
+      "Write tests: creating block that overlaps reservation shows error",
+      "Write tests: staff can delete maintenance block",
+      "Write tests: non-staff gets 403",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
   },
   {
     "category": "integration",
-    "description": "Configure ralph-workflow.config.json feedback loops aligned with project tooling",
+    "description": "Register all models in Django admin",
     "steps": [
-      "Verify `ralph-workflow.config.json` exists and contains feedback_loops: lint, format, test",
-      "Verify feedback loop `lint` points to `uv run ruff check .`",
-      "Verify feedback loop `format` points to `uv run ruff format --check .`",
-      "Verify feedback loop `test` points to `uv run pytest`",
-      "Confirm that `uv run pytest` runs coverage automatically because `pyproject.toml` has `addopts = --cov=. --cov-report=term-missing --cov-fail-under=80` in [tool.pytest.ini_options]",
-      "Run each feedback loop command and verify they pass"
+      "Register Space, Attribute, SpaceAttribute in spaces/admin.py with meaningful list_display and filters",
+      "Register Reservation, MaintenanceBlock in reservations/admin.py with meaningful list_display, filters, and search",
+      "Add inline for SpaceAttribute in SpaceAdmin",
+      "Verify admin interface loads correctly for all models",
+      "Run `uv run pytest` and verify tests pass"
     ],
-    "passes": true
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "End-to-end reservation lifecycle test",
+    "steps": [
+      "Write integration test covering full lifecycle: create space → search by attributes → create reservation → check-in → complete",
+      "Write integration test for no-show flow: create reservation → time passes → auto-release marks as no_show → slot becomes available again",
+      "Write integration test for conflict prevention: two users try to book same slot → second one is rejected",
+      "Write integration test for cancel and rebook: user cancels → slot opens → another user books successfully",
+      "Run `uv run pytest` and verify all tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "End-to-end user interface flow test",
+    "steps": [
+      "Write test: user registers → logs in → searches spaces → views detail → creates reservation → sees it in 'My Reservations'",
+      "Write test: user cancels reservation via web interface → reservation status changes → slot frees up",
+      "Write test: user accesses check-in page via direct URL (QR Code flow) → check-in succeeds",
+      "Write test: unauthenticated user is redirected to login on all protected pages",
+      "Run `uv run pytest` and verify all tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "End-to-end admin interface flow test",
+    "steps": [
+      "Write test: admin logs in → sees dashboard with occupancy data → navigates to space management",
+      "Write test: admin creates space with attributes → space appears in user-facing search",
+      "Write test: admin cancels user's reservation → status changes to cancelled",
+      "Write test: admin creates maintenance block → slot is unavailable for user reservation",
+      "Write test: non-staff user gets 403 on all admin-dashboard routes",
+      "Run `uv run pytest` and verify all tests pass with >= 80% coverage"
+    ],
+    "passes": false
   }
 ]

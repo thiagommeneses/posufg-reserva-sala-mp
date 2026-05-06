@@ -27,6 +27,7 @@ addopts = "--cov=. --cov-report=term-missing --cov-fail-under=80"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+exclude = [".agents/skills/skill-creator/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "C90", "D", "S", "ASYNC", "PERF", "T20", "RET", "PT"]

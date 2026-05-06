@@ -229,3 +229,11 @@ Coverage runs automatically on every test execution and displays:
 - Missing lines (`term-missing` report) for easy identification of uncovered code
 
 Files excluded from coverage measurement: migrations, `manage.py`, `config/wsgi.py`, `config/asgi.py`.
+
+### MCP'S improve
+
+#### Grep Vercel
+If you are unsure how to do something, use `gh_grep` to search code examples from GitHub.
+
+#### Context7
+When you need to search docs, use `context7` tools.
