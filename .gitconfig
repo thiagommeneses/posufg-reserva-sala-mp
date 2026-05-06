@@ -1,0 +1,6 @@
+[user]
+    name = André Teles
+    email = andre.telestp@gmail.com
+
+[safe]
+    directory = /app
