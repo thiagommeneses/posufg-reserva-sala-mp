@@ -175,7 +175,7 @@
       "Add 'Code Coverage' section documenting the 80% threshold and how to check coverage",
       "Document that `make test` automatically includes coverage reporting"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "testing",

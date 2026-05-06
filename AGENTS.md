@@ -171,3 +171,61 @@ On every commit the hooks will:
 1. Validate the commit message format (`conventional-pre-commit`)
 2. Run ruff linter and formatter on staged files
 3. Run the full pytest suite
+
+### Release and Versioning
+
+This project uses [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/) to automate version bumps.
+
+Release flow:
+```
+1. Development on main with conventional commits (feat, fix, etc.)
+2. make release-rc    → creates tag v1.0.0rc1 → git push origin main --tags
+3. make release-rc    → creates tag v1.0.0rc2 → git push origin main --tags
+4. make release       → creates tag v1.0.0    → git push origin main --tags
+                         (CI triggers production deploy)
+```
+
+Create a release candidate (RC):
+```bash
+make release-rc
+# or
+docker compose exec web uv run cz bump --prerelease rc
+```
+
+Create a final release:
+```bash
+make release
+# or
+docker compose exec web uv run cz bump
+```
+
+Generate or update the changelog:
+```bash
+make changelog
+# or
+docker compose exec web uv run cz changelog
+```
+
+After `make release-rc` or `make release`, always push the bump commit and tag to remote:
+```bash
+git push origin main --tags
+```
+
+Tags trigger the CI/CD pipeline for production deploy.
+
+### Code Coverage
+
+Code coverage is enforced with a minimum threshold of 80%. Tests will fail if coverage drops below this level.
+
+Run tests with coverage reporting:
+```bash
+make test
+# or
+uv run pytest
+```
+
+Coverage runs automatically on every test execution and displays:
+- Overall coverage percentage
+- Missing lines (`term-missing` report) for easy identification of uncovered code
+
+Files excluded from coverage measurement: migrations, `manage.py`, `config/wsgi.py`, `config/asgi.py`.

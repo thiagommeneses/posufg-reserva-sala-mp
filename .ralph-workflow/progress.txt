@@ -147,3 +147,17 @@ Task: Configure pytest-cov with 80% minimum coverage threshold (prd.json item 12
 - Ran lint feedback loop (`uv run ruff check .`) and it passed
 - Committed: feat: configure pytest-cov with 80% minimum coverage threshold
 Files changed: pyproject.toml, uv.lock, prd.json, .ralph-workflow/progress.txt
+
+Task: Update AGENTS.md with release workflow and coverage documentation (prd.json item 13)
+- Added 'Release and Versioning' section to AGENTS.md documenting Semantic Versioning and Conventional Commits
+- Documented `make release-rc` command and its effect (creates RC tag like v1.0.0rc1)
+- Documented `make release` command and its effect (creates final version tag like v1.0.0)
+- Documented `make changelog` command for generating/updating CHANGELOG.md
+- Documented the `git push origin main --tags` step after release commands
+- Documented that tags trigger CI/CD production deploy
+- Added 'Code Coverage' section documenting the 80% threshold and how to check coverage
+- Documented that `make test` automatically includes coverage reporting
+- Ran lint feedback loop (`uv run ruff check .`) and it passed
+- Ran `uv run pytest` and all tests passed with 86.11% coverage
+- Committed: docs: update AGENTS.md with release workflow and coverage documentation
+Files changed: AGENTS.md, prd.json, .ralph-workflow/progress.txt

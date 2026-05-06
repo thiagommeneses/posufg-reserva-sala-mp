@@ -27,24 +27,30 @@ Criar um template de projeto Django que inclui:
 7. As a developer, I want simplified commands (via Makefile) for tests, lint, docker and migrations so that I don't need to memorize long commands
 8. As a developer, I want my commits to follow conventional commits and pass lint/tests automatically via pre-commit so that the codebase stays consistent
 9. As a developer, I want an AGENTS.md centralizing all essential commands so that onboarding is fast
+10. As a developer, I want to create release candidates (RC) so that I can validate changes before a final release
+11. As a developer, I want to create a final release with semantic versioning so that production deploys are triggered automatically via tags
+12. As a developer, I want an auto-generated CHANGELOG so that stakeholders can track what changed between versions
+13. As a developer, I want code coverage enforcement (minimum 80%) so that the test suite maintains meaningful coverage as the project grows
 
 ## Implementation Decisions
 
-### Modules and files to create
-- `pyproject.toml` — uv config, dependencies, and tooling config (pytest and ruff centralized here)
+### Modules and files to create/modify
+- `pyproject.toml` — uv config, dependencies, tooling config (pytest, ruff, commitizen, coverage centralized here)
 - `config/` — Django project (settings, urls, wsgi, asgi)
 - `core/` — example Django app
 - `Dockerfile` — application image (Python 3.12 + uv)
 - `docker-compose.yml` — service orchestration (web + PostgreSQL db)
 - `.pre-commit-config.yaml` — pre-commit hooks
-- `Makefile` — shortcuts for common commands
+- `Makefile` — shortcuts for common commands (including release-rc, release, changelog)
 - `AGENTS.md` — workflow command documentation
+- `CHANGELOG.md` — auto-generated changelog (managed by commitizen)
 
 ### Technical decisions
 - Python 3.12 as target version
 - uv for package and virtualenv management
 - Django 5.2.x LTS
 - pytest + pytest-django for tests (configured in `[tool.pytest.ini_options]` inside `pyproject.toml`)
+- pytest-cov for code coverage measurement with minimum threshold of 80% (`--cov-fail-under=80`)
 - ruff for lint and format (configured in `[tool.ruff]` inside `pyproject.toml`)
   - `line-length = 100`
   - `select = ["E", "F", "W", "I", "N", "UP", "C90", "D", "S", "ASYNC", "PERF", "T20", "RET", "PT"]`
@@ -55,10 +61,36 @@ Criar um template de projeto Django que inclui:
   - `conventional-pre-commit` (validates commit messages)
   - `ruff` (lint + format)
   - Local hook running `uv run pytest` with `pass_filenames: false` and `always_run: true` (runs full suite)
-- Makefile targets: `install`, `test`, `lint`, `format`, `up`, `down`, `build`, `logs`, `shell`, `migrate`, `makemigrations`, `unmigrate`, `createsuperuser`, `createsuperuser-auto`, `pre-commit-install`, `help`
+- Makefile targets: `install`, `test`, `lint`, `format`, `up`, `down`, `build`, `logs`, `shell`, `migrate`, `makemigrations`, `unmigrate`, `createsuperuser`, `createsuperuser-auto`, `pre-commit-install`, `release-rc`, `release`, `changelog`, `help`
+
+### Release and Versioning
+- Semantic Versioning with unified versioning — all packages share the same version
+- commitizen for release management (configured in `[tool.commitizen]` inside `pyproject.toml`)
+- commitizen reads Conventional Commits history (`feat`, `fix`, `refactor`, etc.) to determine the next version number
+- On bump, commitizen automatically updates the `version` field in all `pyproject.toml` files via `version_files`
+- `CHANGELOG.md` is auto-generated on each bump
+- Git tags are created in the format `vX.Y.Z` (e.g., `v1.0.0`, `v1.0.0rc1`)
+- Tags trigger production deploy via CI (GitLab CI / GitHub Actions)
+
+### Code Coverage
+- pytest-cov integrated with pytest for coverage measurement
+- Configured in `[tool.pytest.ini_options]` with `addopts = --cov=. --cov-report=term-missing --cov-fail-under=80`
+- Minimum coverage threshold: 80% — tests fail if coverage drops below this
+- Coverage report shows missing lines (`term-missing`) for easy identification of uncovered code
+- `.coveragerc` or `[tool.coverage]` in `pyproject.toml` to exclude migrations, config, and manage.py from coverage
+
+### Release Flow
+```
+1. Development on main with conventional commits (feat, fix, etc.)
+2. make release-rc    → creates tag v1.0.0rc1 → git push origin main --tags
+3. make release-rc    → creates tag v1.0.0rc2 → git push origin main --tags
+4. make release       → creates tag v1.0.0    → git push origin main --tags
+                        (CI triggers production deploy)
+```
 
 ### Commands documented in AGENTS.md
 - Run tests: `make test` (or `uv run pytest`)
+- Run tests with coverage: `make test` (pytest-cov is integrated — coverage runs automatically)
 - Run lint: `make lint` (or `uv run ruff check .`)
 - Start application: `make up` (or `docker compose up -d`)
 - Stop application: `make down` (or `docker compose down`)
@@ -67,6 +99,9 @@ Criar um template de projeto Django que inclui:
 - Apply migration: `make migrate`
 - Rollback migration: `make unmigrate app=<app_name> migration=<migration_name_or_zero>`
 - Create superuser: `make createsuperuser` (interactive) and `make createsuperuser-auto username=<username> email=<email> password=<password>` (non-interactive)
+- Release candidate: `make release-rc` (or `docker compose exec web uv run cz bump --prerelease rc`)
+- Final release: `make release` (or `docker compose exec web uv run cz bump`)
+- Generate changelog: `make changelog` (or `docker compose exec web uv run cz changelog`)
 
 ## Testing Decisions
 
@@ -74,18 +109,23 @@ Criar um template de projeto Django que inclui:
 - Verify that the Django project can be created and started
 - ruff must pass across all generated code
 - Test suite must be runnable and pass initially
+- Code coverage must meet or exceed 80% threshold — tests fail otherwise
 - Verify that uv installs all dependencies correctly
 - Verify that `docker compose up` starts services and the app responds
 - Verify that `docker compose exec web bash` accesses the container
 - Verify that pre-commit rejects commits that do not follow conventional commits
 - Verify that pre-commit runs ruff and pytest before the commit completes
 - Verify that all Makefile targets work as expected
+- Verify that `make release-rc` creates a valid release candidate tag
+- Verify that `make release` creates a valid release tag
+- Verify that `make changelog` generates/updates CHANGELOG.md
+- Verify that commitizen rejects a bump when there are no new conventional commits
 
 ## Out of Scope
 
-- Production deployment configurations
+- Production deployment configurations (infrastructure, Kubernetes, etc.)
 - Advanced Django features (custom auth, advanced admin, etc.)
-- CI/CD pipelines
+- CI/CD pipeline definition files (GitHub Actions / GitLab CI YAML) — only the tag-based trigger contract is defined
 - Domain migrations beyond Django initial ones
 - Cache (Redis) or task queue (Celery) configuration
 - Observability (structured logs, metrics, tracing)
@@ -98,3 +138,8 @@ Criar um template de projeto Django que inclui:
 - Initial Django app: `core`
 - Makefile assumes docker compose v2 is available
 - Pre-commit is installed locally only (not enforced in CI at this stage)
+- After `make release-rc` or `make release`, always run `git push origin main --tags` to push the bump commit and tag to remote
+- The tag triggers the CI pipeline for production deploy
+- commitizen is added to dev dependencies (`commitizen` package)
+- pytest-cov is added to dev dependencies (`pytest-cov` package)
+- Coverage excludes: migrations, manage.py, config/wsgi.py, config/asgi.py
