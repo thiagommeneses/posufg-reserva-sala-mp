@@ -104,7 +104,7 @@
       "Document: `make pre-commit-install` and how conventional commits work",
       "Verify AGENTS.md renders correctly and all commands are copy-pasteable"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "testing",

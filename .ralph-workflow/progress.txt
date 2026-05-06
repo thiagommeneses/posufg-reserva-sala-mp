@@ -87,3 +87,15 @@ Task: Configure pre-commit with conventional commits, ruff and pytest (prd.json 
 - Ran lint feedback loop and it passed
 - Committed: feat: configure pre-commit with conventional commits, ruff, and pytest
 - Files changed: .pre-commit-config.yaml
+
+Task: Generate AGENTS.md documenting main project commands (prd.json item 8)
+- Updated AGENTS.md with sections: Setup, Testing, Linting, Docker, Database Migrations, Pre-commit
+- Documented `make test`, `uv run pytest`, `make lint`, `make format`, `uv run ruff check .`
+- Documented `make up` / `docker compose up -d`, `make down` / `docker compose down`
+- Documented `make shell` / `docker compose exec web bash`
+- Documented `make makemigrations`, `make migrate`, `make unmigrate app=<> migration=<>`
+- Documented `make pre-commit-install` and conventional commits format
+- Ran lint feedback loop (`uv run ruff check .`) and it passed
+- Ran `uv run pytest` and all tests passed
+- Committed: docs: document main project workflow commands in AGENTS.md
+Files changed: AGENTS.md
