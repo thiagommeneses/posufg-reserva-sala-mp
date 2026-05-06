@@ -9,7 +9,7 @@
       "Verify `uv run python --version` returns Python 3.12.x",
       "Verify `uv run python -c \"import django; print(django.get_version())\"` returns 5.2.x"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -21,7 +21,7 @@
       "Add 'core' to INSTALLED_APPS in config/settings.py",
       "Run `uv run python manage.py check` and verify it passes"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

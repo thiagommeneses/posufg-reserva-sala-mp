@@ -1,0 +1,20 @@
+Task: Initialize project structure with uv (prd.json item 1)
+- Created pyproject.toml with Django>=5.2,<5.3 and dev dependency group (pytest, pytest-django, ruff, pre-commit, conventional-pre-commit)
+- Ran `uv sync --dev`; .venv created successfully
+- Verified Python 3.12.3 and Django 5.2.14
+- Updated ralph-workflow.config.json to remove placeholder mypy/src commands; set lint feedback loop to `uv run ruff check .`
+- Ran lint feedback loop and it passed
+- Committed: feat: initialize project structure with uv, Django 5.2, and tooling deps
+Files changed: pyproject.toml, uv.lock, ralph-workflow.config.json
+
+Task: Create Django project structure (prd.json item 2)
+- Ran `uv run django-admin startproject config .`
+- Verified manage.py, config/settings.py, config/urls.py, config/wsgi.py, config/asgi.py exist
+- Ran `uv run python manage.py startapp core`
+- Added 'core' to INSTALLED_APPS in config/settings.py
+- Ran `uv run python manage.py check` and it passed with no issues
+- Ran `uv run ruff check .` and fixed 4 unused import errors in core app scaffold files
+- Ran lint feedback loop again and it passed
+- Created root .gitignore to exclude __pycache__, .venv, db.sqlite3, .env, etc.
+- Committed: feat: create Django project structure with config and core app
+Files changed: .gitignore, config/, core/, manage.py
