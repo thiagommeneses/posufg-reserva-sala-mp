@@ -42,7 +42,7 @@
       "Run `uv run ruff check .` and verify it passes",
       "Run `uv run ruff format --check .` and verify it passes"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "architectural",
@@ -74,7 +74,7 @@
       "Verify `make makemigrations` and `make migrate` work against the db container",
       "Verify `make unmigrate app=<name> migration=<name>` rolls back a migration"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "integration",

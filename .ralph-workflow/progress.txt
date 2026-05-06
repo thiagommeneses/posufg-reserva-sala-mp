@@ -41,3 +41,24 @@ Task: Add Docker environment with docker-compose (prd.json item 5)
 - Ran `uv run python manage.py check` and it passed with no issues
 - Docker runtime not available in this environment; docker compose build/up/down verification skipped
 - Files changed: pyproject.toml, uv.lock, config/settings.py, Dockerfile, docker-compose.yml, .env.example
+
+Task: Configure ruff linter and formatter in pyproject.toml (prd.json item 4)
+- Added [tool.ruff] to pyproject.toml with target-version="py312", line-length=88
+- Configured lint rules: select=["E", "F", "I", "W", "UP", "B", "C4", "SIM"], ignore=["E501"]
+- Configured pydocstyle convention to "google"
+- Ran `uv run ruff format .` to format all source files
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all 13 files are formatted
+- Ran `uv run pytest` and all tests passed
+- Committed: feat: configure ruff linter and formatter in pyproject.toml
+- Files changed: pyproject.toml, config/asgi.py, config/settings.py, config/urls.py, config/wsgi.py, core/admin.py, core/apps.py, core/models.py, core/tests.py, core/views.py, manage.py
+
+Task: Create Makefile with common development commands (prd.json item 6)
+- Created Makefile with all required targets: install, test, lint, format, up, down, build, logs, shell, migrate, makemigrations, unmigrate, createsuperuser, pre-commit-install, help
+- Verified `make help` lists all 14 targets with descriptions
+- Verified `make test` runs pytest successfully (1 passed)
+- Verified `make lint` runs ruff check successfully (all checks passed)
+- Verified `make format` runs ruff formatter successfully (13 files left unchanged)
+- Docker runtime not available in this environment; up, down, build, logs, shell, migrate, makemigrations, unmigrate, createsuperuser verification skipped
+- Ran lint feedback loop and it passed
+- Files changed: Makefile

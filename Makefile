@@ -1,0 +1,64 @@
+.PHONY: install test lint format up down build logs shell migrate makemigrations unmigrate createsuperuser pre-commit-install help
+
+COMPOSE := docker compose
+WEB_SERVICE := web
+
+install:
+	uv sync --dev
+
+test:
+	uv run pytest
+
+lint:
+	uv run ruff check .
+
+format:
+	uv run ruff format .
+
+up:
+	$(COMPOSE) up -d
+
+down:
+	$(COMPOSE) down
+
+build:
+	$(COMPOSE) build
+
+logs:
+	$(COMPOSE) logs -f $(WEB_SERVICE)
+
+shell:
+	$(COMPOSE) exec $(WEB_SERVICE) bash
+
+migrate:
+	$(COMPOSE) exec $(WEB_SERVICE) python manage.py migrate
+
+makemigrations:
+	$(COMPOSE) exec $(WEB_SERVICE) python manage.py makemigrations
+
+unmigrate:
+	$(COMPOSE) exec $(WEB_SERVICE) python manage.py migrate $(app) $(migration)
+
+createsuperuser:
+	$(COMPOSE) exec $(WEB_SERVICE) python manage.py createsuperuser
+
+pre-commit-install:
+	uv run pre-commit install --hook-type commit-msg --hook-type pre-commit
+
+help:
+	@echo "Available targets:"
+	@echo "  install              - Install dependencies with uv (including dev)"
+	@echo "  test                 - Run pytest test suite"
+	@echo "  lint                 - Run ruff linter"
+	@echo "  format               - Run ruff formatter"
+	@echo "  up                   - Start Docker Compose services"
+	@echo "  down                 - Stop Docker Compose services"
+	@echo "  build                - Build Docker Compose images"
+	@echo "  logs                 - Follow web service logs"
+	@echo "  shell                - Open bash shell in the web container"
+	@echo "  migrate              - Apply Django migrations"
+	@echo "  makemigrations       - Generate Django migrations"
+	@echo "  unmigrate app=<> migration=<> - Rollback Django migrations"
+	@echo "  createsuperuser      - Create a Django superuser"
+	@echo "  pre-commit-install   - Install pre-commit hooks"
+	@echo "  help                 - Show this help message"
