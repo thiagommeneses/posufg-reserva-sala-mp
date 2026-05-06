@@ -188,6 +188,6 @@
       "Verify `make help` includes release-rc, release, and changelog targets",
       "Verify `make changelog` generates or updates CHANGELOG.md"
     ],
-    "passes": false
+    "passes": true
   }
 ]

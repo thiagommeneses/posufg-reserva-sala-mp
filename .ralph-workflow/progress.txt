@@ -161,3 +161,16 @@ Task: Update AGENTS.md with release workflow and coverage documentation (prd.jso
 - Ran `uv run pytest` and all tests passed with 86.11% coverage
 - Committed: docs: update AGENTS.md with release workflow and coverage documentation
 Files changed: AGENTS.md, prd.json, .ralph-workflow/progress.txt
+
+Task: Verify release workflow and coverage enforcement work end-to-end (prd.json item 14)
+- Ran `uv sync --dev` and verified commitizen and pytest-cov are installed (resolved 40 packages)
+- Ran `uv run pytest` and verified coverage report displayed 86.11% (above 80% threshold)
+- Verified coverage threshold enforcement by creating a temporary uncovered module (`core/temp_uncovered.py`); pytest failed with "Coverage failure: total of 65.96% is less than fail-under=80"; removed the temporary file and re-ran pytest to confirm 86.11% again
+- Ran `uv run cz version --project` and verified it outputs 0.1.0 (matching pyproject.toml)
+- Ran `make help` and verified it includes release-rc, release, and changelog targets with descriptions
+- Docker runtime is available but `/workspace` bind mount is not shared with the Docker daemon; `make up` could not be verified end-to-end in this environment
+- Ran `uv run cz changelog` directly and verified it generates/updates CHANGELOG.md with conventional commit history
+- Ran lint feedback loop (`uv run ruff check .`) and it passed
+- Ran `uv run pytest` and all tests passed with 86.11% coverage
+- Committed: test: verify release workflow and coverage enforcement end-to-end
+Files changed: CHANGELOG.md, prd.json, .ralph-workflow/progress.txt
