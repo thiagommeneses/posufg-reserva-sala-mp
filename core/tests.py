@@ -1,3 +1,5 @@
+"""Core application tests."""
+
 from django.test import TestCase
 
 
@@ -8,4 +10,4 @@ class SmokeTestCase(TestCase):
         """Verify that Django settings module is loaded."""
         from django.conf import settings
 
-        self.assertTrue(settings.DEBUG is not None)
+        assert settings.DEBUG is not None

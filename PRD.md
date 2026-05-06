@@ -46,6 +46,8 @@ Criar um template de projeto Django que inclui:
 - Django 5.2.x LTS
 - pytest + pytest-django for tests (configured in `[tool.pytest.ini_options]` inside `pyproject.toml`)
 - ruff for lint and format (configured in `[tool.ruff]` inside `pyproject.toml`)
+  - `line-length = 100`
+  - `select = ["E", "F", "W", "I", "N", "UP", "C90", "D", "S", "ASYNC", "PERF", "T20", "RET", "PT"]`
 - PostgreSQL as database in docker-compose (service `db` with named volume `postgres_data`)
 - Volumes in docker-compose for hot-reload during development
 - Django project package named `config`, example app named `core`

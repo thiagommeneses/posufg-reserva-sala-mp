@@ -38,11 +38,11 @@
     "category": "functional",
     "description": "Configure ruff linter and formatter in pyproject.toml",
     "steps": [
-      "Add [tool.ruff] configuration to pyproject.toml (target-version=py312, line-length, Django-friendly rules)",
+      "Add [tool.ruff] configuration to pyproject.toml (target-version=py312, line-length=100, select=[\"E\", \"F\", \"W\", \"I\", \"N\", \"UP\", \"C90\", \"D\", \"S\", \"ASYNC\", \"PERF\", \"T20\", \"RET\", \"PT\"])",
       "Run `uv run ruff check .` and verify it passes",
       "Run `uv run ruff format --check .` and verify it passes"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "category": "architectural",

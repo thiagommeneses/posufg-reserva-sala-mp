@@ -23,11 +23,15 @@ python_files = ["tests.py", "test_*.py", "*_tests.py"]
 
 [tool.ruff]
 target-version = "py312"
-line-length = 88
+line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
+select = ["E", "F", "W", "I", "N", "UP", "C90", "D", "S", "ASYNC", "PERF", "T20", "RET", "PT"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests.py" = ["S101"]
+"**/test_*.py" = ["S101"]
+"**/*_tests.py" = ["S101"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
