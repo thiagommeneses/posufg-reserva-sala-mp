@@ -1,9 +1,15 @@
-## Unreleased
+## v0.2.0 (2026-05-06)
 
 ### Feat
 
+- configure ralph-workflow feedback loops for lint, format, and test
 - configure pytest-cov with 80% minimum coverage threshold
 - add Makefile targets for release workflow (release-rc, release, changelog)
+
+## v0.1.0 (2026-05-06)
+
+### Feat
+
 - configure commitizen for semantic versioning and release management
 - **sandbox**: add Docker CE CLI and Docker Compose plugin
 - add non-interactive createsuperuser-auto Makefile target
