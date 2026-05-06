@@ -1,0 +1,125 @@
+[
+  {
+    "category": "architectural",
+    "description": "Initialize project structure with uv",
+    "steps": [
+      "Create pyproject.toml with project metadata and dependencies (Django>=5.2,<5.3 LTS)",
+      "Define dependency-groups.dev with pytest, pytest-django, ruff, pre-commit, conventional-pre-commit",
+      "Run `uv sync --dev` and verify .venv is created",
+      "Verify `uv run python --version` returns Python 3.12.x",
+      "Verify `uv run python -c \"import django; print(django.get_version())\"` returns 5.2.x"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Create Django project structure",
+    "steps": [
+      "Run `uv run django-admin startproject config .`",
+      "Verify manage.py, config/settings.py, config/urls.py, config/wsgi.py, config/asgi.py exist",
+      "Run `uv run python manage.py startapp core`",
+      "Add 'core' to INSTALLED_APPS in config/settings.py",
+      "Run `uv run python manage.py check` and verify it passes"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Configure pytest for Django testing in pyproject.toml",
+    "steps": [
+      "Add [tool.pytest.ini_options] to pyproject.toml with DJANGO_SETTINGS_MODULE=config.settings",
+      "Configure python_files pattern (tests.py, test_*.py, *_tests.py)",
+      "Create a basic smoke test in core/tests.py",
+      "Run `uv run pytest` and verify it passes"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Configure ruff linter and formatter in pyproject.toml",
+    "steps": [
+      "Add [tool.ruff] configuration to pyproject.toml (target-version=py312, line-length, Django-friendly rules)",
+      "Run `uv run ruff check .` and verify it passes",
+      "Run `uv run ruff format --check .` and verify it passes"
+    ],
+    "passes": false
+  },
+  {
+    "category": "architectural",
+    "description": "Add Docker environment with docker-compose (web + PostgreSQL)",
+    "steps": [
+      "Create Dockerfile using python:3.12-slim and uv",
+      "Create docker-compose.yml with services `web` (Django app) and `db` (PostgreSQL) with named volume `postgres_data`",
+      "Configure volume mounts for hot-reload (source code) and db data persistence",
+      "Configure environment variables (DATABASE_URL, DEBUG, SECRET_KEY) via .env.example",
+      "Update config/settings.py to read database config from environment",
+      "Run `docker compose build` and verify image builds successfully",
+      "Run `docker compose up -d` and verify both services are healthy",
+      "Run `docker compose exec web python manage.py check` successfully",
+      "Run `docker compose down` and verify clean shutdown"
+    ],
+    "passes": false
+  },
+  {
+    "category": "integration",
+    "description": "Create Makefile with common development commands",
+    "steps": [
+      "Create Makefile with targets: install, test, lint, format, up, down, build, logs, shell, migrate, makemigrations, unmigrate, createsuperuser, pre-commit-install, help",
+      "Verify `make help` lists all targets with descriptions",
+      "Verify `make test` runs pytest successfully",
+      "Verify `make lint` runs ruff check successfully",
+      "Verify `make up` starts docker compose services",
+      "Verify `make down` stops docker compose services",
+      "Verify `make shell` opens a bash shell in the web container",
+      "Verify `make makemigrations` and `make migrate` work against the db container",
+      "Verify `make unmigrate app=<name> migration=<name>` rolls back a migration"
+    ],
+    "passes": false
+  },
+  {
+    "category": "integration",
+    "description": "Configure pre-commit with conventional commits, ruff and pytest",
+    "steps": [
+      "Add pre-commit and conventional-pre-commit to dependency-groups.dev",
+      "Create .pre-commit-config.yaml with hooks: conventional-pre-commit (commit-msg stage), ruff (check + format), local hook for pytest with pass_filenames=false and always_run=true",
+      "Run `uv run pre-commit install --hook-type commit-msg --hook-type pre-commit`",
+      "Verify a non-conventional commit message is rejected",
+      "Verify a conventional commit message (e.g. 'feat: add X') is accepted",
+      "Verify ruff hook runs on staged files",
+      "Verify pytest hook runs the full suite before commit completes"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Generate AGENTS.md documenting main project commands",
+    "steps": [
+      "Create/update AGENTS.md with sections: Setup, Testing, Linting, Docker, Database Migrations, Pre-commit",
+      "Document: `make test` and `uv run pytest`",
+      "Document: `make lint`, `make format`, `uv run ruff check .`",
+      "Document: `make up` / `docker compose up -d` to start the app",
+      "Document: `make down` / `docker compose down` to stop the app",
+      "Document: `make shell` / `docker compose exec web bash` to access the container",
+      "Document: `make makemigrations`, `make migrate`, `make unmigrate app=<> migration=<>` for migrations",
+      "Document: `make pre-commit-install` and how conventional commits work",
+      "Verify AGENTS.md renders correctly and all commands are copy-pasteable"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "Verify complete project setup works end-to-end",
+    "steps": [
+      "Run `make install` from a clean checkout",
+      "Run `make lint` and verify it passes",
+      "Run `make test` and verify all tests pass",
+      "Run `make up` and verify web service responds on configured port",
+      "Run `make shell` and verify bash is accessible",
+      "Run `make migrate` and verify migrations apply against PostgreSQL",
+      "Run `make down` and verify clean shutdown",
+      "Attempt a commit with invalid message and verify pre-commit rejects it",
+      "Attempt a commit with conventional message and verify pre-commit accepts it"
+    ],
+    "passes": false
+  }
+]
