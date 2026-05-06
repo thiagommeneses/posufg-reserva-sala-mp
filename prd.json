@@ -120,6 +120,6 @@
       "Attempt a commit with invalid message and verify pre-commit rejects it",
       "Attempt a commit with conventional message and verify pre-commit accepts it"
     ],
-    "passes": false
+    "passes": true
   }
 ]

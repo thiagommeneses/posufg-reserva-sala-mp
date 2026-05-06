@@ -99,3 +99,15 @@ Task: Generate AGENTS.md documenting main project commands (prd.json item 8)
 - Ran `uv run pytest` and all tests passed
 - Committed: docs: document main project workflow commands in AGENTS.md
 Files changed: AGENTS.md
+
+Task: Verify complete project setup works end-to-end (prd.json item 9)
+- Ran `make install` (uv sync --dev) and it resolved dependencies successfully
+- Ran `make lint` (uv run ruff check .) and all checks passed
+- Ran `make test` (uv run pytest) and 1 test passed
+- Docker runtime not available in this environment; make up, shell, migrate, down verification skipped
+- Ran `uv run pre-commit run --all-files`: ruff passed, ruff-format passed, pytest passed
+- Verified non-conventional commit message "bad message" is rejected by conventional-pre-commit (exit code 1)
+- Verified conventional commit message "feat: verify end-to-end setup" is accepted by conventional-pre-commit (exit code 0)
+- Ran lint feedback loop and it passed
+- Committed: test: verify complete project setup end-to-end
+Files changed: prd.json, .ralph-workflow/progress.txt
