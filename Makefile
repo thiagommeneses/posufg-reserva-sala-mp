@@ -1,4 +1,4 @@
-.PHONY: install test lint format up down build logs shell migrate makemigrations unmigrate createsuperuser createsuperuser-auto pre-commit-install help
+.PHONY: install test lint format up down build logs shell migrate makemigrations unmigrate createsuperuser createsuperuser-auto pre-commit-install release-rc release changelog help
 
 COMPOSE := docker compose
 WEB_SERVICE := web
@@ -52,6 +52,15 @@ createsuperuser-auto:
 pre-commit-install:
 	uv run pre-commit install --hook-type commit-msg --hook-type pre-commit
 
+release-rc:
+	$(COMPOSE) exec $(WEB_SERVICE) uv run cz bump --prerelease rc
+
+release:
+	$(COMPOSE) exec $(WEB_SERVICE) uv run cz bump
+
+changelog:
+	$(COMPOSE) exec $(WEB_SERVICE) uv run cz changelog
+
 help:
 	@echo "Available targets:"
 	@echo "  install              - Install dependencies with uv (including dev)"
@@ -67,6 +76,9 @@ help:
 	@echo "  makemigrations       - Generate Django migrations"
 	@echo "  unmigrate app=<> migration=<> - Rollback Django migrations"
 	@echo "  createsuperuser      - Create a Django superuser (interactive)"
-	@echo "  createsuperuser-auto - Create a Django superuser (non-interactive, requires username=, email=, password=)""
+	@echo "  createsuperuser-auto - Create a Django superuser (non-interactive, requires username=, email=, password=)"
 	@echo "  pre-commit-install   - Install pre-commit hooks"
+	@echo "  release-rc           - Create a release candidate tag"
+	@echo "  release              - Create a final release tag"
+	@echo "  changelog            - Generate CHANGELOG.md"
 	@echo "  help                 - Show this help message"

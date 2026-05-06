@@ -146,7 +146,7 @@
       "Update `make help` to document release-rc, release, and changelog targets",
       "Update .PHONY to include release-rc, release, changelog"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

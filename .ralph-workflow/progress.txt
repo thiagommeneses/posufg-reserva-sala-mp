@@ -122,3 +122,15 @@ Task: Configure commitizen for semantic versioning and release management (prd.j
 - Ran lint feedback loop (`uv run ruff check .`) and it passed
 - Committed: feat: configure commitizen for semantic versioning and release management
 Files changed: pyproject.toml, uv.lock
+
+Task: Add Makefile targets for release workflow (prd.json item 11)
+- Added `release-rc` target: `docker compose exec web uv run cz bump --prerelease rc`
+- Added `release` target: `docker compose exec web uv run cz bump`
+- Added `changelog` target: `docker compose exec web uv run cz changelog`
+- Updated `.PHONY` to include release-rc, release, changelog
+- Updated `make help` to document the three new targets
+- Fixed trailing double-quote syntax error in createsuperuser-auto help line
+- Ran lint feedback loop (`uv run ruff check .`) and it passed
+- Verified `make help` lists all 17 targets correctly
+- Committed: feat: add Makefile targets for release workflow (release-rc, release, changelog)
+Files changed: Makefile, prd.json, .ralph-workflow/progress.txt
