@@ -1,0 +1,26 @@
+{
+  "skill_name": "release-generator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "gere uma release",
+      "expected_output": "Executa bump de versão MINOR (feat commits existem), gera CHANGELOG, cria tag, pergunta sobre push",
+      "context": "Repositório com commits convencionais desde a última tag. Há feat commits.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "gere um RC sem rodar os testes",
+      "expected_output": "Pula feedback loops, executa bump com --prerelease rc, gera CHANGELOG com sufixo RC, cria tag rcN",
+      "context": "Repositório limpo com tag existente. Usuário pediu para pular testes.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "preciso fazer um hotfix urgente, gere um patch release",
+      "expected_output": "Roda feedback loops, executa bump com --increment PATCH, gera CHANGELOG, cria tag de patch",
+      "context": "Repositório com apenas fix commits desde a última tag. Usuário pede hotfix.",
+      "files": []
+    }
+  ]
+}
