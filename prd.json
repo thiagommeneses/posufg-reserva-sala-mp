@@ -189,5 +189,18 @@
       "Verify `make changelog` generates or updates CHANGELOG.md"
     ],
     "passes": true
+  },
+  {
+    "category": "integration",
+    "description": "Configure ralph-workflow.config.json feedback loops aligned with project tooling",
+    "steps": [
+      "Verify `ralph-workflow.config.json` exists and contains feedback_loops: lint, format, test",
+      "Verify feedback loop `lint` points to `uv run ruff check .`",
+      "Verify feedback loop `format` points to `uv run ruff format --check .`",
+      "Verify feedback loop `test` points to `uv run pytest`",
+      "Confirm that `uv run pytest` runs coverage automatically because `pyproject.toml` has `addopts = --cov=. --cov-report=term-missing --cov-fail-under=80` in [tool.pytest.ini_options]",
+      "Run each feedback loop command and verify they pass"
+    ],
+    "passes": true
   }
 ]

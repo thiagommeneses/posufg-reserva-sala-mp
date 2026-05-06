@@ -45,6 +45,10 @@ media/
 # ruff
 .ruff_cache/
 
+# coverage
+.coverage
+htmlcov/
+
 # Environment variables
 .env
 

@@ -1,6 +1,8 @@
 {
   "stack": "python",
   "feedback_loops": {
-    "lint": "uv run ruff check ."
+    "lint": "uv run ruff check .",
+    "format": "uv run ruff format --check .",
+    "test": "uv run pytest"
   }
 }
