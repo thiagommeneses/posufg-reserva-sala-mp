@@ -68,6 +68,18 @@ if [ -f "${HOME}/.gitconfig" ]; then
   docker_args+=( -v "${HOME}/.gitconfig:/home/ralph/.gitconfig:ro" )
 fi
 
+# Mount Docker socket if available on the host, so the sandbox can run
+# `docker compose` commands for the project. The user is added to the host's
+# docker group via --group-add to avoid permission issues.
+HOST_DOCKER_SOCK="/var/run/docker.sock"
+if [ -S "${HOST_DOCKER_SOCK}" ]; then
+  docker_args+=( -v "${HOST_DOCKER_SOCK}:${HOST_DOCKER_SOCK}" )
+  HOST_DOCKER_GID="$(stat -c '%g' "${HOST_DOCKER_SOCK}" 2>/dev/null || echo "")"
+  if [ -n "${HOST_DOCKER_GID}" ]; then
+    docker_args+=( --group-add "${HOST_DOCKER_GID}" )
+  fi
+fi
+
 # Attach TTY only when stdin is a terminal (unless explicitly disabled).
 if [ -t 0 ] && [ -t 1 ] && [ "${RALPH_SANDBOX_NO_TTY:-0}" != "1" ]; then
   docker_args+=( -it )

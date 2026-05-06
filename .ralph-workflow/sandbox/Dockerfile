@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         sudo \
         passwd \
         gnupg \
+        lsb-release \
         python3.12 \
         python3.12-venv \
         python3.12-dev \
@@ -41,6 +42,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1 \
     && rm -rf /var/lib/apt/lists/*
+
+# --- Docker CE CLI + Docker Compose plugin ---
+# The container accesses the host docker daemon via /var/run/docker.sock.
+RUN install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin \
+    && rm -rf /var/lib/apt/lists/* \
+    && docker --version \
+    && docker compose version
 
 # --- Node.js 22 LTS + npm ---
 RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
