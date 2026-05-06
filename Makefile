@@ -1,4 +1,4 @@
-.PHONY: install test lint format up down build logs shell migrate makemigrations unmigrate createsuperuser pre-commit-install help
+.PHONY: install test lint format up down build logs shell migrate makemigrations unmigrate createsuperuser createsuperuser-auto pre-commit-install help
 
 COMPOSE := docker compose
 WEB_SERVICE := web
@@ -42,6 +42,13 @@ unmigrate:
 createsuperuser:
 	$(COMPOSE) exec $(WEB_SERVICE) python manage.py createsuperuser
 
+createsuperuser-auto:
+	$(COMPOSE) exec $(WEB_SERVICE) \
+		env DJANGO_SUPERUSER_USERNAME=$(username) \
+		DJANGO_SUPERUSER_EMAIL=$(email) \
+		DJANGO_SUPERUSER_PASSWORD=$(password) \
+		python manage.py createsuperuser --noinput
+
 pre-commit-install:
 	uv run pre-commit install --hook-type commit-msg --hook-type pre-commit
 
@@ -59,6 +66,7 @@ help:
 	@echo "  migrate              - Apply Django migrations"
 	@echo "  makemigrations       - Generate Django migrations"
 	@echo "  unmigrate app=<> migration=<> - Rollback Django migrations"
-	@echo "  createsuperuser      - Create a Django superuser"
+	@echo "  createsuperuser      - Create a Django superuser (interactive)"
+	@echo "  createsuperuser-auto - Create a Django superuser (non-interactive, requires username=, email=, password=)""
 	@echo "  pre-commit-install   - Install pre-commit hooks"
 	@echo "  help                 - Show this help message"

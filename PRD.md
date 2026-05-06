@@ -55,7 +55,7 @@ Criar um template de projeto Django que inclui:
   - `conventional-pre-commit` (validates commit messages)
   - `ruff` (lint + format)
   - Local hook running `uv run pytest` with `pass_filenames: false` and `always_run: true` (runs full suite)
-- Makefile targets: `install`, `test`, `lint`, `format`, `up`, `down`, `build`, `logs`, `shell`, `migrate`, `makemigrations`, `unmigrate`, `createsuperuser`, `pre-commit-install`, `help`
+- Makefile targets: `install`, `test`, `lint`, `format`, `up`, `down`, `build`, `logs`, `shell`, `migrate`, `makemigrations`, `unmigrate`, `createsuperuser`, `createsuperuser-auto`, `pre-commit-install`, `help`
 
 ### Commands documented in AGENTS.md
 - Run tests: `make test` (or `uv run pytest`)
@@ -66,6 +66,7 @@ Criar um template de projeto Django que inclui:
 - Generate migration: `make makemigrations` (or `docker compose exec web python manage.py makemigrations`)
 - Apply migration: `make migrate`
 - Rollback migration: `make unmigrate app=<app_name> migration=<migration_name_or_zero>`
+- Create superuser: `make createsuperuser` (interactive) and `make createsuperuser-auto username=<username> email=<email> password=<password>` (non-interactive)
 
 ## Testing Decisions
 

@@ -64,7 +64,7 @@
     "category": "integration",
     "description": "Create Makefile with common development commands",
     "steps": [
-      "Create Makefile with targets: install, test, lint, format, up, down, build, logs, shell, migrate, makemigrations, unmigrate, createsuperuser, pre-commit-install, help",
+      "Create Makefile with targets: install, test, lint, format, up, down, build, logs, shell, migrate, makemigrations, unmigrate, createsuperuser, createsuperuser-auto, pre-commit-install, help",
       "Verify `make help` lists all targets with descriptions",
       "Verify `make test` runs pytest successfully",
       "Verify `make lint` runs ruff check successfully",
@@ -72,7 +72,8 @@
       "Verify `make down` stops docker compose services",
       "Verify `make shell` opens a bash shell in the web container",
       "Verify `make makemigrations` and `make migrate` work against the db container",
-      "Verify `make unmigrate app=<name> migration=<name>` rolls back a migration"
+      "Verify `make unmigrate app=<name> migration=<name>` rolls back a migration",
+      "Verify `make createsuperuser-auto username=<name> email=<email> password=<pass>` creates a superuser non-interactively"
     ],
     "passes": true
   },
@@ -101,6 +102,7 @@
       "Document: `make down` / `docker compose down` to stop the app",
       "Document: `make shell` / `docker compose exec web bash` to access the container",
       "Document: `make makemigrations`, `make migrate`, `make unmigrate app=<> migration=<>` for migrations",
+      "Document: `make createsuperuser` (interactive) and `make createsuperuser-auto username=<> email=<> password=<>` (non-interactive) for creating superusers",
       "Document: `make pre-commit-install` and how conventional commits work",
       "Verify AGENTS.md renders correctly and all commands are copy-pasteable"
     ],

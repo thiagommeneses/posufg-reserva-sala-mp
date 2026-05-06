@@ -137,10 +137,17 @@ Rollback migrations:
 make unmigrate app=<app_name> migration=<migration_name_or_zero>
 ```
 
-Create a superuser:
+Create a superuser (interactive):
 ```bash
 make createsuperuser
 ```
+
+Create a superuser (non-interactive):
+```bash
+make createsuperuser-auto username=<username> email=<email> password=<password>
+```
+
+This uses Django's `--noinput` flag with `DJANGO_SUPERUSER_*` environment variables. Useful for CI/CD or when TTY is not available.
 
 ### Pre-commit
 
