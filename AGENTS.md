@@ -116,6 +116,17 @@ Or in one command:
 docker compose exec web uv sync --frozen
 ```
 
+**Container stopped due to missing dependencies**
+
+If the web container fails to start with a `ModuleNotFoundError` (or similar import error), the container is not running and `docker compose exec` will fail. In this case, the virtualenv must be rebuilt inside the image:
+
+```bash
+make build
+make up
+```
+
+This happens when new dependencies are added but the running container was not synced before the Django auto-reloader triggered (e.g., saving a file that imports the missing package).
+
 Only run `make build` if the `Dockerfile` itself or the base image changes.
 
 Follow web service logs:

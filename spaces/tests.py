@@ -1,9 +1,14 @@
 """Tests for the spaces app models and API."""
 
+from datetime import datetime, time
+
 import pytest
 from django.contrib.auth.models import User
 from django.db.utils import IntegrityError
+from django.utils import timezone
 from rest_framework.test import APIClient
+
+from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 
 from .models import Attribute, Space, SpaceAttribute
 
@@ -259,3 +264,76 @@ class TestSpaceApiCreate:
             },
         )
         assert response.status_code == 403
+
+
+class TestSpaceAvailability:
+    """Tests for the space availability endpoint."""
+
+    def test_availability_reflects_reservations(self, api_client, regular_user, space_with_tv):
+        """Confirmed reservations should appear as occupied slots."""
+        api_client.force_authenticate(user=regular_user)
+        today = timezone.now().date()
+        start = timezone.make_aware(datetime.combine(today, time(10, 0)))
+        end = timezone.make_aware(datetime.combine(today, time(12, 0)))
+        Reservation.objects.create(
+            space=space_with_tv,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        response = api_client.get(
+            f"/api/spaces/{space_with_tv.id}/availability/?date={today.isoformat()}"
+        )
+        assert response.status_code == 200
+        assert response.data["date"] == today.isoformat()
+        occupied = response.data["occupied"]
+        assert len(occupied) == 1
+        assert occupied[0]["type"] == "reservation"
+        free = response.data["free"]
+        assert len(free) == 2  # midnight-10am and 12pm-midnight
+
+    def test_availability_reflects_maintenance_blocks(
+        self,
+        api_client,
+        regular_user,
+        space_with_tv,
+    ):
+        """Maintenance blocks should appear as occupied slots."""
+        api_client.force_authenticate(user=regular_user)
+        today = timezone.now().date()
+        start = timezone.make_aware(datetime.combine(today, time(14, 0)))
+        end = timezone.make_aware(datetime.combine(today, time(15, 0)))
+        MaintenanceBlock.objects.create(
+            space=space_with_tv,
+            start_time=start,
+            end_time=end,
+            reason="Cleaning",
+            created_by=regular_user,
+        )
+        response = api_client.get(
+            f"/api/spaces/{space_with_tv.id}/availability/?date={today.isoformat()}"
+        )
+        assert response.status_code == 200
+        occupied = response.data["occupied"]
+        assert len(occupied) == 1
+        assert occupied[0]["type"] == "maintenance"
+
+    def test_cancelled_reservation_does_not_block(self, api_client, regular_user, space_with_tv):
+        """Cancelled reservations should not appear in occupied slots."""
+        api_client.force_authenticate(user=regular_user)
+        today = timezone.now().date()
+        start = timezone.make_aware(datetime.combine(today, time(10, 0)))
+        end = timezone.make_aware(datetime.combine(today, time(12, 0)))
+        Reservation.objects.create(
+            space=space_with_tv,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CANCELLED,
+        )
+        response = api_client.get(
+            f"/api/spaces/{space_with_tv.id}/availability/?date={today.isoformat()}"
+        )
+        assert response.status_code == 200
+        assert response.data["occupied"] == []
+        assert len(response.data["free"]) == 1  # entire day free

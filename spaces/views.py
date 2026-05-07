@@ -2,6 +2,11 @@
 
 import django_filters
 from rest_framework import permissions, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+
+from reservations.services import get_availability_for_date
 
 from .models import Space
 from .serializers import SpaceSerializer
@@ -43,3 +48,22 @@ class SpaceViewSet(viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [permissions.IsAdminUser()]
         return [permissions.IsAuthenticated()]
+
+    @action(detail=True, methods=["get"], url_path="availability")
+    def availability(self, request, pk=None):
+        """Return occupied and free time slots for a space on a given date."""
+        space = self.get_object()
+        date_str = request.query_params.get("date")
+
+        if not date_str:
+            raise ValidationError({"date": "This parameter is required."})
+
+        try:
+            from datetime import datetime as _dt
+
+            date = _dt.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise ValidationError({"date": "Invalid date format. Use YYYY-MM-DD."}) from exc
+
+        data = get_availability_for_date(space, date)
+        return Response(data)

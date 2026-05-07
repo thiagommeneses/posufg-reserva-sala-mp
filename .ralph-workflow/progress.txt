@@ -266,3 +266,18 @@ Task: Create reservations app with Reservation model and state machine (prd.json
 - Ran `uv run pytest` and 58 tests passed with 99.19% coverage (above 80% threshold)
 - Committed: feat(reservations): create reservations app with Reservation and MaintenanceBlock models
 - Files changed: reservations/, config/settings.py, pyproject.toml, uv.lock
+
+Task: Implement Space API with attribute-based filtering (prd.json item 6)
+- Created SpaceSerializer and AttributeSerializer in spaces/serializers.py
+- Created SpaceViewSet with list, retrieve, create, update actions
+- Created SpaceFilterSet with filters: min_capacity, max_capacity, attributes (by name), is_active, location
+- Registered Space URLs in spaces/urls.py using DRF DefaultRouter
+- Included spaces URLs in config/urls.py under api/ prefix
+- Restricted write operations (create, update, partial_update, destroy) to IsAdminUser; read operations allow IsAuthenticated
+- Added comprehensive API tests in spaces/tests.py covering: list spaces authenticated/unauthenticated, retrieve detail, filter by min_capacity, filter by attributes, filter by location (case-insensitive), admin create space, non-admin forbidden create
+- Fixed D106 lint errors by adding docstrings to Meta classes in serializers and filterset
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 66 tests passed with 99.18% coverage (above 80% threshold)
+- Committed: feat(spaces): implement Space API with attribute-based filtering
+- Files changed: spaces/serializers.py, spaces/views.py, spaces/urls.py, config/urls.py, spaces/tests.py

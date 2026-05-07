@@ -97,7 +97,7 @@
       "Verify admin can POST /api/spaces/ to create a space",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -112,7 +112,7 @@
       "Write tests: cancelled reservations do NOT block availability",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
