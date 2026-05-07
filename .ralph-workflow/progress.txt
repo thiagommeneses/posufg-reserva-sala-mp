@@ -245,3 +245,24 @@ Task: Create accounts app with authentication views (prd.json item 3)
 - Ran `uv run pytest` and 20 tests passed with 98.32% coverage (above 80% threshold)
 - Committed: feat: create accounts app with authentication views
 - Files changed: accounts/, config/settings.py, config/urls.py, core/views.py, core/urls.py, templates/accounts/login.html, templates/accounts/register.html
+
+Task: Create reservations app with Reservation model and state machine (prd.json item 4)
+- Fixed existing Reservation model: changed TsRange (tsrange) to TstzRange (tstzrange) to match Django DateTimeField (timestamptz)
+- Deleted old broken migration and recreated reservations/migrations/0001_initial.py with correct constraint
+- Added MaintenanceBlock model with space FK, start/end times, reason, and created_by FK
+- Added ReservationStatus choices: confirmed, cancelled, checked_in, completed, no_show
+- Added __str__ methods and Meta ordering to both models
+- Added application-level validation in clean() for end_time > start_time and overlap detection
+- Configured python-dotenv in config/settings.py to load .env files automatically
+- Created .env file with DATABASE_URL pointing to workspace-db-1 PostgreSQL container
+- Connected current container to workspace_default Docker network to reach PostgreSQL
+- Verified PostgreSQL 16.11 accessible and btree_gist extension enabled successfully
+- Applied all migrations on PostgreSQL successfully
+- Wrote 25 tests covering: reservation creation, __str__, ordering, default status, time validation, overlap detection (confirmed/checked_in), non-blocking statuses (cancelled/completed/no_show), DB-level constraint integrity, different-space isolation, maintenance block creation, maintenance block overlap validation
+- Added S106 (hardcoded password) ignore for test files in pyproject.toml
+- Ran `uv run python manage.py check` and it passed with no issues
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 58 tests passed with 99.19% coverage (above 80% threshold)
+- Committed: feat(reservations): create reservations app with Reservation and MaintenanceBlock models
+- Files changed: reservations/, config/settings.py, pyproject.toml, uv.lock
