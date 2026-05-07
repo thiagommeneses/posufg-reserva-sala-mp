@@ -281,3 +281,18 @@ Task: Implement Space API with attribute-based filtering (prd.json item 6)
 - Ran `uv run pytest` and 66 tests passed with 99.18% coverage (above 80% threshold)
 - Committed: feat(spaces): implement Space API with attribute-based filtering
 - Files changed: spaces/serializers.py, spaces/views.py, spaces/urls.py, config/urls.py, spaces/tests.py
+
+Task: Implement real-time availability check for spaces (prd.json item 7)
+- Created reservations/services.py with get_availability_for_date(space, date) function
+- Service queries confirmed/checked_in reservations and maintenance blocks overlapping the given date
+- Service clips occupied intervals to day boundaries, merges overlaps, and computes free gaps
+- Added availability @action to SpaceViewSet: GET /api/spaces/{id}/availability/?date=YYYY-MM-DD
+- Action validates date format and returns 400 for missing/invalid date parameter
+- Added 3 tests in spaces/tests.py: availability reflects reservations, reflects maintenance blocks, cancelled reservations do not block
+- Fixed datetime timezone handling: used datetime.datetime with datetime.timezone.utc (Python 3.12 standard)
+- Connected container to workspace_default Docker network to reach PostgreSQL for testing
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 69 tests passed with 98.78% coverage (above 80% threshold)
+- Committed: feat(spaces): implement real-time availability check for spaces
+- Files changed: reservations/services.py, spaces/views.py, spaces/tests.py, prd.json, .ralph-workflow/progress.txt
