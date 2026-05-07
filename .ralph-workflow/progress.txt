@@ -296,3 +296,19 @@ Task: Implement real-time availability check for spaces (prd.json item 7)
 - Ran `uv run pytest` and 69 tests passed with 98.78% coverage (above 80% threshold)
 - Committed: feat(spaces): implement real-time availability check for spaces
 - Files changed: reservations/services.py, spaces/views.py, spaces/tests.py, prd.json, .ralph-workflow/progress.txt
+
+Task: Implement reservation creation with conflict validation (prd.json item 8)
+- Created ReservationSerializer in reservations/serializers.py with conflict validation
+- Serializer validates: space is_active, end_time > start_time, no overlapping confirmed/checked_in reservations, no overlapping maintenance blocks
+- Added create_reservation service function to reservations/services.py with same validations
+- Created ReservationViewSet in reservations/views.py with create action (POST /api/reservations/)
+- View automatically sets user from request.user and status to confirmed via perform_create
+- Created reservations/urls.py with DRF DefaultRouter for reservation endpoints
+- Updated config/urls.py to include reservations URLs under api/ prefix
+- Wrote 7 API tests covering: successful creation, conflict rejection, inactive space rejection, unauthenticated rejection, maintenance block overlap, invalid time range, user sees only own reservations
+- Connected container to workspace_default Docker network to reach PostgreSQL for testing
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 76 tests passed with 97.67% coverage (above 80% threshold)
+- Committed: feat(reservations): implement reservation creation with conflict validation
+- Files changed: reservations/serializers.py, reservations/services.py, reservations/views.py, reservations/urls.py, reservations/tests.py, config/urls.py, prd.json, .ralph-workflow/progress.txt

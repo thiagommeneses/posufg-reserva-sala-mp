@@ -2,6 +2,9 @@
 
 import datetime
 
+from django.core.exceptions import ValidationError
+from django.db import models
+
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 
 
@@ -102,6 +105,54 @@ def get_availability_for_date(space, date):
         "occupied": occupied,
         "free": free,
     }
+
+
+def create_reservation(user, space, start_time, end_time):
+    """Create a new reservation with conflict validation.
+
+    Args:
+        user: The user making the reservation.
+        space: The space to reserve.
+        start_time: The reservation start time.
+        end_time: The reservation end time.
+
+    Returns:
+        Reservation: The created reservation.
+
+    Raises:
+        ValidationError: If the space is inactive, times are invalid,
+            or there is an overlap with existing reservations or maintenance blocks.
+    """
+    if not space.is_active:
+        raise ValidationError("This space is not available for reservations.")
+
+    if end_time <= start_time:
+        raise ValidationError("End time must be after start time.")
+
+    overlapping_reservations = Reservation.objects.filter(
+        space=space,
+        status__in=[ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN],
+    ).filter(
+        models.Q(start_time__lt=end_time) & models.Q(end_time__gt=start_time),
+    )
+    if overlapping_reservations.exists():
+        raise ValidationError("This time slot overlaps with an existing reservation.")
+
+    overlapping_blocks = MaintenanceBlock.objects.filter(
+        space=space,
+        start_time__lt=end_time,
+        end_time__gt=start_time,
+    )
+    if overlapping_blocks.exists():
+        raise ValidationError("This time slot overlaps with a maintenance block.")
+
+    return Reservation.objects.create(
+        space=space,
+        user=user,
+        start_time=start_time,
+        end_time=end_time,
+        status=ReservationStatus.CONFIRMED,
+    )
 
 
 def _isoformat(dt):

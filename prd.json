@@ -129,7 +129,7 @@
       "Write tests: reservation on inactive space is rejected",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

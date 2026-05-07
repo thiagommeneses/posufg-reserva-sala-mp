@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 from spaces.models import Space
@@ -488,3 +489,157 @@ class TestReservationStatusChoices:
         assert ReservationStatus.CHECKED_IN.label == "Checked In"
         assert ReservationStatus.COMPLETED.label == "Completed"
         assert ReservationStatus.NO_SHOW.label == "No Show"
+
+
+@pytest.fixture
+def api_client():
+    """Provide a DRF API test client."""
+    return APIClient()
+
+
+@pytest.fixture
+def regular_user(db):
+    """Create a regular (non-admin) test user."""
+    return User.objects.create_user(
+        username="regular",
+        email="regular@example.com",
+        password="regularpass123",
+    )
+
+
+class TestReservationApiCreate:
+    """Tests for creating reservations via the API."""
+
+    def test_successful_reservation_creation(self, api_client, regular_user, space):
+        """Authenticated users should be able to create reservations."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        response = api_client.post(
+            "/api/reservations/",
+            {
+                "space": space.id,
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+            },
+        )
+        assert response.status_code == 201
+        assert response.data["space"] == space.id
+        assert response.data["status"] == ReservationStatus.CONFIRMED
+        assert Reservation.objects.filter(
+            space=space,
+            user=regular_user,
+        ).exists()
+
+    def test_conflict_returns_error(self, api_client, regular_user, space):
+        """Overlapping reservations should return 400 with an error message."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=2)
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        response = api_client.post(
+            "/api/reservations/",
+            {
+                "space": space.id,
+                "start_time": (start + timedelta(hours=1)).isoformat(),
+                "end_time": (start + timedelta(hours=3)).isoformat(),
+            },
+        )
+        assert response.status_code == 400
+        assert "overlaps" in str(response.data).lower()
+
+    def test_inactive_space_is_rejected(self, api_client, regular_user, inactive_space):
+        """Reservations on inactive spaces should be rejected."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        response = api_client.post(
+            "/api/reservations/",
+            {
+                "space": inactive_space.id,
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+            },
+        )
+        assert response.status_code == 400
+        assert "not available" in str(response.data).lower()
+
+    def test_unauthenticated_request_is_rejected(self, api_client, space):
+        """Unauthenticated requests should be rejected."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        response = api_client.post(
+            "/api/reservations/",
+            {
+                "space": space.id,
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+            },
+        )
+        assert response.status_code in (401, 403)
+
+    def test_maintenance_block_overlap_is_rejected(self, api_client, regular_user, space):
+        """Reservations overlapping maintenance blocks should be rejected."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=2)
+        MaintenanceBlock.objects.create(
+            space=space,
+            start_time=start,
+            end_time=end,
+            reason="Cleaning",
+            created_by=regular_user,
+        )
+        response = api_client.post(
+            "/api/reservations/",
+            {
+                "space": space.id,
+                "start_time": (start + timedelta(minutes=30)).isoformat(),
+                "end_time": (start + timedelta(hours=3)).isoformat(),
+            },
+        )
+        assert response.status_code == 400
+        assert "maintenance" in str(response.data).lower()
+
+    def test_end_time_before_start_time_is_rejected(self, api_client, regular_user, space):
+        """Reservations with end_time <= start_time should be rejected."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start - timedelta(hours=1)
+        response = api_client.post(
+            "/api/reservations/",
+            {
+                "space": space.id,
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+            },
+        )
+        assert response.status_code == 400
+        assert "after start" in str(response.data).lower()
+
+    def test_user_sees_only_own_reservations(self, api_client, regular_user, space, user):
+        """Users should only see their own reservations in the list."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        Reservation.objects.create(
+            space=space,
+            user=user,
+            start_time=start + timedelta(hours=2),
+            end_time=start + timedelta(hours=3),
+        )
+        response = api_client.get("/api/reservations/")
+        assert response.status_code == 200
+        assert len(response.data) == 1
+        assert response.data[0]["user"] == regular_user.id
