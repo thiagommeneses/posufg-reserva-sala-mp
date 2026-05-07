@@ -175,6 +175,24 @@ Task: Verify release workflow and coverage enforcement work end-to-end (prd.json
 - Committed: test: verify release workflow and coverage enforcement end-to-end
 Files changed: CHANGELOG.md, prd.json, .ralph-workflow/progress.txt
 
+Task: Create spaces app with Space and Attribute models (prd.json item 4)
+- Created Django app 'spaces' and added to INSTALLED_APPS in config/settings.py
+- Defined Space model with name, description (nullable), capacity, location, is_active, created_at, updated_at
+- Defined Attribute model with name (unique)
+- Defined SpaceAttribute M2M through model with UniqueConstraint on (space, attribute)
+- Added __str__ methods and Meta ordering to all models
+- Created and applied migrations: 0001_initial.py and 0002_enable_btree_gist.py
+- Enabled btree_gist extension via RunPython migration that checks connection.vendor == 'postgresql'
+- Registered Space, Attribute, SpaceAttribute in spaces/admin.py with SpaceAttributeInline
+- Added per-file ignores for migrations in pyproject.toml (D and E501 rules)
+- Wrote 13 tests covering: space creation, __str__, ordering, defaults, description optional; attribute creation, uniqueness, ordering; space_attribute creation, uniqueness, related names
+- Ran `uv run python manage.py check` and it passed with no issues
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 33 tests passed with 98.90% coverage (above 80% threshold)
+- Committed: feat(spaces): create spaces app with Space, Attribute, and SpaceAttribute models
+Files changed: spaces/, config/settings.py, pyproject.toml
+
 Task: Install Django REST Framework and configure API base (prd.json item 1)
 - Added djangorestframework and django-filter to pyproject.toml dependencies
 - Ran `uv sync --dev` and verified django-filter==25.2 and djangorestframework==3.17.1 installed

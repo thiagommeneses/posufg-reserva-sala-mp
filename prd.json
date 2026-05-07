@@ -65,7 +65,7 @@
       "Run `uv run python manage.py check` and verify it passes",
       "Run `uv run pytest` and verify tests pass"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "architectural",
