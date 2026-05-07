@@ -9,6 +9,7 @@ dependencies = [
     "djangorestframework",
     "django-filter",
     "django-htmx",
+    "python-dotenv>=1.2.2",
 ]
 
 [dependency-groups]
@@ -36,9 +37,9 @@ exclude = [".agents/skills/skill-creator/"]
 select = ["E", "F", "W", "I", "N", "UP", "C90", "D", "S", "ASYNC", "PERF", "T20", "RET", "PT"]
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests.py" = ["S101"]
-"**/test_*.py" = ["S101"]
-"**/*_tests.py" = ["S101"]
+"**/tests.py" = ["S101", "S106"]
+"**/test_*.py" = ["S101", "S106"]
+"**/*_tests.py" = ["S101", "S106"]
 "**/migrations/*.py" = ["D", "E501"]
 
 [tool.ruff.lint.pydocstyle]
