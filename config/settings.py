@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "django_htmx",
     "accounts",
     "core",
+    "spaces",
 ]
 
 MIDDLEWARE = [
