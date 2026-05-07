@@ -6,6 +6,8 @@ requires-python = ">=3.12"
 dependencies = [
     "Django>=5.2,<5.3",
     "psycopg2-binary",
+    "djangorestframework",
+    "django-filter",
 ]
 
 [dependency-groups]
