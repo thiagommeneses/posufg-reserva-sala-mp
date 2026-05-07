@@ -11,7 +11,7 @@
       "Add api/ URL namespace to config/urls.py",
       "Run `uv run python manage.py check` and verify it passes"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "architectural",
