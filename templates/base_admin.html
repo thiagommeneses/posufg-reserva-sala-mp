@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="drawer lg:drawer-open">
+    <input id="admin-drawer" type="checkbox" class="drawer-toggle" />
+    <div class="drawer-content flex flex-col">
+        <div class="navbar bg-base-100 shadow-sm lg:hidden">
+            <div class="flex-none">
+                <label for="admin-drawer" class="btn btn-square btn-ghost">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block h-6 w-6 stroke-current">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </label>
+            </div>
+            <div class="flex-1">
+                <a href="/admin-dashboard/" class="btn btn-ghost text-xl">Admin Dashboard</a>
+            </div>
+        </div>
+        <main class="p-4 lg:p-8">
+            {% block admin_content %}{% endblock %}
+        </main>
+    </div>
+    <div class="drawer-side">
+        <label for="admin-drawer" class="drawer-overlay lg:hidden"></label>
+        <ul class="menu bg-base-200 min-h-full w-80 p-4">
+            <li class="menu-title text-xl mb-4">Admin</li>
+            <li><a href="/admin-dashboard/">Dashboard</a></li>
+            <li><a href="/admin-dashboard/spaces/">Espaços</a></li>
+            <li><a href="/admin-dashboard/reservations/">Reservas</a></li>
+            <li><a href="/admin-dashboard/maintenance/">Manutenção</a></li>
+            <li class="mt-auto">
+                <a href="/">Voltar ao Site</a>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

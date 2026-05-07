@@ -8,6 +8,7 @@ dependencies = [
     "psycopg2-binary",
     "djangorestframework",
     "django-filter",
+    "django-htmx",
 ]
 
 [dependency-groups]
