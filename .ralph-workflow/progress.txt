@@ -187,3 +187,43 @@ Task: Install Django REST Framework and configure API base (prd.json item 1)
 - Ran `uv run ruff format --check .` and all files are formatted
 - Committed: feat: install Django REST Framework and configure API base
 Files changed: pyproject.toml, uv.lock, config/settings.py, config/urls.py
+
+Task: Install HTMX + DaisyUI and configure template infrastructure (prd.json item 2)
+- Added django-htmx to pyproject.toml dependencies
+- Ran `uv sync --dev` and verified django-htmx==1.27.0 installed correctly
+- Added 'django_htmx' to INSTALLED_APPS in config/settings.py
+- Added HtmxMiddleware to MIDDLEWARE in config/settings.py
+- Configured TEMPLATES DIRS to [BASE_DIR / "templates"] in config/settings.py
+- Configured STATICFILES_DIRS to [BASE_DIR / "static"] in config/settings.py
+- Created templates/base.html with Tailwind CSS CDN, DaisyUI CDN, HTMX CDN, block structure, and data-theme="light"
+- Created templates/base_user.html extending base.html with DaisyUI navbar (Espaços, Minhas Reservas, Sair) and drawer for mobile
+- Created templates/base_admin.html extending base.html with DaisyUI navbar + drawer sidebar (Dashboard, Espaços, Reservas, Manutenção)
+- Created templates/partials/_messages.html using DaisyUI alert components for Django messages framework with auto-dismiss
+- Created core/views.py HtmxTestView to verify HTMX partial swaps: returns full page for regular requests, partial HTML for HX-Request
+- Created templates/core/htmx_test.html with hx-get button to test HTMX
+- Created core/urls.py and wired it into config/urls.py
+- Wrote 9 tests in core/tests.py covering: CDN inclusion, theme attribute, full/partial HTMX response, navbar/sidebar rendering, messages partial
+- Ran `uv run python manage.py check` and it passed with no issues
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 10 tests passed with 98.06% coverage (above 80% threshold)
+- Committed: feat: install HTMX, DaisyUI, and configure template infrastructure
+- Files changed: pyproject.toml, uv.lock, config/settings.py, config/urls.py, core/views.py, core/tests.py, core/urls.py, templates/base.html, templates/base_user.html, templates/base_admin.html, templates/core/htmx_test.html, templates/partials/_messages.html
+
+Task: Create accounts app with authentication views (prd.json item 3)
+- Created Django app 'accounts' and added to INSTALLED_APPS
+- Created UserRegistrationForm in accounts/forms.py with password confirmation and DaisyUI widget classes
+- Created login view and template at /accounts/login/ using DaisyUI card, form-control, btn-primary, centered hero layout
+- Created register view and template at /accounts/register/ with same DaisyUI card layout
+- Created logout view at /accounts/logout/ redirecting to login with Django messages
+- Styled form validation errors using DaisyUI input-error class and label-text-alt for error messages
+- Configured LOGIN_URL, LOGIN_REDIRECT_URL, LOGOUT_REDIRECT_URL in config/settings.py
+- Registered accounts URLs in config/urls.py with namespace="accounts"
+- Added home_view in core/views.py redirecting to htmx_test for LOGIN_REDIRECT_URL target
+- Wrote 10 tests covering: login page renders (200), valid credentials authenticate and redirect, invalid credentials re-render with errors, authenticated user redirected from login/register, valid registration creates user and redirects, invalid registration shows errors, logout redirects to login, protected page redirect setting
+- Ran `uv run python manage.py check` and it passed with no issues
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 20 tests passed with 98.32% coverage (above 80% threshold)
+- Committed: feat: create accounts app with authentication views
+- Files changed: accounts/, config/settings.py, config/urls.py, core/views.py, core/urls.py, templates/accounts/login.html, templates/accounts/register.html

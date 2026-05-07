@@ -13,7 +13,7 @@
     ],
     "passes": true
   },
-  {
+    {
     "category": "architectural",
     "description": "Install HTMX + DaisyUI and configure template infrastructure",
     "steps": [
@@ -30,7 +30,7 @@
       "Verify HTMX requests work (test with a simple hx-get partial swap)",
       "Run `uv run python manage.py check` and verify it passes"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "architectural",
@@ -49,7 +49,7 @@
       "Write tests: protected page redirects unauthenticated user to login",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "architectural",

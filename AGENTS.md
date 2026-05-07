@@ -102,6 +102,22 @@ Build Docker images:
 make build
 ```
 
+### Dependency Changes in Development
+
+When `pyproject.toml` or `uv.lock` changes, the container's virtualenv (`/opt/venv`) must be updated. Because the virtualenv lives outside the mounted project directory (`/app`), it persists across restarts. You do **not** need to rebuild the image.
+
+Instead, sync dependencies directly inside the running container:
+```bash
+make shell
+uv sync --frozen
+```
+Or in one command:
+```bash
+docker compose exec web uv sync --frozen
+```
+
+Only run `make build` if the `Dockerfile` itself or the base image changes.
+
 Follow web service logs:
 ```bash
 make logs

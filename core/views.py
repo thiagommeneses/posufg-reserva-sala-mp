@@ -5,6 +5,13 @@ from django.shortcuts import render
 from django.views import View
 
 
+def home_view(request):
+    """Simple home view redirecting to spaces list."""
+    from django.shortcuts import redirect
+
+    return redirect("htmx_test")
+
+
 class HtmxTestView(View):
     """A simple view to verify HTMX partial swaps work correctly."""
 
