@@ -8,6 +8,12 @@ from django.db import models
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 
 
+class OwnershipError(Exception):
+    """Raised when a user tries to modify a reservation they do not own."""
+
+    pass
+
+
 def get_availability_for_date(space, date):
     """Return occupied and free time slots for a space on a given date.
 
@@ -105,6 +111,88 @@ def get_availability_for_date(space, date):
         "occupied": occupied,
         "free": free,
     }
+
+
+def cancel_reservation(reservation, user):
+    """Cancel a reservation if the user is the owner and status allows it.
+
+    Args:
+        reservation: The Reservation instance to cancel.
+        user: The user requesting the cancellation.
+
+    Raises:
+        ValidationError: If the user is not the owner or the reservation
+            cannot be cancelled in its current status.
+    """
+    if reservation.user != user:
+        raise OwnershipError("You can only cancel your own reservations.")
+
+    if reservation.status not in {
+        ReservationStatus.CONFIRMED,
+        ReservationStatus.CHECKED_IN,
+    }:
+        raise ValidationError(
+            "Only confirmed or checked-in reservations can be cancelled.",
+        )
+
+    reservation.status = ReservationStatus.CANCELLED
+    reservation.save(update_fields=["status", "updated_at"])
+
+
+def reschedule_reservation(reservation, user, start_time, end_time):
+    """Reschedule a reservation to a new time slot.
+
+    Args:
+        reservation: The Reservation instance to reschedule.
+        user: The user requesting the reschedule.
+        start_time: The new reservation start time.
+        end_time: The new reservation end time.
+
+    Returns:
+        Reservation: The updated reservation.
+
+    Raises:
+        ValidationError: If the user is not the owner, times are invalid,
+            or there is an overlap with existing reservations or maintenance blocks.
+    """
+    if reservation.user != user:
+        raise OwnershipError("You can only reschedule your own reservations.")
+
+    if end_time <= start_time:
+        raise ValidationError("End time must be after start time.")
+
+    # Check overlapping confirmed/checked_in reservations (excluding self)
+    overlapping_reservations = (
+        Reservation.objects.filter(
+            space=reservation.space,
+            status__in=[ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN],
+        )
+        .exclude(pk=reservation.pk)
+        .filter(
+            models.Q(start_time__lt=end_time) & models.Q(end_time__gt=start_time),
+        )
+    )
+    if overlapping_reservations.exists():
+        raise ValidationError(
+            "This time slot overlaps with an existing reservation.",
+        )
+
+    # Check overlapping maintenance blocks
+    overlapping_blocks = MaintenanceBlock.objects.filter(
+        space=reservation.space,
+        start_time__lt=end_time,
+        end_time__gt=start_time,
+    )
+    if overlapping_blocks.exists():
+        raise ValidationError(
+            "This time slot overlaps with a maintenance block.",
+        )
+
+    reservation.start_time = start_time
+    reservation.end_time = end_time
+    reservation.status = ReservationStatus.CONFIRMED
+    reservation.save(update_fields=["start_time", "end_time", "status", "updated_at"])
+    return reservation
 
 
 def create_reservation(user, space, start_time, end_time):

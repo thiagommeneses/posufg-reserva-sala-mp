@@ -643,3 +643,229 @@ class TestReservationApiCreate:
         assert response.status_code == 200
         assert len(response.data) == 1
         assert response.data[0]["user"] == regular_user.id
+
+
+class TestReservationApiCancel:
+    """Tests for cancelling reservations via the API."""
+
+    def test_owner_can_cancel_confirmed_reservation(self, api_client, regular_user, space):
+        """Reservation owner should be able to cancel a confirmed reservation."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        response = api_client.patch(f"/api/reservations/{reservation.id}/cancel/")
+        assert response.status_code == 200
+        assert response.data["status"] == ReservationStatus.CANCELLED
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CANCELLED
+
+    def test_owner_can_cancel_checked_in_reservation(self, api_client, regular_user, space):
+        """Reservation owner should be able to cancel a checked-in reservation."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CHECKED_IN,
+            checked_in_at=start,
+        )
+        response = api_client.patch(f"/api/reservations/{reservation.id}/cancel/")
+        assert response.status_code == 200
+        assert response.data["status"] == ReservationStatus.CANCELLED
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CANCELLED
+
+    def test_non_owner_cannot_cancel(self, api_client, regular_user, other_user, space):
+        """Non-owners should get 403 when trying to cancel another user's reservation."""
+        api_client.force_authenticate(user=other_user)
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        response = api_client.patch(f"/api/reservations/{reservation.id}/cancel/")
+        assert response.status_code == 403
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CONFIRMED
+
+    def test_cannot_cancel_already_cancelled_reservation(self, api_client, regular_user, space):
+        """Cancelling an already cancelled reservation should return 400."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CANCELLED,
+        )
+        response = api_client.patch(f"/api/reservations/{reservation.id}/cancel/")
+        assert response.status_code == 400
+        assert "cancelled" in str(response.data).lower()
+
+    def test_cancelling_frees_up_slot(self, api_client, regular_user, space):
+        """After cancellation, the time slot should be available for new reservations."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        api_client.patch(f"/api/reservations/{reservation.id}/cancel/")
+        response = api_client.post(
+            "/api/reservations/",
+            {
+                "space": space.id,
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+            },
+        )
+        assert response.status_code == 201
+
+
+class TestReservationApiReschedule:
+    """Tests for rescheduling reservations via the API."""
+
+    def test_successful_reschedule_updates_times(self, api_client, regular_user, space):
+        """Owner should be able to reschedule to an available slot."""
+        api_client.force_authenticate(user=regular_user)
+        now = timezone.now()
+        original_start = now
+        original_end = now + timedelta(hours=1)
+        new_start = now + timedelta(hours=2)
+        new_end = now + timedelta(hours=3)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=original_start,
+            end_time=original_end,
+        )
+        response = api_client.patch(
+            f"/api/reservations/{reservation.id}/reschedule/",
+            {
+                "start_time": new_start.isoformat(),
+                "end_time": new_end.isoformat(),
+            },
+        )
+        assert response.status_code == 200
+        assert response.data["start_time"] == new_start.isoformat().replace("+00:00", "Z")
+        assert response.data["end_time"] == new_end.isoformat().replace("+00:00", "Z")
+        assert response.data["status"] == ReservationStatus.CONFIRMED
+        reservation.refresh_from_db()
+        assert reservation.start_time == new_start
+        assert reservation.end_time == new_end
+
+    def test_reschedule_to_conflicting_slot_is_rejected(self, api_client, regular_user, space):
+        """Rescheduling to an overlapping slot should return 400."""
+        api_client.force_authenticate(user=regular_user)
+        now = timezone.now()
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now + timedelta(hours=1),
+            end_time=now + timedelta(hours=3),
+        )
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now + timedelta(hours=4),
+            end_time=now + timedelta(hours=5),
+        )
+        response = api_client.patch(
+            f"/api/reservations/{reservation.id}/reschedule/",
+            {
+                "start_time": (now + timedelta(hours=2)).isoformat(),
+                "end_time": (now + timedelta(hours=4)).isoformat(),
+            },
+        )
+        assert response.status_code == 400
+        assert "overlaps" in str(response.data).lower()
+
+    def test_non_owner_cannot_reschedule(self, api_client, regular_user, other_user, space):
+        """Non-owners should get 403 when trying to reschedule another user's reservation."""
+        api_client.force_authenticate(user=other_user)
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        response = api_client.patch(
+            f"/api/reservations/{reservation.id}/reschedule/",
+            {
+                "start_time": (start + timedelta(hours=2)).isoformat(),
+                "end_time": (start + timedelta(hours=3)).isoformat(),
+            },
+        )
+        assert response.status_code == 403
+
+    def test_reschedule_invalid_time_range_is_rejected(self, api_client, regular_user, space):
+        """Rescheduling with end_time <= start_time should return 400."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        response = api_client.patch(
+            f"/api/reservations/{reservation.id}/reschedule/",
+            {
+                "start_time": end.isoformat(),
+                "end_time": start.isoformat(),
+            },
+        )
+        assert response.status_code == 400
+        assert "after start" in str(response.data).lower()
+
+    def test_reschedule_frees_original_slot(self, api_client, regular_user, space):
+        """After reschedule, the original slot should be available again."""
+        api_client.force_authenticate(user=regular_user)
+        now = timezone.now()
+        original_start = now
+        original_end = now + timedelta(hours=1)
+        new_start = now + timedelta(hours=2)
+        new_end = now + timedelta(hours=3)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=original_start,
+            end_time=original_end,
+        )
+        api_client.patch(
+            f"/api/reservations/{reservation.id}/reschedule/",
+            {
+                "start_time": new_start.isoformat(),
+                "end_time": new_end.isoformat(),
+            },
+        )
+        # Original slot should now be available
+        response = api_client.post(
+            "/api/reservations/",
+            {
+                "space": space.id,
+                "start_time": original_start.isoformat(),
+                "end_time": original_end.isoformat(),
+            },
+        )
+        assert response.status_code == 201
