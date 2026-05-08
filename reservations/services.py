@@ -7,6 +7,8 @@ from django.db import models
 
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 
+CHECK_IN_WINDOW_MINUTES = 15
+
 
 class OwnershipError(Exception):
     """Raised when a user tries to modify a reservation they do not own."""
@@ -192,6 +194,42 @@ def reschedule_reservation(reservation, user, start_time, end_time):
     reservation.end_time = end_time
     reservation.status = ReservationStatus.CONFIRMED
     reservation.save(update_fields=["start_time", "end_time", "status", "updated_at"])
+    return reservation
+
+
+def check_in_reservation(reservation, user):
+    """Check in to a reservation.
+
+    Args:
+        reservation: The Reservation instance to check in to.
+        user: The user requesting the check-in.
+
+    Returns:
+        Reservation: The updated reservation.
+
+    Raises:
+        OwnershipError: If the user is not the reservation owner.
+        ValidationError: If the reservation is not confirmed or the current
+            time is outside the valid check-in window.
+    """
+    if reservation.user != user:
+        raise OwnershipError("You can only check in to your own reservations.")
+
+    if reservation.status != ReservationStatus.CONFIRMED:
+        raise ValidationError("Only confirmed reservations can be checked in.")
+
+    now = datetime.datetime.now(datetime.UTC)
+    check_in_start = reservation.start_time - datetime.timedelta(
+        minutes=CHECK_IN_WINDOW_MINUTES,
+    )
+    if not (check_in_start <= now <= reservation.end_time):
+        raise ValidationError(
+            "Check-in is only available from 15 minutes before the start time until the end time.",
+        )
+
+    reservation.status = ReservationStatus.CHECKED_IN
+    reservation.checked_in_at = now
+    reservation.save(update_fields=["status", "checked_in_at", "updated_at"])
     return reservation
 
 

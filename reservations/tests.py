@@ -869,3 +869,86 @@ class TestReservationApiReschedule:
             },
         )
         assert response.status_code == 201
+
+
+class TestReservationApiCheckIn:
+    """Tests for checking in to reservations via the API."""
+
+    def test_successful_check_in_within_valid_time_window(self, api_client, regular_user, space):
+        """Owner should be able to check in during the valid time window."""
+        api_client.force_authenticate(user=regular_user)
+        now = timezone.now()
+        start = now
+        end = now + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        response = api_client.post(f"/api/reservations/{reservation.id}/check-in/")
+        assert response.status_code == 200
+        assert response.data["status"] == ReservationStatus.CHECKED_IN
+        assert response.data["checked_in_at"] is not None
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CHECKED_IN
+        assert reservation.checked_in_at is not None
+
+    def test_check_in_before_valid_window_is_rejected(self, api_client, regular_user, space):
+        """Check-in before the 15-minute window should return 400."""
+        api_client.force_authenticate(user=regular_user)
+        now = timezone.now()
+        start = now + timedelta(hours=1)
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        response = api_client.post(f"/api/reservations/{reservation.id}/check-in/")
+        assert response.status_code == 400
+        assert "check-in" in str(response.data).lower()
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CONFIRMED
+        assert reservation.checked_in_at is None
+
+    def test_check_in_on_non_confirmed_reservation_is_rejected(
+        self, api_client, regular_user, space
+    ):
+        """Check-in on a cancelled reservation should return 400."""
+        api_client.force_authenticate(user=regular_user)
+        now = timezone.now()
+        start = now
+        end = now + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CANCELLED,
+        )
+        response = api_client.post(f"/api/reservations/{reservation.id}/check-in/")
+        assert response.status_code == 400
+        assert "confirmed" in str(response.data).lower()
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CANCELLED
+        assert reservation.checked_in_at is None
+
+    def test_check_in_by_non_owner_is_rejected(self, api_client, regular_user, other_user, space):
+        """Non-owners should get 403 when trying to check in to another user's reservation."""
+        api_client.force_authenticate(user=other_user)
+        now = timezone.now()
+        start = now
+        end = now + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        response = api_client.post(f"/api/reservations/{reservation.id}/check-in/")
+        assert response.status_code == 403
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CONFIRMED
+        assert reservation.checked_in_at is None

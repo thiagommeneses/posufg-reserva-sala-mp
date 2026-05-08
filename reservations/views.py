@@ -12,6 +12,7 @@ from reservations.serializers import ReservationSerializer
 from reservations.services import (
     OwnershipError,
     cancel_reservation,
+    check_in_reservation,
     reschedule_reservation,
 )
 
@@ -54,6 +55,19 @@ class ReservationViewSet(viewsets.ModelViewSet):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         serializer = self.get_serializer(reservation)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="check-in")
+    def check_in(self, request, pk=None):
+        """Check in to a reservation."""
+        reservation = get_object_or_404(Reservation, pk=pk)
+        try:
+            check_in_reservation(reservation, request.user)
+        except OwnershipError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except ValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        response_serializer = self.get_serializer(reservation)
+        return Response(response_serializer.data)
 
     @action(detail=True, methods=["patch"])
     def reschedule(self, request, pk=None):
