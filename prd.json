@@ -146,7 +146,7 @@
       "Write tests: successful reschedule updates times and slot becomes available",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

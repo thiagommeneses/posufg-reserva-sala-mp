@@ -312,3 +312,18 @@ Task: Implement reservation creation with conflict validation (prd.json item 8)
 - Ran `uv run pytest` and 76 tests passed with 97.67% coverage (above 80% threshold)
 - Committed: feat(reservations): implement reservation creation with conflict validation
 - Files changed: reservations/serializers.py, reservations/services.py, reservations/views.py, reservations/urls.py, reservations/tests.py, config/urls.py, prd.json, .ralph-workflow/progress.txt
+
+Task: Implement self-service cancellation and rescheduling (prd.json item 9)
+- Added `cancel_reservation` service function to reservations/services.py: checks ownership (raises OwnershipError), checks status is confirmed/checked_in, sets status to cancelled
+- Added `reschedule_reservation` service function to reservations/services.py: checks ownership (raises OwnershipError), validates end_time > start_time, checks overlapping confirmed/checked_in reservations excluding self, checks overlapping maintenance blocks, updates times and resets status to confirmed
+- Created custom `OwnershipError` exception in reservations/services.py to distinguish permission violations from business validation errors
+- Added `cancel` action to ReservationViewSet: PATCH /api/reservations/{id}/cancel/ with 403 for ownership errors, 400 for status errors
+- Added `reschedule` action to ReservationViewSet: PATCH /api/reservations/{id}/reschedule/ with RescheduleSerializer for input validation
+- Used `get_object_or_404(Reservation, pk=pk)` in actions so non-owners get 403 (not 404) when attempting to modify another user's reservation
+- Wrote 10 tests in reservations/tests.py covering: owner cancels confirmed, owner cancels checked_in, non-owner gets 403 on cancel, cannot cancel already cancelled, cancelling frees slot, successful reschedule updates times, reschedule conflict rejected, non-owner gets 403 on reschedule, invalid time range rejected, reschedule frees original slot
+- Connected current container to workspace_default Docker network to resolve PostgreSQL hostname for testing
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 86 tests passed with 98.00% coverage (above 80% threshold)
+- Committed: feat(reservations): implement self-service cancellation and rescheduling
+- Files changed: reservations/services.py, reservations/views.py, reservations/tests.py, prd.json, .ralph-workflow/progress.txt
