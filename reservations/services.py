@@ -8,6 +8,7 @@ from django.db import models
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 
 CHECK_IN_WINDOW_MINUTES = 15
+DEFAULT_NO_SHOW_THRESHOLD_MINUTES = 15
 
 
 class OwnershipError(Exception):
@@ -279,6 +280,36 @@ def create_reservation(user, space, start_time, end_time):
         end_time=end_time,
         status=ReservationStatus.CONFIRMED,
     )
+
+
+def auto_release_no_shows(threshold_minutes=DEFAULT_NO_SHOW_THRESHOLD_MINUTES):
+    """Mark confirmed reservations as no-show if they have passed the threshold.
+
+    Finds all confirmed reservations where start_time + threshold < now
+    and the user has not checked in. Sets their status to NO_SHOW.
+
+    Args:
+        threshold_minutes: Number of minutes after start_time to wait.
+
+    Returns:
+        int: The number of reservations marked as no-show.
+    """
+    now = datetime.datetime.now(datetime.UTC)
+    threshold = datetime.timedelta(minutes=threshold_minutes)
+    cutoff = now - threshold
+
+    overdue = Reservation.objects.filter(
+        status=ReservationStatus.CONFIRMED,
+        start_time__lt=cutoff,
+    )
+
+    released_count = 0
+    for reservation in overdue:
+        reservation.status = ReservationStatus.NO_SHOW
+        reservation.save(update_fields=["status", "updated_at"])
+        released_count += 1
+
+    return released_count
 
 
 def _isoformat(dt):

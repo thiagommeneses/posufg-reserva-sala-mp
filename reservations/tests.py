@@ -10,6 +10,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
+from reservations.services import auto_release_no_shows
 from spaces.models import Space
 
 User = get_user_model()
@@ -952,3 +953,76 @@ class TestReservationApiCheckIn:
         reservation.refresh_from_db()
         assert reservation.status == ReservationStatus.CONFIRMED
         assert reservation.checked_in_at is None
+
+
+class TestAutoReleaseNoShows:
+    """Tests for the auto-release no-shows service."""
+
+    def test_past_threshold_without_check_in_marked_no_show(self, db, user, space):
+        """Confirmed reservation past threshold should be marked no-show."""
+        now = timezone.now()
+        start = now - timedelta(hours=1)
+        end = start + timedelta(hours=2)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+        count = auto_release_no_shows(threshold_minutes=15)
+        assert count == 1
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.NO_SHOW
+
+    def test_within_threshold_not_marked_no_show(self, db, user, space):
+        """Confirmed reservation within threshold should NOT be marked no-show."""
+        now = timezone.now()
+        start = now - timedelta(minutes=5)
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+        count = auto_release_no_shows(threshold_minutes=15)
+        assert count == 0
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CONFIRMED
+
+    def test_checked_in_reservation_not_affected(self, db, user, space):
+        """Checked-in reservations should not be marked as no-show."""
+        now = timezone.now()
+        start = now - timedelta(hours=1)
+        end = start + timedelta(hours=2)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CHECKED_IN,
+            checked_in_at=start,
+        )
+        count = auto_release_no_shows(threshold_minutes=15)
+        assert count == 0
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CHECKED_IN
+
+    def test_cancelled_reservation_not_affected(self, db, user, space):
+        """Cancelled reservations should not be marked as no-show."""
+        now = timezone.now()
+        start = now - timedelta(hours=1)
+        end = start + timedelta(hours=2)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CANCELLED,
+        )
+        count = auto_release_no_shows(threshold_minutes=15)
+        assert count == 0
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CANCELLED
