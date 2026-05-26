@@ -210,7 +210,7 @@
       "Write tests: response includes all spaces even if they have no reservations",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -224,7 +224,7 @@
       "Write tests: filters work correctly (by status, by date range)",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

@@ -2,6 +2,7 @@
 
 import datetime
 
+import django_filters
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, serializers, status, viewsets
@@ -33,6 +34,19 @@ class RescheduleSerializer(serializers.Serializer):
         fields = ["start_time", "end_time"]
 
 
+class ReservationFilterSet(django_filters.FilterSet):
+    """Filter set for user reservations."""
+
+    start_time__gte = django_filters.DateTimeFilter(field_name="start_time", lookup_expr="gte")
+    start_time__lte = django_filters.DateTimeFilter(field_name="start_time", lookup_expr="lte")
+
+    class Meta:
+        """Meta options for ReservationFilterSet."""
+
+        model = Reservation
+        fields = ["status", "space"]
+
+
 class MaintenanceBlockViewSet(viewsets.ModelViewSet):
     """ViewSet for creating, listing and deleting maintenance blocks (admin only)."""
 
@@ -50,10 +64,11 @@ class ReservationViewSet(viewsets.ModelViewSet):
 
     serializer_class = ReservationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filterset_class = ReservationFilterSet
 
     def get_queryset(self):
-        """Users see only their own reservations."""
-        return Reservation.objects.filter(user=self.request.user)
+        """Users see only their own reservations, ordered by start_time descending."""
+        return Reservation.objects.filter(user=self.request.user).order_by("-start_time")
 
     def perform_create(self, serializer):
         """Automatically set user and confirmed status on creation."""

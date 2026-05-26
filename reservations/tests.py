@@ -657,6 +657,108 @@ class TestReservationApiCreate:
         assert response.data[0]["user"] == regular_user.id
 
 
+class TestReservationApiList:
+    """Tests for listing and filtering reservations via the API."""
+
+    def test_list_ordered_by_start_time_descending(self, api_client, regular_user, space):
+        """Reservations should be ordered by start_time descending."""
+        api_client.force_authenticate(user=regular_user)
+        now = timezone.now()
+        r1 = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now + timedelta(hours=1),
+            end_time=now + timedelta(hours=2),
+        )
+        r2 = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now + timedelta(hours=3),
+            end_time=now + timedelta(hours=4),
+        )
+        response = api_client.get("/api/reservations/")
+        assert response.status_code == 200
+        assert len(response.data) == 2
+        assert response.data[0]["id"] == r2.id
+        assert response.data[1]["id"] == r1.id
+
+    def test_filter_by_status(self, api_client, regular_user, space):
+        """Filtering by status should return only matching reservations."""
+        api_client.force_authenticate(user=regular_user)
+        now = timezone.now()
+        confirmed = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now,
+            end_time=now + timedelta(hours=1),
+            status=ReservationStatus.CONFIRMED,
+        )
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now + timedelta(hours=2),
+            end_time=now + timedelta(hours=3),
+            status=ReservationStatus.CANCELLED,
+        )
+        response = api_client.get("/api/reservations/?status=confirmed")
+        assert response.status_code == 200
+        assert len(response.data) == 1
+        assert response.data[0]["id"] == confirmed.id
+
+    def test_filter_by_space(self, api_client, regular_user, space):
+        """Filtering by space should return only reservations for that space."""
+        api_client.force_authenticate(user=regular_user)
+        now = timezone.now()
+        other_space = Space.objects.create(name="Other Room", capacity=5, location="Floor 2")
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now,
+            end_time=now + timedelta(hours=1),
+        )
+        Reservation.objects.create(
+            space=other_space,
+            user=regular_user,
+            start_time=now + timedelta(hours=2),
+            end_time=now + timedelta(hours=3),
+        )
+        response = api_client.get(f"/api/reservations/?space={space.id}")
+        assert response.status_code == 200
+        assert len(response.data) == 1
+        assert response.data[0]["space"] == space.id
+
+    def test_filter_by_date_range(self, api_client, regular_user, space):
+        """Filtering by start_time date range should return only matching reservations."""
+        api_client.force_authenticate(user=regular_user)
+        now = timezone.now()
+        r1 = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now,
+            end_time=now + timedelta(hours=1),
+        )
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now + timedelta(days=2),
+            end_time=now + timedelta(days=2, hours=1),
+        )
+        gte = now.isoformat()
+        lte = (now + timedelta(days=1)).isoformat()
+        response = api_client.get(
+            "/api/reservations/",
+            {"start_time__gte": gte, "start_time__lte": lte},
+        )
+        assert response.status_code == 200
+        assert len(response.data) == 1
+        assert response.data[0]["id"] == r1.id
+
+    def test_unauthenticated_list_is_rejected(self, api_client):
+        """Unauthenticated requests to list reservations should be rejected."""
+        response = api_client.get("/api/reservations/")
+        assert response.status_code in (401, 403)
+
+
 class TestReservationApiCancel:
     """Tests for cancelling reservations via the API."""
 

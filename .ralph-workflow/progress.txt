@@ -369,3 +369,28 @@ Task: Implement admin maintenance blocks (prd.json item 12)
 - Ran `uv run ruff format --check .` and all files formatted
 - Ran `uv run pytest` and 101 tests passed with 97.49% coverage (above 80% threshold)
 - Committed: feat(reservations): implement admin maintenance blocks API
+
+Task: Implement admin occupancy overview endpoint (prd.json item 13)
+- Created OccupancyView APIView in reservations/views.py with IsAdminUser permission
+- Endpoint GET /api/admin/occupancy/?date=YYYY-MM-DD returns all spaces with reservations and maintenance blocks
+- Response includes reservation status to distinguish confirmed/checked_in/no_show
+- Filters reservations and maintenance blocks by date overlap
+- Used list comprehensions for efficient data transformation
+- Added URL pattern in reservations/admin_urls.py
+- Wrote 8 tests in TestOccupancyApi covering: admin can view occupancy (200), non-admin gets 403, all spaces included (even empty), date parameter required, date format validation, maintenance blocks included, reservation status shown, date filtering works
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 109 tests passed with 97.66% coverage (above 80% threshold)
+- Committed: feat(reservations): implement admin occupancy overview endpoint
+- Files changed: reservations/views.py, reservations/admin_urls.py, reservations/tests.py
+
+Task: Implement user reservation listing with filtering (prd.json item 14)
+- Added ReservationFilterSet in reservations/views.py with filters: status, space, start_time__gte, start_time__lte
+- Set filterset_class on ReservationViewSet
+- Updated get_queryset to order by -start_time (most recent first)
+- Wrote 5 tests in TestReservationApiList covering: ordered by start_time descending, filter by status, filter by space, filter by date range, unauthenticated rejected
+- Fixed test_filter_by_date_range to use APIClient.get(data=...) for proper query parameter encoding
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 114 tests passed with 97.75% coverage (above 80% threshold)
+- Updated prd.json: set passes to true for completed item
