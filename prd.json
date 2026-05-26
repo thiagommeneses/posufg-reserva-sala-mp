@@ -259,7 +259,7 @@
       "Write tests: HTMX request returns partial template with availability for requested date",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

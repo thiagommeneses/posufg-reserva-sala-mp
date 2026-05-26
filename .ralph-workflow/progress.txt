@@ -411,3 +411,30 @@ Task: Implement user-facing space search page (prd.json item 15)
 - Committed: feat(spaces): implement user-facing space search page with HTMX filtering
 - Files changed: spaces/views.py, templates/spaces/space_list.html, templates/spaces/_space_list_results.html, config/urls.py, spaces/tests.py
 - Updated prd.json: set passes to true for completed item
+
+Task: Implement user-facing space detail and availability page (prd.json item 16)
+- Created SpaceDetailView (DetailView) with LoginRequiredMixin at /spaces/{id}/
+- Template uses DaisyUI card components for space info, badges for attributes and capacity
+- Displays availability for selected date using existing get_availability_for_date service
+- Date selector uses HTMX hx-get with hx-trigger='change' for dynamic availability reload
+- Created partial template spaces/_availability.html showing time slots with DaisyUI styling:
+  - btn-success for available slots (clickable, links to reservation creation)
+  - btn-error for occupied reservations
+  - btn-warning for maintenance blocks
+- Available slots link to /reservations/new/?space={id}&start={time}
+- Wrote 8 tests in TestSpaceDetailView covering:
+  - Page renders with space info and availability
+  - HTMX request returns partial template
+  - Unauthenticated user redirected to login
+  - Default date is today
+  - Custom date from query parameter
+  - Invalid date defaults to today
+  - Availability reflects reservations
+  - Inactive space returns 404
+- Connected container to workspace_default Docker network for PostgreSQL access during testing
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 131 tests passed with 97.88% coverage (above 80% threshold)
+- Committed: feat(spaces): implement user-facing space detail and availability page
+- Files changed: spaces/views.py, config/urls.py, templates/spaces/space_detail.html, templates/spaces/_availability.html, spaces/tests.py
+- Updated prd.json: set passes to true for completed item
