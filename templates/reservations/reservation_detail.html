@@ -1,0 +1,41 @@
+{% extends "base_user.html" %}
+
+{% block title %}Detalhes da Reserva — Reserva de Espaços{% endblock %}
+
+{% block user_content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6">Detalhes da Reserva</h1>
+
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <div class="flex justify-between items-start mb-4">
+                <h2 class="card-title text-2xl">{{ reservation.space.name }}</h2>
+                <span class="badge
+                    {% if reservation.status == 'confirmed' %}badge-success
+                    {% elif reservation.status == 'checked_in' %}badge-info
+                    {% elif reservation.status == 'no_show' %}badge-error
+                    {% elif reservation.status == 'cancelled' %}badge-ghost
+                    {% else %}badge-neutral{% endif %}">
+                    {{ reservation.get_status_display }}
+                </span>
+            </div>
+
+            <div class="space-y-2 mb-6">
+                <p><strong>Espaço:</strong> {{ reservation.space.name }}</p>
+                <p><strong>Capacidade:</strong> {{ reservation.space.capacity }}</p>
+                <p><strong>Localização:</strong> {{ reservation.space.location }}</p>
+                <p><strong>Início:</strong> {{ reservation.start_time|date:"d/m/Y H:i" }}</p>
+                <p><strong>Término:</strong> {{ reservation.end_time|date:"d/m/Y H:i" }}</p>
+                <p><strong>Status:</strong> {{ reservation.get_status_display }}</p>
+                {% if reservation.checked_in_at %}
+                <p><strong>Check-in:</strong> {{ reservation.checked_in_at|date:"d/m/Y H:i" }}</p>
+                {% endif %}
+            </div>
+
+            <div class="card-actions justify-end">
+                <a href="{% url 'reservation_list' %}" class="btn btn-ghost">← Voltar</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

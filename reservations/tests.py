@@ -1386,3 +1386,190 @@ class TestOccupancyApi:
 
         space_data = next(s for s in response.data["spaces"] if s["id"] == space.id)
         assert len(space_data["reservations"]) == 1
+
+
+@pytest.mark.django_db
+class TestReservationCreateView:
+    """Tests for the user-facing reservation creation page."""
+
+    def test_get_renders_form_with_space_pre_selected(self, client, regular_user, space):
+        """GET should render form with space pre-selected from query param."""
+        client.force_login(regular_user)
+        response = client.get(f"/reservations/new/?space={space.id}")
+        assert response.status_code == 200
+        assert "reservations/reservation_form.html" in [t.name for t in response.templates]
+        assert response.context["space"] == space
+
+    def test_get_prefills_start_time_from_query(self, client, regular_user, space):
+        """GET should prefill date and time from start query parameter."""
+        client.force_login(regular_user)
+        response = client.get(f"/reservations/new/?space={space.id}&start=2025-12-25T10:00:00Z")
+        assert response.status_code == 200
+        assert response.context["prefill_date"] == "2025-12-25"
+        assert response.context["prefill_start_time"] == "10:00"
+        assert response.context["prefill_end_time"] == "11:00"
+
+    def test_valid_post_creates_reservation_and_redirects(self, client, regular_user, space):
+        """Valid POST should create reservation and redirect."""
+        client.force_login(regular_user)
+        response = client.post(
+            "/reservations/new/",
+            {
+                "space": space.id,
+                "date": "2025-12-25",
+                "start_time": "10:00",
+                "end_time": "12:00",
+            },
+        )
+        assert response.status_code == 302
+        assert Reservation.objects.filter(
+            space=space,
+            user=regular_user,
+            start_time__year=2025,
+            start_time__month=12,
+            start_time__day=25,
+        ).exists()
+
+    def test_conflicting_post_renders_form_with_error(self, client, regular_user, space):
+        """POST with conflicting time should re-render form with error."""
+        from datetime import datetime
+
+        from django.utils import timezone
+
+        start = timezone.make_aware(datetime(2025, 12, 25, 10, 0))
+        end = timezone.make_aware(datetime(2025, 12, 25, 12, 0))
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+
+        client.force_login(regular_user)
+        response = client.post(
+            "/reservations/new/",
+            {
+                "space": space.id,
+                "date": "2025-12-25",
+                "start_time": "11:00",
+                "end_time": "13:00",
+            },
+        )
+        assert response.status_code == 200
+        assert "reservations/reservation_form.html" in [t.name for t in response.templates]
+        assert response.context["error"]
+
+    def test_unauthenticated_user_redirected_to_login(self, client, space):
+        """Unauthenticated users should be redirected to login."""
+        response = client.get(f"/reservations/new/?space={space.id}")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url
+
+    def test_post_inactive_space_returns_404(self, client, regular_user, inactive_space):
+        """POST with inactive space should return 404."""
+        client.force_login(regular_user)
+        response = client.post(
+            "/reservations/new/",
+            {
+                "space": inactive_space.id,
+                "date": "2025-12-25",
+                "start_time": "10:00",
+                "end_time": "12:00",
+            },
+        )
+        assert response.status_code == 404
+
+    def test_post_invalid_date_renders_error(self, client, regular_user, space):
+        """POST with invalid date format should show error."""
+        client.force_login(regular_user)
+        response = client.post(
+            "/reservations/new/",
+            {
+                "space": space.id,
+                "date": "invalid-date",
+                "start_time": "10:00",
+                "end_time": "12:00",
+            },
+        )
+        assert response.status_code == 200
+        assert "Formato de data ou hora inválido" in response.context["error"]
+
+
+@pytest.mark.django_db
+class TestReservationListView:
+    """Tests for the user-facing reservation list page."""
+
+    def test_authenticated_user_sees_own_reservations(self, client, regular_user, space):
+        """Authenticated users should see their own reservations."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+
+        client.force_login(regular_user)
+        response = client.get("/reservations/")
+        assert response.status_code == 200
+        assert "reservations/reservation_list.html" in [t.name for t in response.templates]
+        assert reservation in response.context["reservations"]
+
+    def test_unauthenticated_user_redirected_to_login(self, client):
+        """Unauthenticated users should be redirected to login."""
+        response = client.get("/reservations/")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url
+
+
+@pytest.mark.django_db
+class TestReservationDetailView:
+    """Tests for the user-facing reservation detail page."""
+
+    def test_owner_can_view_detail(self, client, regular_user, space):
+        """Reservation owner should be able to view detail."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+
+        client.force_login(regular_user)
+        response = client.get(f"/reservations/{reservation.id}/")
+        assert response.status_code == 200
+        assert "reservations/reservation_detail.html" in [t.name for t in response.templates]
+        assert response.context["reservation"] == reservation
+
+    def test_non_owner_gets_404(self, client, regular_user, other_user, space):
+        """Non-owner should get 404 when viewing another user's reservation."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=other_user,
+            start_time=start,
+            end_time=end,
+        )
+
+        client.force_login(regular_user)
+        response = client.get(f"/reservations/{reservation.id}/")
+        assert response.status_code == 404
+
+    def test_unauthenticated_user_redirected_to_login(self, client, regular_user, space):
+        """Unauthenticated users should be redirected to login."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+
+        response = client.get(f"/reservations/{reservation.id}/")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url

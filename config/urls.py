@@ -18,6 +18,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from reservations.views import (
+    ReservationCreateView,
+    ReservationDetailView,
+    ReservationListView,
+)
 from spaces.views import SpaceDetailView, SpaceListView
 
 urlpatterns = [
@@ -29,5 +34,8 @@ urlpatterns = [
     path("accounts/", include("accounts.urls", namespace="accounts")),
     path("spaces/", SpaceListView.as_view(), name="space_list"),
     path("spaces/<int:pk>/", SpaceDetailView.as_view(), name="space_detail"),
+    path("reservations/", ReservationListView.as_view(), name="reservation_list"),
+    path("reservations/new/", ReservationCreateView.as_view(), name="reservation_create"),
+    path("reservations/<int:pk>/", ReservationDetailView.as_view(), name="reservation_detail"),
     path("", include("core.urls")),
 ]

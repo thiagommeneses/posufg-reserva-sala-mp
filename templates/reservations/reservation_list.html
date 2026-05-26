@@ -1,0 +1,46 @@
+{% extends "base_user.html" %}
+
+{% block title %}Minhas Reservas — Reserva de Espaços{% endblock %}
+
+{% block user_content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6">Minhas Reservas</h1>
+
+    {% if reservations %}
+    <div class="space-y-4">
+        {% for reservation in reservations %}
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 class="card-title">{{ reservation.space.name }}</h2>
+                        <p class="text-sm text-base-content/70">
+                            {{ reservation.start_time|date:"d/m/Y H:i" }} — {{ reservation.end_time|date:"H:i" }}
+                        </p>
+                    </div>
+                    <span class="badge
+                        {% if reservation.status == 'confirmed' %}badge-success
+                        {% elif reservation.status == 'checked_in' %}badge-info
+                        {% elif reservation.status == 'no_show' %}badge-error
+                        {% elif reservation.status == 'cancelled' %}badge-ghost
+                        {% else %}badge-neutral{% endif %}">
+                        {{ reservation.get_status_display }}
+                    </span>
+                </div>
+                <div class="card-actions justify-end mt-4">
+                    <a href="{% url 'reservation_detail' reservation.id %}" class="btn btn-sm btn-outline">Ver detalhes</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span>Você ainda não tem reservas. <a href="{% url 'space_list' %}" class="link link-primary">Buscar espaços</a></span>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

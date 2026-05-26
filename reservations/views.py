@@ -3,8 +3,11 @@
 import datetime
 
 import django_filters
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views import View
 from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -17,6 +20,7 @@ from reservations.services import (
     OwnershipError,
     cancel_reservation,
     check_in_reservation,
+    create_reservation,
     reschedule_reservation,
 )
 from spaces.models import Space
@@ -210,3 +214,123 @@ class OccupancyView(APIView):
                 "spaces": occupancy_data,
             }
         )
+
+
+class ReservationListView(LoginRequiredMixin, View):
+    """List view for the authenticated user's reservations."""
+
+    template_name = "reservations/reservation_list.html"
+
+    def get(self, request):
+        """Render the user's reservations."""
+        reservations = Reservation.objects.filter(user=request.user).order_by("-start_time")
+        return render(
+            request,
+            self.template_name,
+            {"reservations": reservations},
+        )
+
+
+class ReservationDetailView(LoginRequiredMixin, View):
+    """Detail view for a single reservation."""
+
+    template_name = "reservations/reservation_detail.html"
+
+    def get(self, request, pk):
+        """Render the reservation detail page."""
+        reservation = get_object_or_404(
+            Reservation,
+            pk=pk,
+            user=request.user,
+        )
+        return render(
+            request,
+            self.template_name,
+            {"reservation": reservation},
+        )
+
+
+class ReservationCreateView(LoginRequiredMixin, View):
+    """View for creating a reservation via web interface."""
+
+    template_name = "reservations/reservation_form.html"
+
+    def get(self, request):
+        """Render the reservation creation form.
+
+        Pre-fills space and start time from query parameters if provided.
+        """
+        space_id = request.GET.get("space")
+        space = get_object_or_404(Space, pk=space_id, is_active=True) if space_id else None
+
+        start_iso = request.GET.get("start", "")
+        prefill_date = ""
+        prefill_start_time = ""
+        prefill_end_time = ""
+
+        if start_iso:
+            try:
+                dt = datetime.datetime.fromisoformat(
+                    start_iso.replace("Z", "+00:00"),
+                )
+                prefill_date = dt.strftime("%Y-%m-%d")
+                prefill_start_time = dt.strftime("%H:%M")
+                end_dt = dt + datetime.timedelta(hours=1)
+                prefill_end_time = end_dt.strftime("%H:%M")
+            except ValueError:
+                pass
+
+        context = {
+            "space": space,
+            "prefill_date": prefill_date,
+            "prefill_start_time": prefill_start_time,
+            "prefill_end_time": prefill_end_time,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        """Process the reservation creation form."""
+        space_id = request.POST.get("space")
+        space = get_object_or_404(Space, pk=space_id, is_active=True)
+
+        date_str = request.POST.get("date", "").strip()
+        start_time_str = request.POST.get("start_time", "").strip()
+        end_time_str = request.POST.get("end_time", "").strip()
+
+        try:
+            start_time = self._parse_datetime(date_str, start_time_str)
+            end_time = self._parse_datetime(date_str, end_time_str)
+        except ValueError:
+            context = {
+                "space": space,
+                "error": "Formato de data ou hora inválido.",
+                "prefill_date": date_str,
+                "prefill_start_time": start_time_str,
+                "prefill_end_time": end_time_str,
+            }
+            return render(request, self.template_name, context)
+
+        try:
+            reservation = create_reservation(request.user, space, start_time, end_time)
+            messages.success(request, "Reserva criada com sucesso!")
+            return redirect("reservation_detail", pk=reservation.pk)
+        except ValidationError as exc:
+            context = {
+                "space": space,
+                "error": str(exc),
+                "prefill_date": date_str,
+                "prefill_start_time": start_time_str,
+                "prefill_end_time": end_time_str,
+            }
+            return render(request, self.template_name, context)
+
+    @staticmethod
+    def _parse_datetime(date_str: str, time_str: str) -> datetime.datetime:
+        """Combine date and time strings into a timezone-aware datetime."""
+        if not date_str or not time_str:
+            raise ValueError("Missing date or time")
+        dt = datetime.datetime.strptime(
+            f"{date_str} {time_str}",
+            "%Y-%m-%d %H:%M",
+        )
+        return dt.replace(tzinfo=datetime.UTC)

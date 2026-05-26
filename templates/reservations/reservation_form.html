@@ -1,0 +1,98 @@
+{% extends "base_user.html" %}
+
+{% block title %}Nova Reserva — Reserva de Espaços{% endblock %}
+
+{% block user_content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6">Nova Reserva</h1>
+
+    {% if space %}
+    <!-- Space Info Summary -->
+    <div class="card card-compact bg-base-100 shadow-xl mb-6">
+        <div class="card-body">
+            <h2 class="card-title">{{ space.name }}</h2>
+            <div class="flex flex-wrap gap-2">
+                <span class="badge badge-primary">Capacidade: {{ space.capacity }}</span>
+                <span class="badge badge-secondary">{{ space.location }}</span>
+            </div>
+            {% if space.description %}
+            <p class="text-sm text-base-content/70">{{ space.description }}</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Reservation Form -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            {% if error %}
+            <div class="alert alert-error mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <form method="post" action="{% url 'reservation_create' %}">
+                {% csrf_token %}
+                <input type="hidden" name="space" value="{{ space.id }}">
+
+                <div class="form-control mb-4">
+                    <label class="label" for="id_date">
+                        <span class="label-text">Data</span>
+                    </label>
+                    <input
+                        type="date"
+                        name="date"
+                        id="id_date"
+                        value="{{ prefill_date }}"
+                        class="input input-bordered w-full"
+                        required
+                    >
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="form-control">
+                        <label class="label" for="id_start_time">
+                            <span class="label-text">Hora de início</span>
+                        </label>
+                        <input
+                            type="time"
+                            name="start_time"
+                            id="id_start_time"
+                            value="{{ prefill_start_time }}"
+                            class="input input-bordered w-full"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label" for="id_end_time">
+                            <span class="label-text">Hora de término</span>
+                        </label>
+                        <input
+                            type="time"
+                            name="end_time"
+                            id="id_end_time"
+                            value="{{ prefill_end_time }}"
+                            class="input input-bordered w-full"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="form-control">
+                    <button type="submit" class="btn btn-primary w-full">Reservar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="mt-6">
+        <a href="{% url 'space_list' %}" class="btn btn-ghost">
+            ← Voltar para espaços
+        </a>
+    </div>
+</div>
+{% endblock %}
