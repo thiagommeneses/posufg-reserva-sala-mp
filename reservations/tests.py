@@ -1522,6 +1522,95 @@ class TestReservationListView:
         assert response.status_code == 302
         assert "/accounts/login/" in response.url
 
+    def test_list_with_tabs_active(self, client, regular_user, space):
+        """Tab=active should show confirmed/checked_in reservations with future end_time."""
+        now = timezone.now()
+        active_reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now,
+            end_time=now + timedelta(hours=1),
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.get("/reservations/?tab=active")
+        assert response.status_code == 200
+        assert response.context["active_tab"] == "active"
+        assert active_reservation in response.context["filtered_reservations"]
+
+    def test_list_with_tabs_past(self, client, regular_user, space):
+        """Tab=past should show completed/past reservations."""
+        now = timezone.now()
+        past_reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now - timedelta(hours=2),
+            end_time=now - timedelta(hours=1),
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.get("/reservations/?tab=past")
+        assert response.status_code == 200
+        assert response.context["active_tab"] == "past"
+        assert past_reservation in response.context["filtered_reservations"]
+
+    def test_list_with_tabs_cancelled(self, client, regular_user, space):
+        """Tab=cancelled should show cancelled reservations."""
+        now = timezone.now()
+        cancelled_reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now,
+            end_time=now + timedelta(hours=1),
+            status=ReservationStatus.CANCELLED,
+        )
+
+        client.force_login(regular_user)
+        response = client.get("/reservations/?tab=cancelled")
+        assert response.status_code == 200
+        assert response.context["active_tab"] == "cancelled"
+        assert cancelled_reservation in response.context["filtered_reservations"]
+
+    def test_list_counts_are_correct(self, client, regular_user, space):
+        """Tab counts should reflect correct reservation counts."""
+        now = timezone.now()
+
+        # Active (confirmed, future end_time)
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now,
+            end_time=now + timedelta(hours=1),
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        # Past (end_time in past)
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now - timedelta(hours=2),
+            end_time=now - timedelta(hours=1),
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        # Cancelled
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=now,
+            end_time=now + timedelta(hours=1),
+            status=ReservationStatus.CANCELLED,
+        )
+
+        client.force_login(regular_user)
+        response = client.get("/reservations/")
+        assert response.status_code == 200
+        assert response.context["active_count"] == 1
+        assert response.context["past_count"] == 1
+        assert response.context["cancelled_count"] == 1
+
 
 @pytest.mark.django_db
 class TestReservationDetailView:
@@ -1571,5 +1660,445 @@ class TestReservationDetailView:
         )
 
         response = client.get(f"/reservations/{reservation.id}/")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url
+
+    def test_confirmed_reservation_shows_cancel_button(self, client, regular_user, space):
+        """Confirmed reservation should show cancel button."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.get(f"/reservations/{reservation.id}/")
+        assert response.status_code == 200
+        assert response.context["can_cancel"] is True
+
+    def test_cancelled_reservation_hides_cancel_button(self, client, regular_user, space):
+        """Cancelled reservation should hide cancel button."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CANCELLED,
+        )
+
+        client.force_login(regular_user)
+        response = client.get(f"/reservations/{reservation.id}/")
+        assert response.status_code == 200
+        assert response.context["can_cancel"] is False
+
+    def test_confirmed_reservation_within_window_shows_checkin(self, client, regular_user, space):
+        """Confirmed reservation within check-in window should show check-in button."""
+        now = timezone.now()
+        start = now
+        end = now + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.get(f"/reservations/{reservation.id}/")
+        assert response.status_code == 200
+        assert response.context["can_check_in"] is True
+
+    def test_confirmed_reservation_shows_reschedule_button(self, client, regular_user, space):
+        """Confirmed reservation should show reschedule button."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.get(f"/reservations/{reservation.id}/")
+        assert response.status_code == 200
+        assert response.context["can_reschedule"] is True
+
+
+@pytest.mark.django_db
+class TestReservationCancelView:
+    """Tests for the user-facing reservation cancel view."""
+
+    def test_owner_can_cancel_confirmed_reservation(self, client, regular_user, space):
+        """Owner should be able to cancel their confirmed reservation."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.post(f"/reservations/{reservation.id}/cancel/")
+        assert response.status_code == 302
+
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CANCELLED
+
+    def test_cancel_shows_success_message(self, client, regular_user, space):
+        """Cancel should show success message."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.post(
+            f"/reservations/{reservation.id}/cancel/",
+            follow=True,
+        )
+        assert response.status_code == 200
+        messages_list = list(response.context["messages"])
+        assert len(messages_list) == 1
+        assert "sucesso" in str(messages_list[0]).lower()
+
+    def test_non_owner_gets_404(self, client, regular_user, other_user, space):
+        """Non-owner should get 404 when trying to cancel another user's reservation."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=other_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.post(f"/reservations/{reservation.id}/cancel/")
+        assert response.status_code == 404
+
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CONFIRMED
+
+    def test_unauthenticated_user_redirected_to_login(self, client, regular_user, space):
+        """Unauthenticated users should be redirected to login."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        response = client.post(f"/reservations/{reservation.id}/cancel/")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url
+
+
+@pytest.mark.django_db
+class TestReservationRescheduleView:
+    """Tests for the user-facing reservation reschedule view."""
+
+    def test_get_renders_reschedule_form(self, client, regular_user, space):
+        """GET should render reschedule form for confirmed reservation."""
+        from datetime import datetime
+
+        from django.utils import timezone
+
+        start = timezone.make_aware(datetime(2025, 12, 25, 10, 0))
+        end = timezone.make_aware(datetime(2025, 12, 25, 12, 0))
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.get(f"/reservations/{reservation.id}/reschedule/")
+        assert response.status_code == 200
+        assert "reservations/reservation_reschedule.html" in [t.name for t in response.templates]
+        assert response.context["reservation"] == reservation
+
+    def test_valid_post_reschedules_reservation(self, client, regular_user, space):
+        """Valid POST should reschedule the reservation."""
+        from datetime import datetime
+
+        from django.utils import timezone
+
+        start = timezone.make_aware(datetime(2025, 12, 25, 10, 0))
+        end = timezone.make_aware(datetime(2025, 12, 25, 12, 0))
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.post(
+            f"/reservations/{reservation.id}/reschedule/",
+            {
+                "date": "2025-12-26",
+                "start_time": "14:00",
+                "end_time": "16:00",
+            },
+        )
+        assert response.status_code == 302
+
+        reservation.refresh_from_db()
+        assert reservation.start_time.day == 26
+        assert reservation.start_time.hour == 14
+
+    def test_reschedule_shows_success_message(self, client, regular_user, space):
+        """Reschedule should show success message."""
+        from datetime import datetime
+
+        from django.utils import timezone
+
+        start = timezone.make_aware(datetime(2025, 12, 25, 10, 0))
+        end = timezone.make_aware(datetime(2025, 12, 25, 12, 0))
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.post(
+            f"/reservations/{reservation.id}/reschedule/",
+            {
+                "date": "2025-12-26",
+                "start_time": "14:00",
+                "end_time": "16:00",
+            },
+            follow=True,
+        )
+        assert response.status_code == 200
+        messages_list = list(response.context["messages"])
+        assert len(messages_list) == 1
+        assert "sucesso" in str(messages_list[0]).lower()
+
+    def test_reschedule_conflicting_time_shows_error(self, client, regular_user, space):
+        """Reschedule to conflicting time should show error."""
+        from datetime import datetime
+
+        from django.utils import timezone
+
+        # Create first reservation at a specific future time
+        first_start = timezone.make_aware(datetime(2025, 12, 25, 10, 0))
+        first_end = timezone.make_aware(datetime(2025, 12, 25, 12, 0))
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=first_start,
+            end_time=first_end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        # Create second reservation at a different time on the same day
+        second_start = timezone.make_aware(datetime(2025, 12, 25, 14, 0))
+        second_end = timezone.make_aware(datetime(2025, 12, 25, 16, 0))
+        reservation2 = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=second_start,
+            end_time=second_end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        # Try to reschedule second reservation to overlap with first (10:00-12:00)
+        response = client.post(
+            f"/reservations/{reservation2.id}/reschedule/",
+            {
+                "date": "2025-12-25",
+                "start_time": "11:00",
+                "end_time": "13:00",
+            },
+        )
+        assert response.status_code == 200
+        assert response.context["error"]
+
+    def test_non_owner_gets_404(self, client, regular_user, other_user, space):
+        """Non-owner should get 404 when trying to reschedule another user's reservation."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=other_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.get(f"/reservations/{reservation.id}/reschedule/")
+        assert response.status_code == 404
+
+    def test_cancelled_reservation_cannot_be_rescheduled(self, client, regular_user, space):
+        """Cancelled reservation should not be reschedulable."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CANCELLED,
+        )
+
+        client.force_login(regular_user)
+        response = client.get(f"/reservations/{reservation.id}/reschedule/")
+        # Should redirect to detail page with error
+        assert response.status_code == 302
+
+    def test_unauthenticated_user_redirected_to_login(self, client, regular_user, space):
+        """Unauthenticated users should be redirected to login."""
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        response = client.get(f"/reservations/{reservation.id}/reschedule/")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url
+
+
+@pytest.mark.django_db
+class TestReservationCheckInView:
+    """Tests for the user-facing reservation check-in view."""
+
+    def test_owner_can_check_in_within_window(self, client, regular_user, space):
+        """Owner should be able to check in within valid window."""
+        now = timezone.now()
+        start = now
+        end = now + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.post(f"/reservations/{reservation.id}/check-in/")
+        assert response.status_code == 302
+
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CHECKED_IN
+        assert reservation.checked_in_at is not None
+
+    def test_check_in_shows_success_message(self, client, regular_user, space):
+        """Check-in should show success message."""
+        now = timezone.now()
+        start = now
+        end = now + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.post(
+            f"/reservations/{reservation.id}/check-in/",
+            follow=True,
+        )
+        assert response.status_code == 200
+        messages_list = list(response.context["messages"])
+        assert len(messages_list) == 1
+        assert "sucesso" in str(messages_list[0]).lower()
+
+    def test_check_in_before_window_shows_error(self, client, regular_user, space):
+        """Check-in before valid window should show error."""
+        now = timezone.now()
+        start = now + timedelta(hours=1)
+        end = start + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.post(
+            f"/reservations/{reservation.id}/check-in/",
+            follow=True,
+        )
+        assert response.status_code == 200
+        messages_list = list(response.context["messages"])
+        assert len(messages_list) == 1
+
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CONFIRMED
+
+    def test_non_owner_gets_404(self, client, regular_user, other_user, space):
+        """Non-owner should get 404 when trying to check in to another user's reservation."""
+        now = timezone.now()
+        start = now
+        end = now + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=other_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.force_login(regular_user)
+        response = client.post(f"/reservations/{reservation.id}/check-in/")
+        assert response.status_code == 404
+
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CONFIRMED
+
+    def test_unauthenticated_user_redirected_to_login(self, client, regular_user, space):
+        """Unauthenticated users should be redirected to login."""
+        now = timezone.now()
+        start = now
+        end = now + timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        response = client.post(f"/reservations/{reservation.id}/check-in/")
         assert response.status_code == 302
         assert "/accounts/login/" in response.url

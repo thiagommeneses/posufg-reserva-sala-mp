@@ -7,15 +7,31 @@
     <h1 class="text-3xl font-bold mb-6">Minhas Reservas</h1>
 
     {% if reservations %}
-    <div class="space-y-4">
-        {% for reservation in reservations %}
-        <div class="card bg-base-100 shadow-xl">
+    <div class="tabs tabs-boxed mb-6">
+        <a class="tab {% if active_tab == 'active' %}tab-active{% endif %}" href="?tab=active">
+            Ativas ({{ active_count }})
+        </a>
+        <a class="tab {% if active_tab == 'past' %}tab-active{% endif %}" href="?tab=past">
+            Passadas ({{ past_count }})
+        </a>
+        <a class="tab {% if active_tab == 'cancelled' %}tab-active{% endif %}" href="?tab=cancelled">
+            Canceladas ({{ cancelled_count }})
+        </a>
+    </div>
+
+    {% if filtered_reservations %}
+    <div class="space-y-4" id="reservation-list">
+        {% for reservation in filtered_reservations %}
+        <div class="card bg-base-100 shadow-xl" id="reservation-{{ reservation.id }}">
             <div class="card-body">
                 <div class="flex justify-between items-start">
                     <div>
                         <h2 class="card-title">{{ reservation.space.name }}</h2>
                         <p class="text-sm text-base-content/70">
                             {{ reservation.start_time|date:"d/m/Y H:i" }} — {{ reservation.end_time|date:"H:i" }}
+                        </p>
+                        <p class="text-xs text-base-content/50 mt-1">
+                            {{ reservation.space.location }}
                         </p>
                     </div>
                     <span class="badge
@@ -34,6 +50,15 @@
         </div>
         {% endfor %}
     </div>
+    {% else %}
+    <div class="alert alert-info">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span>Nenhuma reserva encontrada nesta categoria.</span>
+    </div>
+    {% endif %}
+
     {% else %}
     <div class="alert alert-info">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">

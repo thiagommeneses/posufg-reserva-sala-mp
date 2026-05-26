@@ -1,0 +1,74 @@
+{% extends "base_user.html" %}
+
+{% block title %}Reagendar Reserva — Reserva de Espaços{% endblock %}
+
+{% block user_content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6">Reagendar Reserva</h1>
+
+    <!-- Space Info Summary -->
+    <div class="card card-compact bg-base-200 mb-6">
+        <div class="card-body">
+            <h2 class="card-title text-lg">{{ reservation.space.name }}</h2>
+            <p class="text-sm text-base-content/70">{{ reservation.space.location }}</p>
+            <div class="flex gap-2 mt-2">
+                <span class="badge badge-outline">Capacidade: {{ reservation.space.capacity }}</span>
+                <span class="badge badge-outline">
+                    Atual: {{ reservation.start_time|date:"d/m/Y H:i" }} — {{ reservation.end_time|date:"H:i" }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reschedule Form -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h3 class="card-title text-xl mb-4">Novo Horário</h3>
+
+            {% if error %}
+            <div class="alert alert-error mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <form method="post" action="{% url 'reservation_reschedule' reservation.id %}">
+                {% csrf_token %}
+
+                <div class="form-control mb-4">
+                    <label class="label" for="date">
+                        <span class="label-text">Data</span>
+                    </label>
+                    <input type="date" id="date" name="date" class="input input-bordered w-full"
+                           value="{{ prefill_date }}" required>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="form-control">
+                        <label class="label" for="start_time">
+                            <span class="label-text">Horário de Início</span>
+                        </label>
+                        <input type="time" id="start_time" name="start_time" class="input input-bordered w-full"
+                               value="{{ prefill_start_time }}" required>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label" for="end_time">
+                            <span class="label-text">Horário de Término</span>
+                        </label>
+                        <input type="time" id="end_time" name="end_time" class="input input-bordered w-full"
+                               value="{{ prefill_end_time }}" required>
+                    </div>
+                </div>
+
+                <div class="card-actions justify-between">
+                    <a href="{% url 'reservation_detail' reservation.id %}" class="btn btn-ghost">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Confirmar Reagendamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

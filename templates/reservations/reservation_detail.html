@@ -22,19 +22,64 @@
 
             <div class="space-y-2 mb-6">
                 <p><strong>Espaço:</strong> {{ reservation.space.name }}</p>
-                <p><strong>Capacidade:</strong> {{ reservation.space.capacity }}</p>
+                <p><strong>Capacidade:</strong> {{ reservation.space.capacity }} pessoas</p>
                 <p><strong>Localização:</strong> {{ reservation.space.location }}</p>
                 <p><strong>Início:</strong> {{ reservation.start_time|date:"d/m/Y H:i" }}</p>
                 <p><strong>Término:</strong> {{ reservation.end_time|date:"d/m/Y H:i" }}</p>
                 <p><strong>Status:</strong> {{ reservation.get_status_display }}</p>
                 {% if reservation.checked_in_at %}
-                <p><strong>Check-in:</strong> {{ reservation.checked_in_at|date:"d/m/Y H:i" }}</p>
+                <p><strong>Check-in realizado:</strong> {{ reservation.checked_in_at|date:"d/m/Y H:i" }}</p>
                 {% endif %}
             </div>
 
-            <div class="card-actions justify-end">
+            <div class="divider"></div>
+
+            <div class="card-actions justify-between">
                 <a href="{% url 'reservation_list' %}" class="btn btn-ghost">← Voltar</a>
+
+                <div class="flex gap-2">
+                    {% if can_check_in %}
+                    <form method="post" action="{% url 'reservation_checkin' reservation.id %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success"
+                                hx-confirm="Confirmar check-in nesta reserva?"
+                                hx-post="{% url 'reservation_checkin' reservation.id %}"
+                                hx-swap="outerHTML"
+                                hx-target="#reservation-actions">
+                            Fazer Check-in
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {% if can_reschedule %}
+                    <a href="{% url 'reservation_reschedule' reservation.id %}" class="btn btn-warning">
+                        Reagendar
+                    </a>
+                    {% endif %}
+
+                    {% if can_cancel %}
+                    <form method="post" action="{% url 'reservation_cancel' reservation.id %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-error"
+                                hx-confirm="Tem certeza que deseja cancelar esta reserva?"
+                                hx-post="{% url 'reservation_cancel' reservation.id %}"
+                                hx-swap="outerHTML"
+                                hx-target="#reservation-actions">
+                            Cancelar
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
             </div>
+
+            {% if error %}
+            <div class="alert alert-error mt-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

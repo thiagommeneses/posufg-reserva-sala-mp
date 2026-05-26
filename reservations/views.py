@@ -6,6 +6,7 @@ import django_filters
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from rest_framework import permissions, serializers, status, viewsets
@@ -14,9 +15,10 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from reservations.models import MaintenanceBlock, Reservation
+from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 from reservations.serializers import MaintenanceBlockSerializer, ReservationSerializer
 from reservations.services import (
+    CHECK_IN_WINDOW_MINUTES,
     OwnershipError,
     cancel_reservation,
     check_in_reservation,
@@ -222,12 +224,60 @@ class ReservationListView(LoginRequiredMixin, View):
     template_name = "reservations/reservation_list.html"
 
     def get(self, request):
-        """Render the user's reservations."""
+        """Render the user's reservations with tab filtering."""
         reservations = Reservation.objects.filter(user=request.user).order_by("-start_time")
+
+        now = datetime.datetime.now(datetime.UTC)
+
+        # Calculate counts for tabs
+        active_count = reservations.filter(
+            status__in=[ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN],
+            end_time__gte=now,
+        ).count()
+
+        past_count = reservations.filter(
+            models.Q(end_time__lt=now)
+            | models.Q(status__in=[ReservationStatus.COMPLETED, ReservationStatus.NO_SHOW]),
+        ).count()
+
+        cancelled_count = reservations.filter(
+            status=ReservationStatus.CANCELLED,
+        ).count()
+
+        # Determine active tab
+        active_tab = request.GET.get("tab", "active")
+        if active_tab not in ["active", "past", "cancelled"]:
+            active_tab = "active"
+
+        # Filter reservations based on tab
+        if active_tab == "active":
+            filtered_reservations = reservations.filter(
+                status__in=[ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN],
+                end_time__gte=now,
+            )
+        elif active_tab == "past":
+            filtered_reservations = reservations.filter(
+                models.Q(end_time__lt=now)
+                | models.Q(
+                    status__in=[ReservationStatus.COMPLETED, ReservationStatus.NO_SHOW],
+                ),
+            )
+        else:  # cancelled
+            filtered_reservations = reservations.filter(
+                status=ReservationStatus.CANCELLED,
+            )
+
         return render(
             request,
             self.template_name,
-            {"reservations": reservations},
+            {
+                "reservations": reservations,
+                "filtered_reservations": filtered_reservations,
+                "active_tab": active_tab,
+                "active_count": active_count,
+                "past_count": past_count,
+                "cancelled_count": cancelled_count,
+            },
         )
 
 
@@ -237,16 +287,42 @@ class ReservationDetailView(LoginRequiredMixin, View):
     template_name = "reservations/reservation_detail.html"
 
     def get(self, request, pk):
-        """Render the reservation detail page."""
+        """Render the reservation detail page with action buttons context."""
         reservation = get_object_or_404(
             Reservation,
             pk=pk,
             user=request.user,
         )
+
+        now = datetime.datetime.now(datetime.UTC)
+
+        # Determine which actions are available
+        can_cancel = reservation.status in {
+            ReservationStatus.CONFIRMED,
+            ReservationStatus.CHECKED_IN,
+        }
+
+        can_check_in = (
+            reservation.status == ReservationStatus.CONFIRMED
+            and reservation.start_time - datetime.timedelta(minutes=CHECK_IN_WINDOW_MINUTES)
+            <= now
+            <= reservation.end_time
+        )
+
+        can_reschedule = reservation.status in {
+            ReservationStatus.CONFIRMED,
+            ReservationStatus.CHECKED_IN,
+        }
+
         return render(
             request,
             self.template_name,
-            {"reservation": reservation},
+            {
+                "reservation": reservation,
+                "can_cancel": can_cancel,
+                "can_check_in": can_check_in,
+                "can_reschedule": can_reschedule,
+            },
         )
 
 
@@ -317,6 +393,145 @@ class ReservationCreateView(LoginRequiredMixin, View):
         except ValidationError as exc:
             context = {
                 "space": space,
+                "error": str(exc),
+                "prefill_date": date_str,
+                "prefill_start_time": start_time_str,
+                "prefill_end_time": end_time_str,
+            }
+            return render(request, self.template_name, context)
+
+    @staticmethod
+    def _parse_datetime(date_str: str, time_str: str) -> datetime.datetime:
+        """Combine date and time strings into a timezone-aware datetime."""
+        if not date_str or not time_str:
+            raise ValueError("Missing date or time")
+        dt = datetime.datetime.strptime(
+            f"{date_str} {time_str}",
+            "%Y-%m-%d %H:%M",
+        )
+        return dt.replace(tzinfo=datetime.UTC)
+
+
+class ReservationCancelView(LoginRequiredMixin, View):
+    """View for canceling a reservation via web interface."""
+
+    def post(self, request, pk):
+        """Cancel the reservation and redirect with success message."""
+        reservation = get_object_or_404(Reservation, pk=pk, user=request.user)
+
+        try:
+            cancel_reservation(reservation, request.user)
+            messages.success(request, "Reserva cancelada com sucesso!")
+        except OwnershipError:
+            messages.error(request, "Você não tem permissão para cancelar esta reserva.")
+        except ValidationError as exc:
+            messages.error(request, str(exc))
+
+        # Check if this is an HTMX request
+        if request.headers.get("HX-Request"):
+            return render(
+                request,
+                "reservations/reservation_detail.html",
+                {
+                    "reservation": reservation,
+                    "can_cancel": False,
+                    "can_check_in": False,
+                    "can_reschedule": False,
+                },
+            )
+
+        return redirect("reservation_detail", pk=pk)
+
+
+class ReservationCheckInView(LoginRequiredMixin, View):
+    """View for checking in to a reservation via web interface."""
+
+    def post(self, request, pk):
+        """Check in to the reservation and redirect with success message."""
+        reservation = get_object_or_404(Reservation, pk=pk, user=request.user)
+
+        try:
+            check_in_reservation(reservation, request.user)
+            messages.success(request, "Check-in realizado com sucesso!")
+        except OwnershipError:
+            messages.error(request, "Você não tem permissão para fazer check-in nesta reserva.")
+        except ValidationError as exc:
+            messages.error(request, str(exc))
+
+        # Check if this is an HTMX request
+        if request.headers.get("HX-Request"):
+            return render(
+                request,
+                "reservations/reservation_detail.html",
+                {
+                    "reservation": reservation,
+                    "can_cancel": reservation.status
+                    in {ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN},
+                    "can_check_in": False,
+                    "can_reschedule": reservation.status
+                    in {ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN},
+                },
+            )
+
+        return redirect("reservation_detail", pk=pk)
+
+
+class ReservationRescheduleView(LoginRequiredMixin, View):
+    """View for rescheduling a reservation via web interface."""
+
+    template_name = "reservations/reservation_reschedule.html"
+
+    def get(self, request, pk):
+        """Render the reschedule form."""
+        reservation = get_object_or_404(Reservation, pk=pk, user=request.user)
+
+        # Only allow rescheduling confirmed or checked-in reservations
+        if reservation.status not in {
+            ReservationStatus.CONFIRMED,
+            ReservationStatus.CHECKED_IN,
+        }:
+            messages.error(request, "Esta reserva não pode ser reagendada.")
+            return redirect("reservation_detail", pk=pk)
+
+        context = {
+            "reservation": reservation,
+            "prefill_date": reservation.start_time.strftime("%Y-%m-%d"),
+            "prefill_start_time": reservation.start_time.strftime("%H:%M"),
+            "prefill_end_time": reservation.end_time.strftime("%H:%M"),
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, pk):
+        """Process the reschedule form."""
+        reservation = get_object_or_404(Reservation, pk=pk, user=request.user)
+
+        date_str = request.POST.get("date", "").strip()
+        start_time_str = request.POST.get("start_time", "").strip()
+        end_time_str = request.POST.get("end_time", "").strip()
+
+        try:
+            start_time = self._parse_datetime(date_str, start_time_str)
+            end_time = self._parse_datetime(date_str, end_time_str)
+        except ValueError:
+            context = {
+                "reservation": reservation,
+                "error": "Formato de data ou hora inválido.",
+                "prefill_date": date_str,
+                "prefill_start_time": start_time_str,
+                "prefill_end_time": end_time_str,
+            }
+            return render(request, self.template_name, context)
+
+        try:
+            reschedule_reservation(reservation, request.user, start_time, end_time)
+            messages.success(request, "Reserva reagendada com sucesso!")
+            return redirect("reservation_detail", pk=pk)
+        except OwnershipError:
+            messages.error(request, "Você não tem permissão para reagendar esta reserva.")
+            return redirect("reservation_detail", pk=pk)
+        except ValidationError as exc:
+            context = {
+                "reservation": reservation,
                 "error": str(exc),
                 "prefill_date": date_str,
                 "prefill_start_time": start_time_str,

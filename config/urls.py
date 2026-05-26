@@ -19,9 +19,12 @@ from django.contrib import admin
 from django.urls import include, path
 
 from reservations.views import (
+    ReservationCancelView,
+    ReservationCheckInView,
     ReservationCreateView,
     ReservationDetailView,
     ReservationListView,
+    ReservationRescheduleView,
 )
 from spaces.views import SpaceDetailView, SpaceListView
 
@@ -37,5 +40,18 @@ urlpatterns = [
     path("reservations/", ReservationListView.as_view(), name="reservation_list"),
     path("reservations/new/", ReservationCreateView.as_view(), name="reservation_create"),
     path("reservations/<int:pk>/", ReservationDetailView.as_view(), name="reservation_detail"),
+    path(
+        "reservations/<int:pk>/cancel/", ReservationCancelView.as_view(), name="reservation_cancel"
+    ),
+    path(
+        "reservations/<int:pk>/reschedule/",
+        ReservationRescheduleView.as_view(),
+        name="reservation_reschedule",
+    ),
+    path(
+        "reservations/<int:pk>/check-in/",
+        ReservationCheckInView.as_view(),
+        name="reservation_checkin",
+    ),
     path("", include("core.urls")),
 ]
