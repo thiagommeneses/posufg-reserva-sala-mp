@@ -394,3 +394,20 @@ Task: Implement user reservation listing with filtering (prd.json item 14)
 - Ran `uv run ruff format --check .` and all files formatted
 - Ran `uv run pytest` and 114 tests passed with 97.75% coverage (above 80% threshold)
 - Updated prd.json: set passes to true for completed item
+
+Task: Implement user-facing space search page (prd.json item 15)
+- Created SpaceListView (ListView) with LoginRequiredMixin at /spaces/
+- Implemented filter form using DaisyUI components: min_capacity (number input), location (text input), attributes (checkboxes)
+- Created template spaces/space_list.html extending base_user.html with DaisyUI card layout for filter form
+- Created partial template spaces/_space_list_results.html for HTMX swap target
+- Implemented HTMX hx-get with hx-target for filter submission (partial page update without reload)
+- Added DaisyUI loading indicator (htmx-indicator) during HTMX requests
+- Display space cards using DaisyUI card component with name, capacity (badge), location, attributes (badge outline)
+- Connected SpaceListView URL pattern in config/urls.py at /spaces/
+- Wrote 8 tests in TestSpaceListView covering: authenticated user gets 200, unauthenticated redirected to login, filter by min_capacity, filter by location, filter by attributes, HTMX request returns partial, context includes attributes, context includes selected filters, inactive spaces excluded
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 123 tests passed with 97.77% coverage (above 80% threshold)
+- Committed: feat(spaces): implement user-facing space search page with HTMX filtering
+- Files changed: spaces/views.py, templates/spaces/space_list.html, templates/spaces/_space_list_results.html, config/urls.py, spaces/tests.py
+- Updated prd.json: set passes to true for completed item
