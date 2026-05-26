@@ -1155,3 +1155,132 @@ class TestMaintenanceBlockApi:
         response = api_client.delete(f"/api/admin/maintenance-blocks/{block.id}/")
         assert response.status_code == 204
         assert not MaintenanceBlock.objects.filter(id=block.id).exists()
+
+
+class TestOccupancyApi:
+    """Tests for the admin occupancy endpoint."""
+
+    def test_admin_can_view_occupancy(self, api_client, admin_user, regular_user, space):
+        """Admin should be able to view occupancy for a given date."""
+        api_client.force_authenticate(user=admin_user)
+        today = timezone.now().date()
+
+        reservation = Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=timezone.now(),
+            end_time=timezone.now() + timedelta(hours=1),
+        )
+
+        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        assert response.status_code == 200
+        assert response.data["date"] == today.isoformat()
+        assert len(response.data["spaces"]) >= 1
+
+        space_data = next(s for s in response.data["spaces"] if s["id"] == space.id)
+        assert space_data["name"] == space.name
+        assert space_data["capacity"] == space.capacity
+        assert space_data["location"] == space.location
+        assert len(space_data["reservations"]) == 1
+        assert space_data["reservations"][0]["id"] == reservation.id
+        assert space_data["reservations"][0]["status"] == ReservationStatus.CONFIRMED
+
+    def test_non_admin_gets_403_on_occupancy(self, api_client, regular_user):
+        """Non-admin should get 403 when viewing occupancy."""
+        api_client.force_authenticate(user=regular_user)
+        today = timezone.now().date()
+        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        assert response.status_code in (401, 403)
+
+    def test_occupancy_includes_all_spaces(self, api_client, admin_user, space):
+        """Response should include all spaces even if they have no reservations."""
+        api_client.force_authenticate(user=admin_user)
+        today = timezone.now().date()
+
+        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        assert response.status_code == 200
+
+        space_ids = [s["id"] for s in response.data["spaces"]]
+        assert space.id in space_ids
+
+        space_data = next(s for s in response.data["spaces"] if s["id"] == space.id)
+        assert space_data["reservations"] == []
+        assert space_data["maintenance_blocks"] == []
+
+    def test_occupancy_requires_date_parameter(self, api_client, admin_user):
+        """Occupancy endpoint should require date parameter."""
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get("/api/admin/occupancy/")
+        assert response.status_code == 400
+        assert "date" in str(response.data).lower()
+
+    def test_occupancy_validates_date_format(self, api_client, admin_user):
+        """Occupancy endpoint should validate date format."""
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get("/api/admin/occupancy/?date=invalid")
+        assert response.status_code == 400
+        assert "invalid" in str(response.data).lower()
+
+    def test_occupancy_includes_maintenance_blocks(self, api_client, admin_user, space):
+        """Occupancy should include maintenance blocks for the date."""
+        api_client.force_authenticate(user=admin_user)
+        today = timezone.now().date()
+
+        MaintenanceBlock.objects.create(
+            space=space,
+            start_time=timezone.now(),
+            end_time=timezone.now() + timedelta(hours=2),
+            reason="Cleaning",
+            created_by=admin_user,
+        )
+
+        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        assert response.status_code == 200
+
+        space_data = next(s for s in response.data["spaces"] if s["id"] == space.id)
+        assert len(space_data["maintenance_blocks"]) == 1
+        assert space_data["maintenance_blocks"][0]["reason"] == "Cleaning"
+
+    def test_occupancy_shows_reservation_status(self, api_client, admin_user, regular_user, space):
+        """Occupancy should distinguish reservation statuses."""
+        api_client.force_authenticate(user=admin_user)
+        today = timezone.now().date()
+
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=timezone.now(),
+            end_time=timezone.now() + timedelta(hours=1),
+            status=ReservationStatus.CHECKED_IN,
+        )
+
+        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        assert response.status_code == 200
+
+        space_data = next(s for s in response.data["spaces"] if s["id"] == space.id)
+        assert space_data["reservations"][0]["status"] == ReservationStatus.CHECKED_IN
+
+    def test_occupancy_filters_by_date(self, api_client, admin_user, regular_user, space):
+        """Occupancy should only return reservations overlapping the given date."""
+        api_client.force_authenticate(user=admin_user)
+        today = timezone.now().date()
+        tomorrow = today + timedelta(days=1)
+
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=timezone.now() + timedelta(days=1),
+            end_time=timezone.now() + timedelta(days=1, hours=1),
+        )
+
+        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        assert response.status_code == 200
+
+        space_data = next(s for s in response.data["spaces"] if s["id"] == space.id)
+        assert len(space_data["reservations"]) == 0
+
+        response = api_client.get(f"/api/admin/occupancy/?date={tomorrow.isoformat()}")
+        assert response.status_code == 200
+
+        space_data = next(s for s in response.data["spaces"] if s["id"] == space.id)
+        assert len(space_data["reservations"]) == 1
