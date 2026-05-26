@@ -178,7 +178,7 @@
       "Write tests: already cancelled reservation is NOT affected",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

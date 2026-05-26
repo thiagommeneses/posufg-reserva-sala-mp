@@ -341,3 +341,16 @@ Task: Implement check-in mechanism (prd.json item 10)
 - Ran `uv run pytest` and 90 tests passed with 98.13% coverage (above 80% threshold)
 - Committed: feat(reservations): implement check-in mechanism
 - Files changed: reservations/services.py, reservations/views.py, reservations/tests.py, prd.json, .ralph-workflow/progress.txt
+
+Task: Implement auto-release of no-show reservations (prd.json item 11)
+- Added `auto_release_no_shows` service function to reservations/services.py with configurable threshold_minutes
+- Service queries confirmed reservations where start_time + threshold < now and no check-in, marks them as NO_SHOW
+- Service returns count of released reservations
+- Created `release_no_shows` management command in reservations/management/commands/release_no_shows.py
+- Management command supports optional `--threshold` argument
+- Wrote 4 tests covering: past threshold without check-in marked no_show, within threshold not affected, checked_in not affected, cancelled not affected
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 94 tests passed with 97.41% coverage (above 80% threshold)
+- Committed: feat(reservations): implement auto-release of no-show reservations
+- Files changed: reservations/services.py, reservations/tests.py, reservations/management/__init__.py, reservations/management/commands/__init__.py, reservations/management/commands/release_no_shows.py, prd.json, .ralph-workflow/progress.txt
