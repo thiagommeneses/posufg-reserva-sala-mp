@@ -278,7 +278,7 @@
       "Write tests: unauthenticated user is redirected to login",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

@@ -438,3 +438,20 @@ Task: Implement user-facing space detail and availability page (prd.json item 16
 - Committed: feat(spaces): implement user-facing space detail and availability page
 - Files changed: spaces/views.py, config/urls.py, templates/spaces/space_detail.html, templates/spaces/_availability.html, spaces/tests.py
 - Updated prd.json: set passes to true for completed item
+
+Task: Implement user-facing reservation creation page (prd.json item 16)
+- Created ReservationCreateView in reservations/views.py with LoginRequiredMixin at /reservations/new/
+- GET renders form with space pre-filled from ?space={id} and date/time pre-filled from ?start={ISO}
+- POST calls create_reservation service; on success redirects to reservation detail with success message
+- On conflict (ValidationError), re-renders form with DaisyUI alert-error showing error message
+- Created template reservations/reservation_form.html extending base_user.html with DaisyUI card, form-control inputs, btn-primary submit
+- Added minimal placeholder ReservationListView and ReservationDetailView for redirect/navigation targets
+- Created templates reservations/reservation_list.html and reservations/reservation_detail.html with DaisyUI card components
+- Added URL patterns in config/urls.py: /reservations/, /reservations/new/, /reservations/{id}/
+- Wrote 12 tests covering: GET renders form with space pre-selected, GET prefills start time from query, valid POST creates reservation and redirects, conflicting POST re-renders with error, unauthenticated redirect, inactive space POST returns 404, invalid date format shows error, list view shows own reservations, detail view for owner, detail 404 for non-owner, unauthenticated list/detail redirects
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 143 tests passed with 98.33% coverage (above 80% threshold)
+- Committed: feat(reservations): implement user-facing reservation creation page
+- Files changed: reservations/views.py, config/urls.py, templates/reservations/reservation_form.html, templates/reservations/reservation_list.html, templates/reservations/reservation_detail.html, reservations/tests.py, prd.json, .ralph-workflow/progress.txt
+- Updated prd.json: set passes to true for completed item
