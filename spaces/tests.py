@@ -340,6 +340,102 @@ class TestSpaceAvailability:
 
 
 @pytest.mark.django_db
+class TestSpaceDetailView:
+    """Tests for the user-facing space detail view."""
+
+    def test_page_renders_with_space_info_and_availability(
+        self, client, regular_user, space_with_tv
+    ):
+        """Page should render with space info and availability data."""
+        client.force_login(regular_user)
+        response = client.get(f"/spaces/{space_with_tv.id}/")
+        assert response.status_code == 200
+        assert "spaces/space_detail.html" in [t.name for t in response.templates]
+        assert response.context["space"] == space_with_tv
+        assert "availability" in response.context
+        assert "selected_date" in response.context
+
+    def test_htmx_request_returns_partial(self, client, regular_user, space_with_tv):
+        """HTMX request should return partial template with availability."""
+        from datetime import date
+
+        client.force_login(regular_user)
+        today = date.today().isoformat()
+        response = client.get(f"/spaces/{space_with_tv.id}/?date={today}", HTTP_HX_REQUEST="true")
+        assert response.status_code == 200
+        assert "spaces/_availability.html" in [t.name for t in response.templates]
+        assert "base.html" not in [t.name for t in response.templates]
+
+    def test_unauthenticated_user_redirected_to_login(self, client, space_with_tv):
+        """Unauthenticated users should be redirected to login."""
+        response = client.get(f"/spaces/{space_with_tv.id}/")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url
+
+    def test_default_date_is_today(self, client, regular_user, space_with_tv):
+        """Default selected_date should be today when no date param provided."""
+        from datetime import date
+
+        client.force_login(regular_user)
+        response = client.get(f"/spaces/{space_with_tv.id}/")
+        assert response.status_code == 200
+        assert response.context["selected_date"] == date.today()
+
+    def test_custom_date_from_query_param(self, client, regular_user, space_with_tv):
+        """Selected date should come from query parameter."""
+        from datetime import date
+
+        client.force_login(regular_user)
+        custom_date = "2025-12-25"
+        response = client.get(f"/spaces/{space_with_tv.id}/?date={custom_date}")
+        assert response.status_code == 200
+        assert response.context["selected_date"] == date(2025, 12, 25)
+
+    def test_invalid_date_defaults_to_today(self, client, regular_user, space_with_tv):
+        """Invalid date format should default to today."""
+        from datetime import date
+
+        client.force_login(regular_user)
+        response = client.get(f"/spaces/{space_with_tv.id}/?date=invalid-date")
+        assert response.status_code == 200
+        assert response.context["selected_date"] == date.today()
+
+    def test_availability_reflects_reservations(self, client, regular_user, space_with_tv):
+        """Availability should show occupied slots from reservations."""
+        from datetime import date, datetime, time
+
+        from django.utils import timezone
+
+        client.force_login(regular_user)
+        today = date.today()
+        start = timezone.make_aware(datetime.combine(today, time(10, 0)))
+        end = timezone.make_aware(datetime.combine(today, time(12, 0)))
+        Reservation.objects.create(
+            space=space_with_tv,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        response = client.get(f"/spaces/{space_with_tv.id}/")
+        assert response.status_code == 200
+        availability = response.context["availability"]
+        assert len(availability["occupied"]) == 1
+        assert availability["occupied"][0]["type"] == "reservation"
+
+    def test_inactive_space_returns_404(self, client, regular_user):
+        """Inactive spaces should return 404."""
+        inactive_space = Space.objects.create(
+            name="Inactive Room",
+            capacity=10,
+            location="Test",
+            is_active=False,
+        )
+        client.force_login(regular_user)
+        response = client.get(f"/spaces/{inactive_space.id}/")
+        assert response.status_code == 404
+
+
+@pytest.mark.django_db
 class TestSpaceListView:
     """Tests for the user-facing space list view."""
 

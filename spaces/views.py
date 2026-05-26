@@ -1,8 +1,10 @@
 """Views for the spaces app."""
 
+import datetime
+
 import django_filters
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import ListView
+from django.views.generic import DetailView, ListView
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -121,4 +123,44 @@ class SpaceListView(LoginRequiredMixin, ListView):
         """Return partial template for HTMX requests."""
         if self.request.headers.get("HX-Request") == "true":
             return ["spaces/_space_list_results.html"]
+        return [self.template_name]
+
+
+class SpaceDetailView(LoginRequiredMixin, DetailView):
+    """Detail view for a space showing info and availability calendar."""
+
+    model = Space
+    template_name = "spaces/space_detail.html"
+    context_object_name = "space"
+
+    def get_queryset(self):
+        """Prefetch related attributes for the space."""
+        return Space.objects.filter(is_active=True).prefetch_related("space_attributes__attribute")
+
+    def get_context_data(self, **kwargs):
+        """Add availability data and selected date to context."""
+        context = super().get_context_data(**kwargs)
+        space = self.get_object()
+
+        # Get date from query param or default to today
+        date_str = self.request.GET.get("date")
+        if date_str:
+            try:
+                from datetime import datetime as _dt
+
+                selected_date = _dt.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                selected_date = datetime.date.today()
+        else:
+            selected_date = datetime.date.today()
+
+        context["selected_date"] = selected_date
+        context["availability"] = get_availability_for_date(space, selected_date)
+        context["is_htmx"] = self.request.headers.get("HX-Request") == "true"
+        return context
+
+    def get_template_names(self):
+        """Return partial template for HTMX requests."""
+        if self.request.headers.get("HX-Request") == "true":
+            return ["spaces/_availability.html"]
         return [self.template_name]

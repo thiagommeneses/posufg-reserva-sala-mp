@@ -1,0 +1,68 @@
+{% if availability.free or availability.occupied %}
+<div class="space-y-4">
+    <!-- Legend -->
+    <div class="flex flex-wrap gap-4 text-sm mb-4">
+        <div class="flex items-center gap-2">
+            <span class="w-4 h-4 rounded bg-success"></span>
+            <span>Disponível</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="w-4 h-4 rounded bg-error"></span>
+            <span>Ocupado (Reserva)</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="w-4 h-4 rounded bg-warning"></span>
+            <span>Manutenção</span>
+        </div>
+    </div>
+
+    <!-- Time Slots -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {% for slot in availability.free %}
+        <a 
+            href="/reservations/new/?space={{ space.id }}&start={{ slot.start }}"
+            class="btn btn-success btn-sm h-auto py-3 flex flex-col items-center justify-center gap-1 hover:btn-success-content"
+        >
+            <span class="text-xs opacity-75">Disponível</span>
+            <span class="font-semibold">
+                {{ slot.start|slice:"11:16" }} - {{ slot.end|slice:"11:16" }}
+            </span>
+        </a>
+        {% endfor %}
+
+        {% for slot in availability.occupied %}
+        {% if slot.type == "reservation" %}
+        <button class="btn btn-error btn-sm h-auto py-3 flex flex-col items-center justify-center gap-1 cursor-not-allowed" disabled>
+            <span class="text-xs opacity-75">Reservado</span>
+            <span class="font-semibold">
+                {{ slot.start|slice:"11:16" }} - {{ slot.end|slice:"11:16" }}
+            </span>
+        </button>
+        {% else %}
+        <button class="btn btn-warning btn-sm h-auto py-3 flex flex-col items-center justify-center gap-1 cursor-not-allowed" disabled>
+            <span class="text-xs opacity-75">Manutenção</span>
+            <span class="font-semibold">
+                {{ slot.start|slice:"11:16" }} - {{ slot.end|slice:"11:16" }}
+            </span>
+        </button>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    {% if not availability.free %}
+    <div class="alert alert-info">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span>Não há horários disponíveis para esta data. Tente selecionar outra data.</span>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    <span>Selecione uma data para ver a disponibilidade.</span>
+</div>
+{% endif %}

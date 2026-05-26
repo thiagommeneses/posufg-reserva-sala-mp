@@ -1,0 +1,70 @@
+{% extends "base_user.html" %}
+
+{% block title %}{{ space.name }} - Reserva de Espaços{% endblock %}
+
+{% block user_content %}
+<div class="mb-8">
+    <!-- Space Info Card -->
+    <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+            <h1 class="card-title text-3xl">{{ space.name }}</h1>
+            
+            <div class="flex flex-wrap gap-2 mb-4">
+                <span class="badge badge-primary badge-lg">Capacidade: {{ space.capacity }}</span>
+                <span class="badge badge-secondary badge-lg">{{ space.location }}</span>
+            </div>
+            
+            {% if space.description %}
+            <p class="text-base-content/70 mb-4">{{ space.description }}</p>
+            {% endif %}
+            
+            {% with attrs=space.space_attributes.all %}
+            {% if attrs %}
+            <div class="flex flex-wrap gap-2">
+                {% for space_attr in attrs %}
+                <span class="badge badge-outline">{{ space_attr.attribute.name }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+
+    <!-- Availability Section -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="card-title text-2xl mb-4">Disponibilidade</h2>
+            
+            <!-- Date Selector -->
+            <div class="form-control mb-6">
+                <label class="label">
+                    <span class="label-text">Selecione a data</span>
+                </label>
+                <input 
+                    type="date" 
+                    name="date"
+                    value="{{ selected_date|date:'Y-m-d' }}"
+                    class="input input-bordered w-full max-w-xs"
+                    hx-get="{% url 'space_detail' space.id %}"
+                    hx-target="#availability-content"
+                    hx-trigger="change"
+                    hx-indicator="#availability-loading"
+                >
+                <span id="availability-loading" class="htmx-indicator loading loading-spinner loading-sm mt-2"></span>
+            </div>
+
+            <!-- Availability Content -->
+            <div id="availability-content">
+                {% include "spaces/_availability.html" %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Back Link -->
+    <div class="mt-6">
+        <a href="{% url 'space_list' %}" class="btn btn-ghost">
+            ← Voltar para lista de espaços
+        </a>
+    </div>
+</div>
+{% endblock %}

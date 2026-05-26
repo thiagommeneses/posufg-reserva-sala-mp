@@ -18,7 +18,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
-from spaces.views import SpaceListView
+from spaces.views import SpaceDetailView, SpaceListView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -28,5 +28,6 @@ urlpatterns = [
     path("api/", include("rest_framework.urls", namespace="rest_framework")),
     path("accounts/", include("accounts.urls", namespace="accounts")),
     path("spaces/", SpaceListView.as_view(), name="space_list"),
+    path("spaces/<int:pk>/", SpaceDetailView.as_view(), name="space_detail"),
     path("", include("core.urls")),
 ]
