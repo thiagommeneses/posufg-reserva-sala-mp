@@ -337,3 +337,98 @@ class TestSpaceAvailability:
         assert response.status_code == 200
         assert response.data["occupied"] == []
         assert len(response.data["free"]) == 1  # entire day free
+
+
+@pytest.mark.django_db
+class TestSpaceListView:
+    """Tests for the user-facing space list view."""
+
+    def test_authenticated_user_gets_200(self, client, regular_user):
+        """Authenticated users should see the space list page."""
+        client.force_login(regular_user)
+        response = client.get("/spaces/")
+        assert response.status_code == 200
+        assert "spaces/space_list.html" in [t.name for t in response.templates]
+
+    def test_unauthenticated_user_redirected_to_login(self, client):
+        """Unauthenticated users should be redirected to login."""
+        response = client.get("/spaces/")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url
+
+    def test_filter_by_min_capacity(self, client, regular_user, space_with_tv, small_space):
+        """Filtering by min_capacity should return only matching spaces."""
+        client.force_login(regular_user)
+        response = client.get("/spaces/?min_capacity=6")
+        assert response.status_code == 200
+        spaces = response.context["spaces"]
+        assert space_with_tv in spaces
+        assert small_space not in spaces
+
+    def test_filter_by_location(self, client, regular_user, space_with_tv, small_space):
+        """Filtering by location should return only matching spaces."""
+        client.force_login(regular_user)
+        response = client.get("/spaces/?location=building+a")
+        assert response.status_code == 200
+        spaces = response.context["spaces"]
+        assert space_with_tv in spaces
+        assert small_space not in spaces
+
+    def test_filter_by_attributes(self, client, regular_user, space_with_tv, small_space):
+        """Filtering by attributes should return only matching spaces."""
+        client.force_login(regular_user)
+        response = client.get("/spaces/?attributes=TV")
+        assert response.status_code == 200
+        spaces = response.context["spaces"]
+        assert space_with_tv in spaces
+        assert small_space not in spaces
+
+    def test_htmx_request_returns_partial(self, client, regular_user, space_with_tv):
+        """HTMX requests should return the partial template without base layout."""
+        client.force_login(regular_user)
+        response = client.get("/spaces/", HTTP_HX_REQUEST="true")
+        assert response.status_code == 200
+        assert "spaces/_space_list_results.html" in [t.name for t in response.templates]
+        assert "base.html" not in [t.name for t in response.templates]
+
+    def test_context_includes_attributes(self, client, regular_user):
+        """Context should include all attributes for the filter checkboxes."""
+        attr1 = Attribute.objects.create(name="TV")
+        attr2 = Attribute.objects.create(name="Projector")
+        client.force_login(regular_user)
+        response = client.get("/spaces/")
+        assert response.status_code == 200
+        assert "attributes" in response.context
+        attributes = list(response.context["attributes"])
+        assert attr1 in attributes
+        assert attr2 in attributes
+
+    def test_context_includes_selected_filters(self, client, regular_user):
+        """Context should include selected filter values."""
+        client.force_login(regular_user)
+        response = client.get("/spaces/?min_capacity=5&location=Building&attributes=TV")
+        assert response.status_code == 200
+        assert response.context["min_capacity"] == "5"
+        assert response.context["location"] == "Building"
+        assert response.context["selected_attributes"] == "TV"
+
+    def test_inactive_spaces_excluded(self, client, regular_user):
+        """Inactive spaces should not appear in the list."""
+        Space.objects.create(
+            name="Inactive Room",
+            capacity=10,
+            location="Test",
+            is_active=False,
+        )
+        active_space = Space.objects.create(
+            name="Active Room",
+            capacity=10,
+            location="Test",
+            is_active=True,
+        )
+        client.force_login(regular_user)
+        response = client.get("/spaces/")
+        assert response.status_code == 200
+        spaces = list(response.context["spaces"])
+        assert active_space in spaces
+        assert not any(s.name == "Inactive Room" for s in spaces)

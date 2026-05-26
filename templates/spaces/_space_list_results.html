@@ -1,0 +1,43 @@
+{% if spaces %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for space in spaces %}
+    <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+        <div class="card-body">
+            <h2 class="card-title">{{ space.name }}</h2>
+            
+            <div class="flex flex-wrap gap-2 mb-2">
+                <span class="badge badge-primary">Capacidade: {{ space.capacity }}</span>
+                <span class="badge badge-secondary">{{ space.location }}</span>
+            </div>
+            
+            {% if space.description %}
+            <p class="text-sm text-base-content/70 mb-4">{{ space.description }}</p>
+            {% endif %}
+            
+            {% with attrs=space.space_attributes.all %}
+            {% if attrs %}
+            <div class="flex flex-wrap gap-1 mb-4">
+                {% for space_attr in attrs %}
+                <span class="badge badge-outline badge-sm">{{ space_attr.attribute.name }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+            
+            <div class="card-actions justify-end mt-auto">
+                <button class="btn btn-primary btn-sm" disabled>
+                    Reservar
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    <span>Nenhum espaço encontrado com os filtros selecionados.</span>
+</div>
+{% endif %}

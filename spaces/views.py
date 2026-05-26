@@ -1,6 +1,8 @@
 """Views for the spaces app."""
 
 import django_filters
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import ListView
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -8,7 +10,7 @@ from rest_framework.response import Response
 
 from reservations.services import get_availability_for_date
 
-from .models import Space
+from .models import Attribute, Space
 from .serializers import SpaceSerializer
 
 
@@ -67,3 +69,56 @@ class SpaceViewSet(viewsets.ModelViewSet):
 
         data = get_availability_for_date(space, date)
         return Response(data)
+
+
+class SpaceListView(LoginRequiredMixin, ListView):
+    """List view for spaces with filtering capabilities."""
+
+    model = Space
+    template_name = "spaces/space_list.html"
+    context_object_name = "spaces"
+
+    def get_queryset(self):
+        """Filter spaces based on query parameters."""
+        queryset = Space.objects.filter(is_active=True).prefetch_related(
+            "space_attributes__attribute"
+        )
+
+        # Filter by minimum capacity
+        min_capacity = self.request.GET.get("min_capacity")
+        if min_capacity:
+            try:
+                queryset = queryset.filter(capacity__gte=int(min_capacity))
+            except ValueError:
+                pass
+
+        # Filter by attributes (comma-separated list)
+        attributes = self.request.GET.get("attributes")
+        if attributes:
+            attr_names = [a.strip() for a in attributes.split(",") if a.strip()]
+            for attr_name in attr_names:
+                queryset = queryset.filter(space_attributes__attribute__name=attr_name)
+            queryset = queryset.distinct()
+
+        # Filter by location (case-insensitive)
+        location = self.request.GET.get("location")
+        if location:
+            queryset = queryset.filter(location__icontains=location)
+
+        return queryset.order_by("name")
+
+    def get_context_data(self, **kwargs):
+        """Add filter options and selected filters to context."""
+        context = super().get_context_data(**kwargs)
+        context["attributes"] = Attribute.objects.order_by("name")
+        context["selected_attributes"] = self.request.GET.get("attributes", "")
+        context["min_capacity"] = self.request.GET.get("min_capacity", "")
+        context["location"] = self.request.GET.get("location", "")
+        context["is_htmx"] = self.request.headers.get("HX-Request") == "true"
+        return context
+
+    def get_template_names(self):
+        """Return partial template for HTMX requests."""
+        if self.request.headers.get("HX-Request") == "true":
+            return ["spaces/_space_list_results.html"]
+        return [self.template_name]

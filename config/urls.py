@@ -18,6 +18,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from spaces.views import SpaceListView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("spaces.urls")),
@@ -25,5 +27,6 @@ urlpatterns = [
     path("api/admin/", include("reservations.admin_urls")),
     path("api/", include("rest_framework.urls", namespace="rest_framework")),
     path("accounts/", include("accounts.urls", namespace="accounts")),
+    path("spaces/", SpaceListView.as_view(), name="space_list"),
     path("", include("core.urls")),
 ]

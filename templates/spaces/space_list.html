@@ -1,0 +1,86 @@
+{% extends "base_user.html" %}
+
+{% block title %}Espaços - Reserva de Espaços{% endblock %}
+
+{% block user_content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold mb-6">Buscar Espaços</h1>
+    
+    <!-- Filter Form -->
+    <form 
+        hx-get="{% url 'space_list' %}"
+        hx-target="#space-results"
+        hx-indicator="#loading-indicator"
+        class="bg-base-200 p-6 rounded-box mb-6"
+    >
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Min Capacity -->
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Capacidade mínima</span>
+                </label>
+                <input 
+                    type="number" 
+                    name="min_capacity" 
+                    value="{{ min_capacity }}"
+                    min="1"
+                    placeholder="Ex: 5"
+                    class="input input-bordered w-full"
+                >
+            </div>
+            
+            <!-- Location -->
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Localização</span>
+                </label>
+                <input 
+                    type="text" 
+                    name="location" 
+                    value="{{ location }}"
+                    placeholder="Ex: Prédio A"
+                    class="input input-bordered w-full"
+                >
+            </div>
+            
+            <!-- Submit Button -->
+            <div class="form-control flex items-end">
+                <button type="submit" class="btn btn-primary w-full">
+                    Filtrar
+                    <span id="loading-indicator" class="htmx-indicator ml-2 loading loading-spinner loading-sm"></span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Attributes Checkboxes -->
+        <div class="form-control mt-4">
+            <label class="label">
+                <span class="label-text">Equipamentos</span>
+            </label>
+            <div class="flex flex-wrap gap-4">
+                {% for attr in attributes %}
+                <label class="label cursor-pointer gap-2">
+                    <input 
+                        type="checkbox" 
+                        name="attributes" 
+                        value="{{ attr.name }}"
+                        class="checkbox checkbox-primary"
+                        {% if attr.name in selected_attributes %}checked{% endif %}
+                        hx-get="{% url 'space_list' %}"
+                        hx-target="#space-results"
+                        hx-indicator="#loading-indicator"
+                        hx-include="closest form"
+                    >
+                    <span class="label-text">{{ attr.name }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </form>
+    
+    <!-- Space Results -->
+    <div id="space-results">
+        {% include "spaces/_space_list_results.html" %}
+    </div>
+</div>
+{% endblock %}
