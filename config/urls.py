@@ -22,6 +22,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("spaces.urls")),
     path("api/", include("reservations.urls")),
+    path("api/admin/", include("reservations.admin_urls")),
     path("api/", include("rest_framework.urls", namespace="rest_framework")),
     path("accounts/", include("accounts.urls", namespace="accounts")),
     path("", include("core.urls")),

@@ -195,7 +195,7 @@
       "Write tests: maintenance block appears in availability check",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

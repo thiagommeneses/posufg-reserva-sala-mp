@@ -508,6 +508,17 @@ def regular_user(db):
     )
 
 
+@pytest.fixture
+def admin_user(db):
+    """Create an admin (staff) test user."""
+    return User.objects.create_user(
+        username="admin",
+        email="admin@example.com",
+        password="adminpass123",
+        is_staff=True,
+    )
+
+
 class TestReservationApiCreate:
     """Tests for creating reservations via the API."""
 
@@ -1026,3 +1037,121 @@ class TestAutoReleaseNoShows:
         assert count == 0
         reservation.refresh_from_db()
         assert reservation.status == ReservationStatus.CANCELLED
+
+
+class TestMaintenanceBlockApi:
+    """Tests for maintenance block admin API."""
+
+    def test_admin_can_create_maintenance_block(self, api_client, admin_user, space):
+        """Admin should be able to create a maintenance block on a free slot."""
+        api_client.force_authenticate(user=admin_user)
+        start = timezone.now()
+        end = start + timedelta(hours=2)
+        response = api_client.post(
+            "/api/admin/maintenance-blocks/",
+            {
+                "space": space.id,
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+                "reason": "Cleaning",
+            },
+        )
+        assert response.status_code == 201
+        assert response.data["space"] == space.id
+        assert response.data["reason"] == "Cleaning"
+        assert MaintenanceBlock.objects.filter(space=space, reason="Cleaning").exists()
+
+    def test_non_admin_cannot_create_maintenance_block(self, api_client, regular_user, space):
+        """Non-admin should get 403 when creating a maintenance block."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=2)
+        response = api_client.post(
+            "/api/admin/maintenance-blocks/",
+            {
+                "space": space.id,
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+                "reason": "Cleaning",
+            },
+        )
+        assert response.status_code in (401, 403)
+
+    def test_maintenance_block_overlapping_reservation_is_rejected(
+        self, api_client, admin_user, regular_user, space
+    ):
+        """Maintenance block overlapping a confirmed reservation should return 400."""
+        api_client.force_authenticate(user=admin_user)
+        start = timezone.now()
+        end = start + timedelta(hours=2)
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=end,
+        )
+        response = api_client.post(
+            "/api/admin/maintenance-blocks/",
+            {
+                "space": space.id,
+                "start_time": (start + timedelta(minutes=30)).isoformat(),
+                "end_time": (start + timedelta(hours=3)).isoformat(),
+                "reason": "Cleaning",
+            },
+        )
+        assert response.status_code == 400
+        assert "overlaps" in str(response.data).lower()
+
+    def test_maintenance_block_appears_in_availability(self, api_client, admin_user, space):
+        """Maintenance block should appear in the space availability check."""
+        api_client.force_authenticate(user=admin_user)
+        start = timezone.now()
+        end = start + timedelta(hours=2)
+        MaintenanceBlock.objects.create(
+            space=space,
+            start_time=start,
+            end_time=end,
+            reason="Cleaning",
+            created_by=admin_user,
+        )
+        from datetime import date as _date
+
+        today = _date.today()
+        response = api_client.get(f"/api/spaces/{space.id}/availability/?date={today.isoformat()}")
+        assert response.status_code == 200
+        occupied = response.data["occupied"]
+        assert any(slot["type"] == "maintenance" for slot in occupied)
+
+    def test_admin_can_list_maintenance_blocks(self, api_client, admin_user, space):
+        """Admin should be able to list maintenance blocks."""
+        api_client.force_authenticate(user=admin_user)
+        MaintenanceBlock.objects.create(
+            space=space,
+            start_time=timezone.now(),
+            end_time=timezone.now() + timedelta(hours=1),
+            reason="Cleaning",
+            created_by=admin_user,
+        )
+        response = api_client.get("/api/admin/maintenance-blocks/")
+        assert response.status_code == 200
+        assert len(response.data) == 1
+
+    def test_non_admin_cannot_list_maintenance_blocks(self, api_client, regular_user):
+        """Non-admin should get 403 when listing maintenance blocks."""
+        api_client.force_authenticate(user=regular_user)
+        response = api_client.get("/api/admin/maintenance-blocks/")
+        assert response.status_code in (401, 403)
+
+    def test_admin_can_delete_maintenance_block(self, api_client, admin_user, space):
+        """Admin should be able to delete a maintenance block."""
+        api_client.force_authenticate(user=admin_user)
+        block = MaintenanceBlock.objects.create(
+            space=space,
+            start_time=timezone.now(),
+            end_time=timezone.now() + timedelta(hours=1),
+            reason="Cleaning",
+            created_by=admin_user,
+        )
+        response = api_client.delete(f"/api/admin/maintenance-blocks/{block.id}/")
+        assert response.status_code == 204
+        assert not MaintenanceBlock.objects.filter(id=block.id).exists()

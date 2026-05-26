@@ -7,8 +7,8 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
-from reservations.models import Reservation
-from reservations.serializers import ReservationSerializer
+from reservations.models import MaintenanceBlock, Reservation
+from reservations.serializers import MaintenanceBlockSerializer, ReservationSerializer
 from reservations.services import (
     OwnershipError,
     cancel_reservation,
@@ -27,6 +27,18 @@ class RescheduleSerializer(serializers.Serializer):
         """Meta options for RescheduleSerializer."""
 
         fields = ["start_time", "end_time"]
+
+
+class MaintenanceBlockViewSet(viewsets.ModelViewSet):
+    """ViewSet for creating, listing and deleting maintenance blocks (admin only)."""
+
+    queryset = MaintenanceBlock.objects.all()
+    serializer_class = MaintenanceBlockSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+    def perform_create(self, serializer):
+        """Automatically set created_by from the request user."""
+        serializer.save(created_by=self.request.user)
 
 
 class ReservationViewSet(viewsets.ModelViewSet):

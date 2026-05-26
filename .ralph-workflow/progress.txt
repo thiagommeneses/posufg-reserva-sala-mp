@@ -354,3 +354,18 @@ Task: Implement auto-release of no-show reservations (prd.json item 11)
 - Ran `uv run pytest` and 94 tests passed with 97.41% coverage (above 80% threshold)
 - Committed: feat(reservations): implement auto-release of no-show reservations
 - Files changed: reservations/services.py, reservations/tests.py, reservations/management/__init__.py, reservations/management/commands/__init__.py, reservations/management/commands/release_no_shows.py, prd.json, .ralph-workflow/progress.txt
+
+Task: Implement admin maintenance blocks (prd.json item 12)
+- Created MaintenanceBlockSerializer in reservations/serializers.py with overlap validation against confirmed/checked_in reservations
+- Created MaintenanceBlockViewSet in reservations/views.py with create, list, delete actions restricted to IsAdminUser
+- Created reservations/admin_urls.py with DRF DefaultRouter registering maintenance-blocks endpoint
+- Updated config/urls.py to include admin URLs under /api/admin/ prefix
+- Added admin_user pytest fixture and TestMaintenanceBlockApi test class with 7 tests
+- Tests cover: admin create on free slot (201), non-admin create rejected (403), overlap with reservation rejected (400), appears in availability check, admin list, non-admin list rejected, admin delete
+- Updated docker-compose.yml to expose db port 5432 for host-based testing
+- Created .env file with DATABASE_URL for local PostgreSQL access
+- Started docker compose services to enable containerized commits via git-commit skill
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 101 tests passed with 97.49% coverage (above 80% threshold)
+- Committed: feat(reservations): implement admin maintenance blocks API

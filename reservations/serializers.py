@@ -8,6 +8,63 @@ from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 from spaces.models import Space
 
 
+class MaintenanceBlockSerializer(serializers.ModelSerializer):
+    """Serializer for the MaintenanceBlock model with overlap validation."""
+
+    space = serializers.PrimaryKeyRelatedField(queryset=Space.objects.all())
+    created_by = serializers.PrimaryKeyRelatedField(
+        read_only=True,
+        default=serializers.CurrentUserDefault(),
+    )
+
+    class Meta:
+        """Meta options for MaintenanceBlockSerializer."""
+
+        model = MaintenanceBlock
+        fields = [
+            "id",
+            "space",
+            "start_time",
+            "end_time",
+            "reason",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_by", "created_at", "updated_at"]
+
+    def validate(self, data):
+        """Validate maintenance block data for conflicts."""
+        space = data["space"]
+        start_time = data["start_time"]
+        end_time = data["end_time"]
+
+        if end_time <= start_time:
+            raise serializers.ValidationError(
+                {"end_time": "End time must be after start time."},
+            )
+
+        overlapping_reservations = Reservation.objects.filter(
+            space=space,
+            status__in=[
+                ReservationStatus.CONFIRMED,
+                ReservationStatus.CHECKED_IN,
+            ],
+        ).filter(
+            Q(start_time__lt=end_time) & Q(end_time__gt=start_time),
+        )
+        if overlapping_reservations.exists():
+            raise serializers.ValidationError(
+                {
+                    "non_field_errors": (
+                        "This maintenance block overlaps with an existing reservation."
+                    ),
+                },
+            )
+
+        return data
+
+
 class ReservationSerializer(serializers.ModelSerializer):
     """Serializer for the Reservation model with conflict validation."""
 
