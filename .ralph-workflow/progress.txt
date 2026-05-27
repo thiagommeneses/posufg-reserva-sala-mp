@@ -479,3 +479,62 @@ Task: Implement user-facing reservation list and detail pages (prd.json items 19
 - Committed: feat(reservations): implement user-facing reservation list, detail, cancel, reschedule and check-in views
 - Files changed: reservations/views.py, config/urls.py, templates/reservations/reservation_list.html, templates/reservations/reservation_detail.html, templates/reservations/reservation_reschedule.html, reservations/tests.py, prd.json, .ralph-workflow/progress.txt
 - Updated prd.json: set passes to true for completed items 19 and 20
+
+Task: Create seed_data management command with modular seed infrastructure (prd.json item: architectural seed command)
+- Created core/management/commands/ directory structure with __init__.py files
+- Created core/seeds/ package with __init__.py and separate modules: attributes.py, spaces.py, users.py, reservations.py, maintenance.py
+- Each seed module exposes a seed() function using get_or_create for idempotency and a flush() function for cleanup
+- Created management command seed_data that orchestrates all seed modules in dependency order (attributes → spaces → users → reservations → maintenance)
+- Added optional --flush flag that removes seed-identifiable records by natural keys before re-seeding
+- Implemented all seed modules with pt-BR content per PRD spec:
+  - attributes.py: 7 default attributes (Ar-condicionado, Projetor, TV, Webcam, Quadro branco, Videoconferência, Wi-Fi)
+  - spaces.py: 5 spaces with correct capacity, location, and attribute associations
+  - users.py: 4 users (admin staff/superuser, maria.silva, joao.santos, ana.costa) with password from SEED_DEFAULT_PASSWORD env var
+  - reservations.py: 4 demo reservations in different statuses (confirmed, completed, no_show) with relative datetimes
+  - maintenance.py: 2 maintenance blocks with pt-BR reasons
+- Fixed idempotency for reservations/maintenance by using stable anchor time (timezone.now() rounded to minute)
+- Wrote 4 tests in SeedDataCommandTestCase covering: command runs successfully, idempotency (no duplicates on second run), --flush removes and recreates, pt-BR content verification
+- Fixed .env DATABASE_URL to use localhost instead of db hostname for host-based pytest execution
+- Ran `uv run python manage.py check` and it passed with no issues
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 171 tests passed with 97.65% coverage (above 80% threshold)
+- Committed: feat(core): create seed_data management command with modular seed infrastructure
+- Files changed: core/management/, core/seeds/, core/tests.py, .env, prd.json
+- Updated prd.json: set passes to true for completed seed items (command, attributes, spaces, users, reservations/maintenance, idempotency tests, admin registration)
+
+Task: Implement admin dashboard with real-time occupancy overview (prd.json item: admin dashboard)
+- Created Django app 'admin_dashboard' (name 'dashboard' conflicted with existing Python module) and added to INSTALLED_APPS
+- Created StaffRequiredMixin using UserPassesTestMixin requiring is_staff=True
+- Created AdminDashboardView at /admin-dashboard/ with real-time occupancy metrics:
+  - total_spaces, occupied_now, available_now, maintenance_now, no_shows_today
+  - Space cards with status: free (badge-success), occupied (badge-error), maintenance (badge-warning)
+- Created template admin_dashboard/index.html extending base_admin.html with DaisyUI stats components
+- Created partial template admin_dashboard/_occupancy_grid.html for HTMX auto-refresh every 30s
+- Implemented occupancy logic: confirmed/checked_in reservations = occupied, maintenance blocks = maintenance, everything else = free
+- Wrote 10 tests in TestAdminDashboardView covering: staff 200, non-staff 403, unauthenticated redirect,
+  total spaces context, occupied now, maintenance now, no-shows today, space cards status, HTMX partial,
+  cancelled reservations not counted as occupied
+- Ran `uv run python manage.py check` and it passed with no issues
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 181 tests passed with 97.78% coverage (above 80% threshold)
+- Committed: feat(admin_dashboard): implement admin dashboard with real-time occupancy overview
+- Files changed: admin_dashboard/, config/settings.py, config/urls.py, templates/admin_dashboard/, prd.json
+- Updated prd.json: set passes to true for admin dashboard item
+
+Task: Add Makefile seed target and document seed workflow (prd.json item: integration seed workflow)
+- Added `seed` target to Makefile: `docker compose exec web python manage.py seed_data`
+- Added `seed-flush` target to Makefile: `docker compose exec web python manage.py seed_data --flush`
+- Updated `.PHONY` to include seed and seed-flush
+- Updated `make help` to document the two new targets with pt-BR descriptions
+- Added `SEED_DEFAULT_PASSWORD=reserva123` to `.env.example` with pt-BR comment explaining its use
+- Verified `make seed` runs successfully inside running Docker container (idempotent)
+- Verified GET /api/spaces/ with basic auth returns 5 seeded spaces
+- Verified admin login with credentials admin/reserva123 succeeds
+- Also fixed prd.json bookkeeping: set passes=true for "Seed default users in Portuguese (pt-BR)" since it was already implemented and tested
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 181 tests passed with 97.78% coverage (above 80% threshold)
+- Committed: feat: add Makefile seed targets and document seed workflow
+- Files changed: Makefile, .env.example, prd.json
