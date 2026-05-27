@@ -555,3 +555,22 @@ Task: Implement admin space management pages (prd.json item 28)
 - Ran `uv run pytest` and 192 tests passed with 97.84% coverage (above 80% threshold)
 - Committed: feat(admin_dashboard): implement admin space management pages
 - Files changed: admin_dashboard/forms.py, admin_dashboard/views.py, admin_dashboard/urls.py, admin_dashboard/tests.py, templates/admin_dashboard/space_list.html, templates/admin_dashboard/space_form.html, prd.json
+
+Task: Implement admin reservation management page (prd.json item 29)
+- Added `admin_cancel_reservation` service function to `reservations/services.py` that bypasses ownership check (admin only)
+- Created `AdminReservationListView` (ListView) at `/admin-dashboard/reservations/` with StaffRequiredMixin and paginate_by=25
+- Implemented filtering by status, space, date range (start_date/end_date), and user username search
+- Created template `templates/admin_dashboard/reservation_list.html` with DaisyUI filter bar and table layout
+- Created partial `templates/admin_dashboard/_reservation_table.html` for HTMX filter swaps
+- Created partial `templates/admin_dashboard/_reservation_row.html` for inline cancel row updates
+- Created `AdminReservationCancelView` (POST) at `/admin-dashboard/reservations/<int:pk>/cancel/` with HTMX inline swap support
+- Cancel action uses hx-confirm modal and hx-swap="outerHTML" for inline row update
+- Added URL patterns in `admin_dashboard/urls.py` for reservation_list and reservation_cancel
+- Wrote 11 tests in `TestAdminReservationManagement` covering: staff view all reservations, non-staff 403, unauthenticated redirect, staff cancel any reservation, HTMX cancel returns updated row, non-staff cannot cancel, filter by status, filter by space, filter by user search, HTMX filter returns partial, cancel already cancelled returns error
+- Fixed lint import ordering in `admin_dashboard/views.py`
+- Fixed template iteration over `ReservationStatus` by passing `.choices` to context
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 203 tests passed with 97.52% coverage (above 80% threshold)
+- Committed: feat(admin_dashboard): implement admin reservation management pages
+- Files changed: reservations/services.py, admin_dashboard/views.py, admin_dashboard/urls.py, admin_dashboard/tests.py, templates/admin_dashboard/reservation_list.html, templates/admin_dashboard/_reservation_table.html, templates/admin_dashboard/_reservation_row.html, prd.json, .ralph-workflow/progress.txt
