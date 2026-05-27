@@ -50,7 +50,7 @@ Um sistema centralizado de reserva de espaços com três pilares (Pareto 80/20):
 
 21. As a user, I want to be redirected to `/spaces/` after login so that I land on the primary starting page rather than a test route.
 22. As a user, I want the "Filtrar" button aligned with the filter fields so that the form looks polished and easy to scan.
-23. As a user, I want the filter spinner to appear only when I apply filters, and disappear after results load, so that feedback is accurate and not distracting.
+23. As a user, I want the spinner inside the "Filtrar" button to be hidden on initial page load (Buscar Espaços) and only appear when I apply filters, disappearing after results load, so that feedback is accurate and not distracting.
 24. As an admin, I want the status indicator on `/admin-dashboard/spaces/` to stop loading when no action is being performed so that the page doesn't look broken.
 25. As an admin, I want the filter indicator on `/admin-dashboard/reservations/` to stay idle until a user triggers filtering so that it doesn't show infinite loading without interaction.
 
@@ -324,9 +324,11 @@ Criar um `README.md` em português (pt-BR), objetivo e fácil de seguir, cobrind
 ### Correções (Navegação + HTMX)
 
 - **Redirect pós-login**: rota padrão deve ser `/spaces/` (não `/htmx-test/`).
-- **Form de filtros em `/spaces/`**:
+- **Form de filtros em `/spaces/` (Buscar Espaços)**:
   - Botão "Filtrar" alinhado verticalmente com os campos (capacidade mínima e localização).
-  - Spinner deve disparar **apenas** quando o usuário clicar em "Filtrar" (ou aplicar explicitamente filtros) e deve ser removido ao término do swap HTMX.
+  - Spinner inline dentro do botão "Filtrar" (`#loading-indicator` com classe `htmx-indicator`) deve estar **oculto no load inicial** da página.
+  - Spinner deve aparecer **apenas** durante requisições HTMX disparadas pelo usuário (clique em "Filtrar" ou alteração de checkboxes de equipamentos) e ser removido ao término do swap.
+  - Bug conhecido: spinner DaisyUI (`loading loading-spinner`) permanece visível infinitamente no botão mesmo sem ação do usuário — corrigir wiring CSS/HTMX do indicador.
 - **Admin dashboard**:
   - Em `/admin-dashboard/spaces/`, o status (coluna "Status") não deve ficar com spinner infinito sem ação do usuário.
   - Em `/admin-dashboard/reservations/`, o elemento `#filter-indicator` não deve carregar infinitamente no load inicial (apenas durante ações de filtro/atualização disparadas pelo usuário).
@@ -349,7 +351,7 @@ Criar um `README.md` em português (pt-BR), objetivo e fácil de seguir, cobrind
   - Seeds criam atributos, espaços e usuários com textos em pt-BR
   - Reservas de exemplo cobrem múltiplos status (confirmed, completed, no_show)
   - Redirect pós-login aponta para `/spaces/`
-  - Página `/spaces/` tem spinner consistente (aparece apenas ao filtrar e some após carregar resultados)
+  - Página `/spaces/` (Buscar Espaços): spinner dentro do botão "Filtrar" oculto no load inicial e visível apenas durante filtro ativo
   - Página `/admin-dashboard/spaces/` não exibe spinner infinito na coluna status no load inicial
   - Página `/admin-dashboard/reservations/` não exibe `#filter-indicator` carregando infinitamente sem ação do usuário
 - Coverage mínimo: 80% (já configurado no projeto)
