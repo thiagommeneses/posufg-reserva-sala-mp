@@ -471,7 +471,7 @@
       "Write/Update test: spinner is not visible on initial /spaces/ load and becomes visible only during filter requests (HTMX)",
       "Run `uv run pytest` and verify tests pass"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

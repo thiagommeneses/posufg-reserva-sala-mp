@@ -40,6 +40,20 @@ Um sistema centralizado de reserva de espaços com três pilares (Pareto 80/20):
 16. As a developer, I want the seed command to be idempotent so that I can run it multiple times without duplicating data or errors.
 17. As a developer, I want a Makefile target to run seeds easily so that onboarding and local setup are frictionless.
 
+### Documentação
+
+18. As a user, I want a simple and intuitive README (in pt-BR) so that I understand what the project does, how it works, and how to use it.
+19. As a developer, I want the README to describe user journeys and the flow for each use case so that I can validate behavior and onboard quickly.
+20. As a developer, I want the README to document local setup, seed generation, default users (roles), and the main routes so that I can run and test the system end-to-end.
+
+### Correções (UX + Navegação)
+
+21. As a user, I want to be redirected to `/spaces/` after login so that I land on the primary starting page rather than a test route.
+22. As a user, I want the "Filtrar" button aligned with the filter fields so that the form looks polished and easy to scan.
+23. As a user, I want the filter spinner to appear only when I apply filters, and disappear after results load, so that feedback is accurate and not distracting.
+24. As an admin, I want the status indicator on `/admin-dashboard/spaces/` to stop loading when no action is being performed so that the page doesn't look broken.
+25. As an admin, I want the filter indicator on `/admin-dashboard/reservations/` to stay idle until a user triggers filtering so that it doesn't show infinite loading without interaction.
+
 ## Implementation Decisions
 
 ### Apps e Módulos
@@ -278,6 +292,45 @@ make seed                           # atalho via Makefile
 - Textos de interface (motivos, descrições) sempre em pt-BR
 - Ordem de execução: atributos → espaços → usuários → reservas → bloqueios de manutenção (respeita FKs)
 
+### Documentação (README)
+
+Criar um `README.md` em português (pt-BR), objetivo e fácil de seguir, cobrindo:
+
+- **Visão geral do projeto**: qual problema resolve e quais são os pilares (calendário único, auto-release, filtros por atributos).
+- **Como funciona (alto nível)**:
+  - Apps principais (`accounts`, `spaces`, `reservations`, `dashboard`)
+  - Diferença entre **API** (`/api/...`) e **UI** (templates/HTMX)
+  - Estados de reserva (confirmed/cancelled/checked_in/completed/no_show) e quando ocorrem
+- **Jornadas do usuário** (passo a passo):
+  - Usuário final: buscar espaço → ver detalhes → reservar → (opcional) check-in → cancelar/reagendar → ver histórico
+  - Administrador: gerir espaços → gerir reservas → criar bloqueios de manutenção → observar ocupação
+- **Fluxo por caso de uso** (um fluxo por tópico, com passos e rotas):
+  - Login/registro/logout
+  - Listagem e filtro de espaços
+  - Detalhe do espaço e disponibilidade
+  - Criar reserva, cancelar, reagendar
+  - Check-in via página (fluxo QR Code)
+  - Admin dashboard e páginas de manutenção
+- **Como executar localmente**:
+  - Pré-requisitos (Docker + Docker Compose)
+  - Comandos essenciais (`make up`, `make migrate`, `make seed`, `make test`, `make lint`, `make format`)
+- **Seeds e credenciais padrão**:
+  - Como gerar seeds e como rodar novamente (idempotente / `--flush`)
+  - Usuários padrão e papéis (admin staff vs usuário comum) + senha default via `SEED_DEFAULT_PASSWORD`
+- **Rotas principais**:
+  - UI: `/accounts/login/`, `/accounts/register/`, `/spaces/`, `/reservations/`, `/admin-dashboard/...`
+  - API: `/api/spaces/`, `/api/reservations/`, `/api/admin/...`
+
+### Correções (Navegação + HTMX)
+
+- **Redirect pós-login**: rota padrão deve ser `/spaces/` (não `/htmx-test/`).
+- **Form de filtros em `/spaces/`**:
+  - Botão "Filtrar" alinhado verticalmente com os campos (capacidade mínima e localização).
+  - Spinner deve disparar **apenas** quando o usuário clicar em "Filtrar" (ou aplicar explicitamente filtros) e deve ser removido ao término do swap HTMX.
+- **Admin dashboard**:
+  - Em `/admin-dashboard/spaces/`, o status (coluna "Status") não deve ficar com spinner infinito sem ação do usuário.
+  - Em `/admin-dashboard/reservations/`, o elemento `#filter-indicator` não deve carregar infinitamente no load inicial (apenas durante ações de filtro/atualização disparadas pelo usuário).
+
 ## Testing Decisions
 
 - Testar comportamento externo via API (integration tests com APITestCase)
@@ -295,6 +348,10 @@ make seed                           # atalho via Makefile
   - Comando `seed_data` é idempotente (segunda execução não duplica registros)
   - Seeds criam atributos, espaços e usuários com textos em pt-BR
   - Reservas de exemplo cobrem múltiplos status (confirmed, completed, no_show)
+  - Redirect pós-login aponta para `/spaces/`
+  - Página `/spaces/` tem spinner consistente (aparece apenas ao filtrar e some após carregar resultados)
+  - Página `/admin-dashboard/spaces/` não exibe spinner infinito na coluna status no load inicial
+  - Página `/admin-dashboard/reservations/` não exibe `#filter-indicator` carregando infinitamente sem ação do usuário
 - Coverage mínimo: 80% (já configurado no projeto)
 
 ## Out of Scope

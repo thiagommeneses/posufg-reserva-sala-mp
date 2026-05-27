@@ -677,3 +677,14 @@ Task: Align /spaces/ filter button with other filter fields (prd.json item 22)
 - Ran `uv run pytest` and 226 tests passed with 97.73% coverage (above 80% threshold)
 - Committed inside Docker container: fix(spaces): align filter button vertically with input fields
 - Files changed: templates/spaces/space_list.html, spaces/tests.py, prd.json, .ralph-workflow/progress.txt
+
+Task: Show /spaces/ filter spinner only on explicit filter action and hide after results load (prd.json item 23)
+- Fixed `templates/spaces/space_list.html`: wrapped DaisyUI `loading loading-spinner` inside a parent `htmx-indicator` span so HTMX's opacity-based hiding applies to the wrapper, ensuring the spinner is invisible on initial page load
+- Removed `hx-indicator="#loading-indicator"` from attribute checkbox inputs so the spinner only triggers on explicit "Filtrar" button submit, not on checkbox changes
+- Added `test_filter_spinner_hidden_on_initial_load` in `spaces/tests.py` verifying the `#loading-indicator` element has `htmx-indicator` class
+- Added `test_filter_spinner_only_on_explicit_submit` in `spaces/tests.py` verifying `hx-indicator="#loading-indicator"` appears exactly once (on the form) and checkboxes do not have their own `hx-indicator`
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 228 tests passed with 97.71% coverage (above 80% threshold)
+- Committed inside Docker container: fix(spaces): show filter spinner only on explicit submit and hide on load
+- Files changed: templates/spaces/space_list.html, spaces/tests.py, prd.json, .ralph-workflow/progress.txt
