@@ -3,11 +3,16 @@
 import datetime
 
 from django.contrib.auth.mixins import UserPassesTestMixin
-from django.shortcuts import render
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, render
+from django.urls import reverse_lazy
 from django.views import View
+from django.views.generic import CreateView, ListView, UpdateView
 
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 from spaces.models import Space
+
+from .forms import SpaceForm
 
 
 class StaffRequiredMixin(UserPassesTestMixin):
@@ -105,3 +110,45 @@ class AdminDashboardView(StaffRequiredMixin, View):
             return render(request, "admin_dashboard/_occupancy_grid.html", context)
 
         return render(request, self.template_name, context)
+
+
+class AdminSpaceListView(StaffRequiredMixin, ListView):
+    """List view for admin space management."""
+
+    model = Space
+    template_name = "admin_dashboard/space_list.html"
+    context_object_name = "spaces"
+    queryset = Space.objects.prefetch_related("space_attributes__attribute").order_by("name")
+
+
+class AdminSpaceCreateView(StaffRequiredMixin, CreateView):
+    """Create view for spaces (admin only)."""
+
+    model = Space
+    form_class = SpaceForm
+    template_name = "admin_dashboard/space_form.html"
+    success_url = reverse_lazy("admin_dashboard:space_list")
+
+
+class AdminSpaceUpdateView(StaffRequiredMixin, UpdateView):
+    """Update view for spaces (admin only)."""
+
+    model = Space
+    form_class = SpaceForm
+    template_name = "admin_dashboard/space_form.html"
+    success_url = reverse_lazy("admin_dashboard:space_list")
+
+
+class AdminSpaceToggleView(StaffRequiredMixin, View):
+    """Toggle the is_active status of a space inline (admin only)."""
+
+    def patch(self, request, pk):
+        """Toggle is_active and return the updated badge HTML."""
+        space = get_object_or_404(Space, pk=pk)
+        space.is_active = not space.is_active
+        space.save(update_fields=["is_active"])
+        if space.is_active:
+            badge = '<span class="badge badge-success">Ativo</span>'
+        else:
+            badge = '<span class="badge badge-ghost">Inativo</span>'
+        return HttpResponse(badge)

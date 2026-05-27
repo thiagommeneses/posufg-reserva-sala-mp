@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
-from spaces.models import Space
+from spaces.models import Attribute, Space, SpaceAttribute
 
 User = get_user_model()
 
@@ -168,3 +168,153 @@ class TestAdminDashboardView:
         assert response.status_code == 200
         assert response.context["occupied_now"] == 0
         assert response.context["available_now"] == 1
+
+
+@pytest.mark.django_db
+class TestAdminSpaceManagement:
+    """Tests for admin space management views."""
+
+    def test_staff_can_list_spaces(self, client, staff_user, dashboard_space):
+        """Staff users should see the space list."""
+        client.force_login(staff_user)
+        response = client.get("/admin-dashboard/spaces/")
+        assert response.status_code == 200
+        assert "spaces" in response.context
+        assert dashboard_space in list(response.context["spaces"])
+
+    def test_non_staff_cannot_list_spaces(self, client, non_staff_user):
+        """Non-staff users should get 403 on space list."""
+        client.force_login(non_staff_user)
+        response = client.get("/admin-dashboard/spaces/")
+        assert response.status_code == 403
+
+    def test_unauthenticated_user_redirected_to_login(self, client):
+        """Unauthenticated users should be redirected to login on admin space pages."""
+        response = client.get("/admin-dashboard/spaces/")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url
+
+    def test_staff_can_create_space(self, client, staff_user):
+        """Staff users should be able to create a new space."""
+        client.force_login(staff_user)
+        response = client.post(
+            "/admin-dashboard/spaces/new/",
+            {
+                "name": "Nova Sala",
+                "description": "Uma sala nova",
+                "capacity": 10,
+                "location": "Térreo",
+                "is_active": "on",
+            },
+        )
+        assert response.status_code == 302
+        assert response.url == "/admin-dashboard/spaces/"
+        assert Space.objects.filter(name="Nova Sala").exists()
+
+    def test_non_staff_cannot_create_space(self, client, non_staff_user):
+        """Non-staff users should get 403 when creating a space."""
+        client.force_login(non_staff_user)
+        response = client.post(
+            "/admin-dashboard/spaces/new/",
+            {
+                "name": "Nova Sala",
+                "capacity": 10,
+                "location": "Térreo",
+            },
+        )
+        assert response.status_code == 403
+
+    def test_staff_can_update_space(self, client, staff_user, dashboard_space):
+        """Staff users should be able to update an existing space."""
+        client.force_login(staff_user)
+        response = client.post(
+            f"/admin-dashboard/spaces/{dashboard_space.pk}/",
+            {
+                "name": "Sala Atualizada",
+                "description": "",
+                "capacity": 20,
+                "location": "2º andar",
+            },
+        )
+        assert response.status_code == 302
+        assert response.url == "/admin-dashboard/spaces/"
+        dashboard_space.refresh_from_db()
+        assert dashboard_space.name == "Sala Atualizada"
+        assert dashboard_space.is_active is False
+
+    def test_non_staff_cannot_update_space(self, client, non_staff_user, dashboard_space):
+        """Non-staff users should get 403 when updating a space."""
+        client.force_login(non_staff_user)
+        response = client.post(
+            f"/admin-dashboard/spaces/{dashboard_space.pk}/",
+            {
+                "name": "Sala Atualizada",
+                "capacity": 20,
+                "location": "2º andar",
+            },
+        )
+        assert response.status_code == 403
+
+    def test_create_space_with_attributes(self, client, staff_user, db):
+        """Creating a space with attributes should persist the relationships."""
+        attr1 = Attribute.objects.create(name="Projetor")
+        attr2 = Attribute.objects.create(name="Wi-Fi")
+        client.force_login(staff_user)
+        response = client.post(
+            "/admin-dashboard/spaces/new/",
+            {
+                "name": "Sala Completa",
+                "description": "",
+                "capacity": 15,
+                "location": "Bloco B",
+                "is_active": "on",
+                "attributes": [str(attr1.pk), str(attr2.pk)],
+            },
+        )
+        assert response.status_code == 302
+        space = Space.objects.get(name="Sala Completa")
+        attr_names = set(space.space_attributes.values_list("attribute__name", flat=True))
+        assert attr_names == {"Projetor", "Wi-Fi"}
+
+    def test_update_space_attributes(self, client, staff_user, dashboard_space, db):
+        """Updating a space should correctly synchronize attributes."""
+        attr1 = Attribute.objects.create(name="TV")
+        attr2 = Attribute.objects.create(name="Ar-condicionado")
+        SpaceAttribute.objects.create(space=dashboard_space, attribute=attr1)
+        client.force_login(staff_user)
+        response = client.post(
+            f"/admin-dashboard/spaces/{dashboard_space.pk}/",
+            {
+                "name": dashboard_space.name,
+                "description": "",
+                "capacity": dashboard_space.capacity,
+                "location": dashboard_space.location,
+                "is_active": "on",
+                "attributes": [str(attr2.pk)],
+            },
+        )
+        assert response.status_code == 302
+        dashboard_space.refresh_from_db()
+        attr_names = set(dashboard_space.space_attributes.values_list("attribute__name", flat=True))
+        assert attr_names == {"Ar-condicionado"}
+
+    def test_staff_can_toggle_space_active(self, client, staff_user, dashboard_space):
+        """Staff users should be able to toggle space is_active inline."""
+        client.force_login(staff_user)
+        response = client.patch(
+            f"/admin-dashboard/spaces/{dashboard_space.pk}/toggle/",
+            HTTP_HX_REQUEST="true",
+        )
+        assert response.status_code == 200
+        assert "Inativo" in response.content.decode()
+        dashboard_space.refresh_from_db()
+        assert dashboard_space.is_active is False
+
+    def test_non_staff_cannot_toggle_space(self, client, non_staff_user, dashboard_space):
+        """Non-staff users should get 403 when toggling a space."""
+        client.force_login(non_staff_user)
+        response = client.patch(
+            f"/admin-dashboard/spaces/{dashboard_space.pk}/toggle/",
+            HTTP_HX_REQUEST="true",
+        )
+        assert response.status_code == 403

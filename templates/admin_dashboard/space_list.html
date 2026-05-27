@@ -1,0 +1,57 @@
+{% extends "base_admin.html" %}
+
+{% block admin_content %}
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">Gestão de Espaços</h1>
+    <a href="{% url 'admin_dashboard:space_create' %}" class="btn btn-primary">Novo Espaço</a>
+</div>
+
+<div class="overflow-x-auto">
+    <table class="table table-zebra w-full">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Capacidade</th>
+                <th>Localização</th>
+                <th>Atributos</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for space in spaces %}
+            <tr>
+                <td>{{ space.name }}</td>
+                <td>{{ space.capacity }}</td>
+                <td>{{ space.location }}</td>
+                <td>
+                    {% for sa in space.space_attributes.all %}
+                    <span class="badge badge-outline badge-sm mr-1">{{ sa.attribute.name }}</span>
+                    {% empty %}
+                    <span class="text-gray-500 text-sm">Nenhum</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    <span class="badge {% if space.is_active %}badge-success{% else %}badge-ghost{% endif %}"
+                          hx-patch="{% url 'admin_dashboard:space_toggle' space.pk %}"
+                          hx-trigger="click"
+                          hx-swap="outerHTML"
+                          hx-indicator="#indicator-{{ space.pk }}"
+                          style="cursor: pointer;">
+                        {% if space.is_active %}Ativo{% else %}Inativo{% endif %}
+                    </span>
+                    <span id="indicator-{{ space.pk }}" class="htmx-indicator loading loading-spinner loading-xs ml-1"></span>
+                </td>
+                <td>
+                    <a href="{% url 'admin_dashboard:space_update' space.pk %}" class="btn btn-sm btn-outline">Editar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center py-4">Nenhum espaço encontrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
