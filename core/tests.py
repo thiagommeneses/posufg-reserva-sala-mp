@@ -2,11 +2,20 @@
 
 from io import StringIO
 
+import pytest
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
+from reservations.models import Reservation, ReservationStatus
+from reservations.services import (
+    auto_release_no_shows,
+    check_in_reservation,
+    create_reservation,
+    get_availability_for_date,
+)
 from spaces.models import Attribute, Space
 
 
@@ -149,3 +158,134 @@ class SeedDataCommandTestCase(TestCase):
         assert Attribute.objects.filter(name="Videoconferência").exists()
         assert Space.objects.filter(name="Sala de Reunião Alfa").exists()
         assert Space.objects.filter(location="Térreo").exists()
+
+
+@pytest.mark.django_db
+class TestReservationLifecycleIntegration:
+    """End-to-end integration tests for the reservation lifecycle."""
+
+    def test_full_lifecycle_create_search_reserve_checkin(self, client):
+        """Cover full lifecycle: create space, search by attributes, reserve, check-in."""
+        attr = Attribute.objects.create(name="Projetor")
+        space = Space.objects.create(
+            name="Sala Integração",
+            capacity=10,
+            location="Térreo",
+            is_active=True,
+        )
+        space.space_attributes.create(attribute=attr)
+
+        user = User.objects.create_user(username="lifecycle_user", password="testpass123")
+        client.login(username="lifecycle_user", password="testpass123")
+
+        # Search spaces by attribute
+        response = client.get("/spaces/", {"attributes": attr.name})
+        assert response.status_code == 200
+        spaces = response.context["spaces"]
+        assert space in list(spaces)
+
+        # Create reservation via API (start within check-in window)
+        now = timezone.now()
+        start = now - timezone.timedelta(minutes=5)
+        end = now + timezone.timedelta(hours=1)
+        response = client.post(
+            "/api/reservations/",
+            {
+                "space": space.pk,
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+            },
+            content_type="application/json",
+        )
+        assert response.status_code == 201
+        reservation = Reservation.objects.get(pk=response.json()["id"])
+        assert reservation.status == ReservationStatus.CONFIRMED
+
+        # Check-in to reservation
+        check_in_reservation(reservation, user)
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CHECKED_IN
+        assert reservation.checked_in_at is not None
+
+    def test_no_show_flow_auto_releases_slot(self):
+        """Overdue reservation without check-in is marked no_show and slot frees up."""
+        space = Space.objects.create(
+            name="Sala No-show", capacity=5, location="1º andar", is_active=True
+        )
+        user = User.objects.create_user(username="noshow_user", password="testpass123")
+
+        now = timezone.now()
+        start = now - timezone.timedelta(hours=2)
+        end = now - timezone.timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        # Verify slot is occupied before auto-release
+        availability = get_availability_for_date(space, start.date())
+        assert len(availability["occupied"]) > 0
+
+        # Run auto-release
+        released = auto_release_no_shows(threshold_minutes=15)
+        assert released == 1
+
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.NO_SHOW
+
+        # Verify slot is now available
+        availability = get_availability_for_date(space, start.date())
+        assert len(availability["occupied"]) == 0
+
+    def test_conflict_prevention_two_users_same_slot(self):
+        """Two users trying to book the same slot: second one is rejected."""
+        space = Space.objects.create(
+            name="Sala Conflito", capacity=5, location="2º andar", is_active=True
+        )
+        user1 = User.objects.create_user(username="user1", password="testpass123")
+        user2 = User.objects.create_user(username="user2", password="testpass123")
+
+        now = timezone.now()
+        start = now + timezone.timedelta(hours=1)
+        end = now + timezone.timedelta(hours=2)
+
+        # User 1 books successfully
+        res1 = create_reservation(user1, space, start, end)
+        assert res1.status == ReservationStatus.CONFIRMED
+
+        # User 2 tries to book the same slot and is rejected
+        from django.core.exceptions import ValidationError
+
+        with pytest.raises(ValidationError):
+            create_reservation(user2, space, start, end)
+
+    def test_cancel_and_rebook_frees_slot(self):
+        """User cancels reservation, then another user successfully books the same slot."""
+        space = Space.objects.create(
+            name="Sala Rebook", capacity=5, location="3º andar", is_active=True
+        )
+        user1 = User.objects.create_user(username="canceler", password="testpass123")
+        user2 = User.objects.create_user(username="rebooker", password="testpass123")
+
+        now = timezone.now()
+        start = now + timezone.timedelta(hours=1)
+        end = now + timezone.timedelta(hours=2)
+
+        # User 1 creates reservation
+        reservation = create_reservation(user1, space, start, end)
+        assert Reservation.objects.filter(pk=reservation.pk).exists()
+
+        # User 1 cancels reservation
+        from reservations.services import cancel_reservation
+
+        cancel_reservation(reservation, user1)
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CANCELLED
+
+        # User 2 books the now-free slot
+        res2 = create_reservation(user2, space, start, end)
+        assert res2.status == ReservationStatus.CONFIRMED
+        assert res2.pk != reservation.pk
