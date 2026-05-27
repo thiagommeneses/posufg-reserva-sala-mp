@@ -4,6 +4,9 @@ from django.urls import path
 
 from .views import (
     AdminDashboardView,
+    AdminMaintenanceCreateView,
+    AdminMaintenanceDeleteView,
+    AdminMaintenanceListView,
     AdminReservationCancelView,
     AdminReservationListView,
     AdminSpaceCreateView,
@@ -25,5 +28,20 @@ urlpatterns = [
         "reservations/<int:pk>/cancel/",
         AdminReservationCancelView.as_view(),
         name="reservation_cancel",
+    ),
+    path(
+        "maintenance/",
+        AdminMaintenanceListView.as_view(),
+        name="maintenance_list",
+    ),
+    path(
+        "maintenance/new/",
+        AdminMaintenanceCreateView.as_view(),
+        name="maintenance_create",
+    ),
+    path(
+        "maintenance/<int:pk>/delete/",
+        AdminMaintenanceDeleteView.as_view(),
+        name="maintenance_delete",
     ),
 ]

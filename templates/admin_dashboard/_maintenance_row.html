@@ -1,0 +1,17 @@
+<tr id="maintenance-row-{{ block.pk }}">
+    <td>{{ block.space.name }}</td>
+    <td>{{ block.start_time|date:"d/m/Y H:i" }}</td>
+    <td>{{ block.end_time|date:"d/m/Y H:i" }}</td>
+    <td>{{ block.reason }}</td>
+    <td>
+        <button
+            class="btn btn-error btn-xs"
+            hx-delete="{% url 'admin_dashboard:maintenance_delete' block.pk %}"
+            hx-target="#maintenance-row-{{ block.pk }}"
+            hx-swap="outerHTML"
+            hx-confirm="Tem certeza que deseja remover este bloqueio de manutenção?"
+        >
+            Remover
+        </button>
+    </td>
+</tr>

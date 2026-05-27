@@ -1,7 +1,10 @@
 """Forms for the admin dashboard app."""
 
 from django import forms
+from django.core.exceptions import ValidationError
+from django.db import models
 
+from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 from spaces.models import Attribute, Space, SpaceAttribute
 
 
@@ -55,3 +58,58 @@ class SpaceForm(forms.ModelForm):
             SpaceAttribute.objects.filter(space=instance, attribute_id__in=to_remove).delete()
         for attr_id in to_add:
             SpaceAttribute.objects.create(space=instance, attribute_id=attr_id)
+
+
+class MaintenanceBlockForm(forms.ModelForm):
+    """Form for creating maintenance blocks with overlap validation."""
+
+    class Meta:
+        """Meta options for MaintenanceBlockForm."""
+
+        model = MaintenanceBlock
+        fields = ["space", "start_time", "end_time", "reason"]
+        widgets = {
+            "space": forms.Select(attrs={"class": "select select-bordered w-full"}),
+            "start_time": forms.DateTimeInput(
+                attrs={
+                    "class": "input input-bordered w-full",
+                    "type": "datetime-local",
+                }
+            ),
+            "end_time": forms.DateTimeInput(
+                attrs={
+                    "class": "input input-bordered w-full",
+                    "type": "datetime-local",
+                }
+            ),
+            "reason": forms.Textarea(
+                attrs={"class": "textarea textarea-bordered w-full", "rows": 3}
+            ),
+        }
+
+    def clean(self):
+        """Validate that the maintenance block does not overlap with confirmed reservations."""
+        cleaned_data = super().clean()
+        space = cleaned_data.get("space")
+        start_time = cleaned_data.get("start_time")
+        end_time = cleaned_data.get("end_time")
+
+        if space and start_time and end_time:
+            if end_time <= start_time:
+                raise ValidationError("End time must be after start time.")
+
+            overlapping_reservations = Reservation.objects.filter(
+                space=space,
+                status__in=[
+                    ReservationStatus.CONFIRMED,
+                    ReservationStatus.CHECKED_IN,
+                ],
+            ).filter(
+                models.Q(start_time__lt=end_time) & models.Q(end_time__gt=start_time),
+            )
+            if overlapping_reservations.exists():
+                raise ValidationError(
+                    "This maintenance block overlaps with an existing reservation.",
+                )
+
+        return cleaned_data

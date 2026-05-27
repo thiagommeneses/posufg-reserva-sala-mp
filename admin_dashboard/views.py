@@ -14,7 +14,7 @@ from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 from reservations.services import admin_cancel_reservation
 from spaces.models import Space
 
-from .forms import SpaceForm
+from .forms import MaintenanceBlockForm, SpaceForm
 
 
 class StaffRequiredMixin(UserPassesTestMixin):
@@ -251,3 +251,38 @@ class AdminReservationCancelView(StaffRequiredMixin, View):
             )
 
         return render(request, "admin_dashboard/reservation_list.html")
+
+
+class AdminMaintenanceListView(StaffRequiredMixin, ListView):
+    """List view for admin maintenance block management."""
+
+    model = MaintenanceBlock
+    template_name = "admin_dashboard/maintenance_list.html"
+    context_object_name = "maintenance_blocks"
+    queryset = MaintenanceBlock.objects.select_related("space").order_by("-start_time")
+
+
+class AdminMaintenanceCreateView(StaffRequiredMixin, CreateView):
+    """Create view for maintenance blocks (admin only)."""
+
+    model = MaintenanceBlock
+    form_class = MaintenanceBlockForm
+    template_name = "admin_dashboard/maintenance_form.html"
+    success_url = reverse_lazy("admin_dashboard:maintenance_list")
+
+    def form_valid(self, form):
+        """Set created_by to the current user before saving."""
+        form.instance.created_by = self.request.user
+        return super().form_valid(form)
+
+
+class AdminMaintenanceDeleteView(StaffRequiredMixin, View):
+    """Delete a maintenance block (admin only)."""
+
+    def delete(self, request, pk):
+        """Delete the maintenance block and return empty response for HTMX."""
+        block = get_object_or_404(MaintenanceBlock, pk=pk)
+        block.delete()
+        if request.headers.get("HX-Request") == "true":
+            return HttpResponse("", status=200)
+        return HttpResponse("", status=200)

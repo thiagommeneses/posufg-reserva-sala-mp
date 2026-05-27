@@ -521,3 +521,157 @@ class TestAdminReservationManagement:
         assert response.status_code == 400
         reservation.refresh_from_db()
         assert reservation.status == ReservationStatus.CANCELLED
+
+
+@pytest.mark.django_db
+class TestAdminMaintenanceManagement:
+    """Tests for admin maintenance block management views."""
+
+    def test_staff_can_list_maintenance_blocks(
+        self, client, staff_user, dashboard_space, non_staff_user
+    ):
+        """Staff users should see the maintenance block list."""
+        now = timezone.now()
+        block = MaintenanceBlock.objects.create(
+            space=dashboard_space,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            reason="Limpeza",
+            created_by=non_staff_user,
+        )
+        client.force_login(staff_user)
+        response = client.get("/admin-dashboard/maintenance/")
+        assert response.status_code == 200
+        assert "maintenance_blocks" in response.context
+        assert block in list(response.context["maintenance_blocks"])
+
+    def test_non_staff_cannot_list_maintenance_blocks(self, client, non_staff_user):
+        """Non-staff users should get 403 on maintenance block list."""
+        client.force_login(non_staff_user)
+        response = client.get("/admin-dashboard/maintenance/")
+        assert response.status_code == 403
+
+    def test_unauthenticated_user_redirected_to_login(self, client):
+        """Unauthenticated users should be redirected to login on maintenance pages."""
+        response = client.get("/admin-dashboard/maintenance/")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url
+
+    def test_staff_can_create_maintenance_block(self, client, staff_user, dashboard_space):
+        """Staff users should be able to create a maintenance block on a free slot."""
+        now = timezone.now()
+        start = now + timezone.timedelta(hours=1)
+        end = now + timezone.timedelta(hours=2)
+        client.force_login(staff_user)
+        response = client.post(
+            "/admin-dashboard/maintenance/new/",
+            {
+                "space": str(dashboard_space.pk),
+                "start_time": start.strftime("%Y-%m-%dT%H:%M"),
+                "end_time": end.strftime("%Y-%m-%dT%H:%M"),
+                "reason": "Manutenção do ar-condicionado",
+            },
+        )
+        assert response.status_code == 302
+        assert response.url == "/admin-dashboard/maintenance/"
+        assert MaintenanceBlock.objects.filter(reason="Manutenção do ar-condicionado").exists()
+
+    def test_non_staff_cannot_create_maintenance_block(
+        self, client, non_staff_user, dashboard_space
+    ):
+        """Non-staff users should get 403 when creating a maintenance block."""
+        now = timezone.now()
+        client.force_login(non_staff_user)
+        response = client.post(
+            "/admin-dashboard/maintenance/new/",
+            {
+                "space": str(dashboard_space.pk),
+                "start_time": (now + timezone.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M"),
+                "end_time": (now + timezone.timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M"),
+                "reason": "Limpeza",
+            },
+        )
+        assert response.status_code == 403
+
+    def test_create_maintenance_block_overlapping_reservation_shows_error(
+        self, client, staff_user, dashboard_space, non_staff_user
+    ):
+        """Creating a maintenance block overlapping a confirmed reservation shows error."""
+        now = timezone.now()
+        Reservation.objects.create(
+            space=dashboard_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=3),
+            status=ReservationStatus.CONFIRMED,
+        )
+        client.force_login(staff_user)
+        response = client.post(
+            "/admin-dashboard/maintenance/new/",
+            {
+                "space": str(dashboard_space.pk),
+                "start_time": (now + timezone.timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M"),
+                "end_time": (now + timezone.timedelta(hours=4)).strftime("%Y-%m-%dT%H:%M"),
+                "reason": "Manutenção",
+            },
+        )
+        assert response.status_code == 200
+        assert "admin_dashboard/maintenance_form.html" in [t.name for t in response.templates]
+        content = response.content.decode()
+        assert "overlaps with an existing reservation" in content
+        assert not MaintenanceBlock.objects.filter(reason="Manutenção").exists()
+
+    def test_staff_can_delete_maintenance_block(
+        self, client, staff_user, dashboard_space, non_staff_user
+    ):
+        """Staff users should be able to delete a maintenance block."""
+        now = timezone.now()
+        block = MaintenanceBlock.objects.create(
+            space=dashboard_space,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            reason="Limpeza",
+            created_by=non_staff_user,
+        )
+        client.force_login(staff_user)
+        response = client.delete(f"/admin-dashboard/maintenance/{block.pk}/delete/")
+        assert response.status_code == 200
+        assert not MaintenanceBlock.objects.filter(pk=block.pk).exists()
+
+    def test_staff_delete_htmx_returns_empty(
+        self, client, staff_user, dashboard_space, non_staff_user
+    ):
+        """HTMX delete request should return empty response."""
+        now = timezone.now()
+        block = MaintenanceBlock.objects.create(
+            space=dashboard_space,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            reason="Limpeza",
+            created_by=non_staff_user,
+        )
+        client.force_login(staff_user)
+        response = client.delete(
+            f"/admin-dashboard/maintenance/{block.pk}/delete/",
+            HTTP_HX_REQUEST="true",
+        )
+        assert response.status_code == 200
+        assert response.content == b""
+        assert not MaintenanceBlock.objects.filter(pk=block.pk).exists()
+
+    def test_non_staff_cannot_delete_maintenance_block(
+        self, client, non_staff_user, dashboard_space
+    ):
+        """Non-staff users should get 403 when deleting a maintenance block."""
+        now = timezone.now()
+        block = MaintenanceBlock.objects.create(
+            space=dashboard_space,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            reason="Limpeza",
+            created_by=non_staff_user,
+        )
+        client.force_login(non_staff_user)
+        response = client.delete(f"/admin-dashboard/maintenance/{block.pk}/delete/")
+        assert response.status_code == 403
+        assert MaintenanceBlock.objects.filter(pk=block.pk).exists()
