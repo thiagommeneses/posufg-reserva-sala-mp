@@ -377,7 +377,7 @@
       "Write test: running seed twice does not duplicate users",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -407,7 +407,7 @@
       "Verify seeded data is visible: GET /api/spaces/ returns 5 spaces, login as admin succeeds",
       "Run `uv run pytest` and verify tests pass"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "testing",

@@ -1,4 +1,4 @@
-.PHONY: install test lint format up down build logs shell migrate makemigrations unmigrate createsuperuser createsuperuser-auto pre-commit-install release-rc release changelog help
+.PHONY: install test lint format up down build logs shell migrate makemigrations unmigrate createsuperuser createsuperuser-auto pre-commit-install seed seed-flush release-rc release changelog help
 
 COMPOSE := docker compose
 WEB_SERVICE := web
@@ -52,6 +52,12 @@ createsuperuser-auto:
 pre-commit-install:
 	uv run pre-commit install --hook-type commit-msg --hook-type pre-commit
 
+seed:
+	$(COMPOSE) exec $(WEB_SERVICE) python manage.py seed_data
+
+seed-flush:
+	$(COMPOSE) exec $(WEB_SERVICE) python manage.py seed_data --flush
+
 release-rc:
 	$(COMPOSE) exec $(WEB_SERVICE) uv run cz bump --prerelease rc
 
@@ -78,6 +84,8 @@ help:
 	@echo "  createsuperuser      - Create a Django superuser (interactive)"
 	@echo "  createsuperuser-auto - Create a Django superuser (non-interactive, requires username=, email=, password=)"
 	@echo "  pre-commit-install   - Install pre-commit hooks"
+	@echo "  seed                 - Populate database with default demo data (idempotent)"
+	@echo "  seed-flush           - Remove seeded data and re-populate fresh"
 	@echo "  release-rc           - Create a release candidate tag"
 	@echo "  release              - Create a final release tag"
 	@echo "  changelog            - Generate CHANGELOG.md"
