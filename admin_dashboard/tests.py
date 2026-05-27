@@ -544,6 +544,15 @@ class TestAdminReservationManagement:
         reservation.refresh_from_db()
         assert reservation.status == ReservationStatus.CANCELLED
 
+    def test_reservation_list_no_infinite_filter_indicator(self, client, staff_user):
+        """Filter indicator should not be active on initial page load."""
+        client.force_login(staff_user)
+        response = client.get("/admin-dashboard/reservations/")
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'id="filter-indicator"' in content
+        assert 'style="display: none;"' in content
+
 
 @pytest.mark.django_db
 class TestAdminMaintenanceManagement:
