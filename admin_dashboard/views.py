@@ -149,11 +149,7 @@ class AdminSpaceToggleView(StaffRequiredMixin, View):
         space = get_object_or_404(Space, pk=pk)
         space.is_active = not space.is_active
         space.save(update_fields=["is_active"])
-        if space.is_active:
-            badge = '<span class="badge badge-success">Ativo</span>'
-        else:
-            badge = '<span class="badge badge-ghost">Inativo</span>'
-        return HttpResponse(badge)
+        return render(request, "admin_dashboard/_space_status_badge.html", {"space": space})
 
 
 class AdminReservationListView(StaffRequiredMixin, ListView):

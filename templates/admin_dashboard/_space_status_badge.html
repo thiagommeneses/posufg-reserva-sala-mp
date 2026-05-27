@@ -1,0 +1,10 @@
+<span hx-patch="{% url 'admin_dashboard:space_toggle' space.pk %}"
+      hx-trigger="click"
+      hx-swap="outerHTML"
+      hx-indicator="find .spinner"
+      style="cursor: pointer;">
+    <span class="badge {% if space.is_active %}badge-success{% else %}badge-ghost{% endif %}">
+        {% if space.is_active %}Ativo{% else %}Inativo{% endif %}
+    </span>
+    <span class="spinner htmx-indicator loading loading-spinner loading-xs ml-1" style="display: none;"></span>
+</span>

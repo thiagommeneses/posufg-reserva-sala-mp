@@ -32,15 +32,7 @@
                     {% endfor %}
                 </td>
                 <td>
-                    <span class="badge {% if space.is_active %}badge-success{% else %}badge-ghost{% endif %}"
-                          hx-patch="{% url 'admin_dashboard:space_toggle' space.pk %}"
-                          hx-trigger="click"
-                          hx-swap="outerHTML"
-                          hx-indicator="#indicator-{{ space.pk }}"
-                          style="cursor: pointer;">
-                        {% if space.is_active %}Ativo{% else %}Inativo{% endif %}
-                    </span>
-                    <span id="indicator-{{ space.pk }}" class="htmx-indicator loading loading-spinner loading-xs ml-1"></span>
+                    {% include "admin_dashboard/_space_status_badge.html" with space=space %}
                 </td>
                 <td>
                     <a href="{% url 'admin_dashboard:space_update' space.pk %}" class="btn btn-sm btn-outline">Editar</a>

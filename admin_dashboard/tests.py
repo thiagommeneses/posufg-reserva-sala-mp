@@ -319,6 +319,28 @@ class TestAdminSpaceManagement:
         )
         assert response.status_code == 403
 
+    def test_space_list_no_infinite_spinner(self, client, staff_user, dashboard_space):
+        """Status column should not show an infinite loading spinner on page load."""
+        client.force_login(staff_user)
+        response = client.get("/admin-dashboard/spaces/")
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'class="spinner htmx-indicator' in content
+        assert 'style="display: none;"' in content
+
+    def test_toggle_response_includes_functional_badge(self, client, staff_user, dashboard_space):
+        """Toggle response should include a functional badge with hidden spinner."""
+        client.force_login(staff_user)
+        response = client.patch(
+            f"/admin-dashboard/spaces/{dashboard_space.pk}/toggle/",
+            HTTP_HX_REQUEST="true",
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "hx-patch=" in content
+        assert 'class="spinner htmx-indicator' in content
+        assert 'style="display: none;"' in content
+
 
 @pytest.mark.django_db
 class TestAdminReservationManagement:
