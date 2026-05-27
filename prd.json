@@ -423,6 +423,83 @@
     "passes": true
   },
   {
+    "category": "integration",
+    "description": "Write README (pt-BR) explaining project, user journeys, and flows per use case",
+    "steps": [
+      "Create/Update README.md in project root written in Portuguese (pt-BR) with simple and intuitive language",
+      "Include a high-level explanation of how the system works (apps/modules and the difference between UI routes and API routes)",
+      "Document user journeys: end user (search → detail → reserve → check-in → cancel/reschedule → history) and admin (manage spaces/reservations/maintenance → occupancy)",
+      "Add one flow per use case, each with steps and the exact routes involved (login/register/logout, spaces list/filter, space detail/availability, create reservation, cancel/reschedule, check-in via QR Code URL, admin dashboard, maintenance blocks)",
+      "Add a 'Run locally' section: prerequisites (Docker + Docker Compose) and the core commands (make up, make migrate, make seed, make test, make lint, make format)",
+      "Add a 'Seeds and default users' section: how to run seeds (idempotent), how to flush/reseed, default users and roles, and default password via SEED_DEFAULT_PASSWORD",
+      "Add a 'Main routes' section listing UI and API endpoints relevant to day-to-day testing",
+      "Verify README steps are accurate by executing the described commands on a fresh database",
+      "Run `uv run pytest` and verify tests still pass"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Fix login redirect default route to /spaces/ (not /htmx-test/)",
+    "steps": [
+      "Update authentication settings or login view so successful login redirects to /spaces/",
+      "Verify direct login redirects to /spaces/ for normal browser requests",
+      "Verify login redirects to /spaces/ for HTMX requests as well (if applicable)",
+      "Write/Update test: login with valid credentials redirects to /spaces/",
+      "Run `uv run pytest` and verify tests pass"
+    ],
+    "passes": true
+  },
+  {
+    "category": "functional",
+    "description": "Align /spaces/ filter button with other filter fields",
+    "steps": [
+      "Update /spaces/ filter form layout so the 'Filtrar' button is vertically aligned with the inputs (capacidade mínima and localização)",
+      "Verify alignment in desktop and narrow/mobile layout",
+      "Write/Update view/template test to ensure the filter form renders the button and fields in the expected structure",
+      "Run `uv run pytest` and verify tests pass"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Show /spaces/ filter spinner only on explicit filter action and hide after results load",
+    "steps": [
+      "Adjust HTMX indicator wiring so the spinner only appears when the user clicks 'Filtrar' (not on initial page load)",
+      "Ensure spinner is removed/hidden after HTMX swap completes and results are rendered",
+      "Verify behavior for both full-page request and HTMX partial swap",
+      "Write/Update test: spinner is not visible on initial /spaces/ load and becomes visible only during filter requests (HTMX)",
+      "Run `uv run pytest` and verify tests pass"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Fix infinite loading spinner in /admin-dashboard/spaces/ status column",
+    "steps": [
+      "Identify what triggers the status column HTMX request/indicator on initial page load",
+      "Ensure the status indicator/spinner is idle by default and only shows loading during explicit user actions (e.g., toggling is_active)",
+      "Verify /admin-dashboard/spaces/ loads without any infinite loading indicator",
+      "Verify toggling status shows a spinner only during the request and hides it after swap completes",
+      "Write/Update test: GET /admin-dashboard/spaces/ renders without an always-on spinner/indicator",
+      "Run `uv run pytest` and verify tests pass"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Fix infinite loading indicator (#filter-indicator) on /admin-dashboard/reservations/ without user action",
+    "steps": [
+      "Identify what triggers #filter-indicator on initial page load (HTMX hx-trigger, hx-get, or indicator wiring)",
+      "Ensure #filter-indicator is hidden/idle by default and only activates when the user performs a filter/search action",
+      "Verify /admin-dashboard/reservations/ loads with #filter-indicator not spinning",
+      "Verify filter actions show #filter-indicator only during the request and hide it after results load",
+      "Write/Update test: GET /admin-dashboard/reservations/ does not include a default-active loading indicator",
+      "Run `uv run pytest` and verify tests pass"
+    ],
+    "passes": false
+  },
+  {
     "category": "functional",
     "description": "Implement admin dashboard with real-time occupancy overview",
     "steps": [
