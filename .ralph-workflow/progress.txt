@@ -455,3 +455,27 @@ Task: Implement user-facing reservation creation page (prd.json item 16)
 - Committed: feat(reservations): implement user-facing reservation creation page
 - Files changed: reservations/views.py, config/urls.py, templates/reservations/reservation_form.html, templates/reservations/reservation_list.html, templates/reservations/reservation_detail.html, reservations/tests.py, prd.json, .ralph-workflow/progress.txt
 - Updated prd.json: set passes to true for completed item
+
+Task: Implement user-facing reservation list and detail pages (prd.json items 19-20)
+- Updated ReservationListView to include tab filtering (active, past, cancelled) with DaisyUI tabs component
+- Updated reservation_list.html template with tabs showing counts for each category
+- Added context variables: active_tab, active_count, past_count, cancelled_count, filtered_reservations
+- Updated ReservationDetailView to compute action button visibility (can_cancel, can_check_in, can_reschedule)
+- Updated reservation_detail.html with action buttons: Cancel (btn-error), Check-in (btn-success), Reschedule (btn-warning)
+- Added conditional logic for when buttons appear based on reservation status and time window
+- Created ReservationCancelView for POST /reservations/{id}/cancel/ with success/error messages
+- Created ReservationRescheduleView for GET/POST /reservations/{id}/reschedule/ with form and conflict validation
+- Created ReservationCheckInView for POST /reservations/{id}/check-in/ with success/error messages
+- Created reservation_reschedule.html template with DaisyUI form for date/time selection
+- Added URL patterns in config/urls.py for cancel, reschedule, and check-in endpoints
+- Wrote comprehensive tests (24 new tests):
+  - TestReservationListView: tab filtering (active, past, cancelled), counts, empty states
+  - TestReservationDetailView: owner access, non-owner 404, action buttons context
+  - TestReservationCancelView: owner cancel, success message, non-owner 404
+  - TestReservationRescheduleView: form render, valid reschedule, conflict error, non-owner 404
+  - TestReservationCheckInView: valid check-in, before window error, non-owner 404
+- Ran `uv run ruff check . --fix` to fix unused import
+- Ran `uv run pytest` and 167 tests passed with 97.91% coverage (above 80% threshold)
+- Committed: feat(reservations): implement user-facing reservation list, detail, cancel, reschedule and check-in views
+- Files changed: reservations/views.py, config/urls.py, templates/reservations/reservation_list.html, templates/reservations/reservation_detail.html, templates/reservations/reservation_reschedule.html, reservations/tests.py, prd.json, .ralph-workflow/progress.txt
+- Updated prd.json: set passes to true for completed items 19 and 20

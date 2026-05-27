@@ -1,7 +1,13 @@
 """Core application tests."""
 
+from io import StringIO
+
+from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
+
+from spaces.models import Attribute, Space
 
 
 class SmokeTestCase(TestCase):
@@ -95,3 +101,51 @@ class TemplateInfrastructureTestCase(TestCase):
         assert "alert-error" in html
         assert "Operation successful" in html
         assert "Something went wrong" in html
+
+
+class SeedDataCommandTestCase(TestCase):
+    """Tests for the seed_data management command."""
+
+    def test_command_runs_successfully(self):
+        """Verify seed_data command completes without errors."""
+        out = StringIO()
+        call_command("seed_data", stdout=out)
+        output = out.getvalue()
+        assert "Database seeding completed successfully!" in output
+
+    def test_command_is_idempotent(self):
+        """Verify running seed_data twice does not duplicate records."""
+        call_command("seed_data")
+        attr_count_first = Attribute.objects.count()
+        space_count_first = Space.objects.count()
+        user_count_first = User.objects.count()
+
+        call_command("seed_data")
+        attr_count_second = Attribute.objects.count()
+        space_count_second = Space.objects.count()
+        user_count_second = User.objects.count()
+
+        assert attr_count_first == attr_count_second
+        assert space_count_first == space_count_second
+        assert user_count_first == user_count_second
+
+    def test_flush_flag_removes_and_recreates(self):
+        """Verify --flush removes seed data and recreates it."""
+        call_command("seed_data")
+        assert Attribute.objects.count() == 7
+        assert Space.objects.count() == 5
+        assert User.objects.filter(username="admin").exists()
+
+        call_command("seed_data", flush=True)
+        assert Attribute.objects.count() == 7
+        assert Space.objects.count() == 5
+        assert User.objects.filter(username="admin").exists()
+
+    def test_command_creates_portuguese_content(self):
+        """Verify seeded content is in Portuguese (pt-BR)."""
+        call_command("seed_data")
+
+        assert Attribute.objects.filter(name="Ar-condicionado").exists()
+        assert Attribute.objects.filter(name="Videoconferência").exists()
+        assert Space.objects.filter(name="Sala de Reunião Alfa").exists()
+        assert Space.objects.filter(location="Térreo").exists()

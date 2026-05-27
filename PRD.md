@@ -34,6 +34,12 @@ Um sistema centralizado de reserva de espaços com três pilares (Pareto 80/20):
 13. As an admin, I want a dedicated dashboard interface to manage spaces, view occupancy, and handle reservations so that I have full operational control without using the Django admin directly.
 14. As an admin, I want to override or cancel any user's reservation so that I can resolve conflicts and prioritize VIP needs.
 
+### Desenvolvimento e Demonstração
+
+15. As a developer, I want to populate the database with default data in Portuguese (pt-BR) so that I can develop and demo the system without manual setup.
+16. As a developer, I want the seed command to be idempotent so that I can run it multiple times without duplicating data or errors.
+17. As a developer, I want a Makefile target to run seeds easily so that onboarding and local setup are frictionless.
+
 ## Implementation Decisions
 
 ### Apps e Módulos
@@ -189,6 +195,89 @@ Um sistema centralizado de reserva de espaços com três pilares (Pareto 80/20):
 - `accounts` é independente (apenas Django auth padrão com views customizadas)
 - Views de template (área do usuário) reutilizam os mesmos services que a API
 
+### Seeds de Dados Padrão (pt-BR)
+
+Comando de management `seed_data` para popular o banco com dados de demonstração em português brasileiro. Deve ser **idempotente** (usar `get_or_create` / verificação por chaves naturais) e executável após `migrate`.
+
+| Módulo | Arquivo | Responsabilidade |
+|--------|---------|-----------------|
+| `core` | `core/management/commands/seed_data.py` | Orquestra a criação de todos os dados padrão |
+| `core` | `core/seeds/attributes.py` | Atributos de equipamento em pt-BR |
+| `core` | `core/seeds/spaces.py` | Espaços com localização, capacidade e atributos |
+| `core` | `core/seeds/users.py` | Usuários admin (staff) e usuários comuns de demo |
+| `core` | `core/seeds/reservations.py` | Reservas de exemplo em diferentes status |
+| `core` | `core/seeds/maintenance.py` | Bloqueios de manutenção de exemplo |
+
+#### Atributos padrão (pt-BR)
+
+| Nome |
+|------|
+| Ar-condicionado |
+| Projetor |
+| TV |
+| Webcam |
+| Quadro branco |
+| Videoconferência |
+| Wi-Fi |
+
+#### Espaços padrão (pt-BR)
+
+| Nome | Localização | Capacidade | Atributos |
+|------|-------------|------------|-----------|
+| Sala de Reunião Alfa | 2º andar, Bloco A | 8 | Ar-condicionado, TV, Videoconferência, Wi-Fi |
+| Sala de Reunião Beta | 3º andar, Bloco B | 12 | Ar-condicionado, Projetor, Quadro branco, Wi-Fi |
+| Sala Focus | 1º andar, Bloco C | 4 | Ar-condicionado, Webcam, Wi-Fi |
+| Auditório Central | Térreo | 50 | Ar-condicionado, Projetor, TV, Videoconferência, Wi-Fi |
+| Sala Executiva | 4º andar, Bloco A | 6 | Ar-condicionado, TV, Webcam, Videoconferência, Wi-Fi |
+
+#### Usuários padrão (pt-BR)
+
+| Username | Nome | Perfil | Staff |
+|----------|------|--------|-------|
+| admin | Administrador | Superusuário | Sim |
+| maria.silva | Maria Silva | Usuária comum | Não |
+| joao.santos | João Santos | Usuário comum | Não |
+| ana.costa | Ana Costa | Usuária comum | Não |
+
+Senhas conhecidas documentadas em `.env.example` (ex.: `SEED_DEFAULT_PASSWORD=reserva123`). Nunca commitar senhas reais.
+
+#### Reservas de exemplo (pt-BR)
+
+Cenários para demonstrar o ciclo de vida:
+
+| Cenário | Usuário | Espaço | Status | Propósito |
+|---------|---------|--------|--------|-----------|
+| Reunião futura confirmada | maria.silva | Sala de Reunião Alfa | confirmed | Demo de cancelamento/reagendamento |
+| Reunião passada concluída | joao.santos | Sala Focus | completed | Histórico em "Minhas Reservas" |
+| Reunião de hoje (janela de check-in) | ana.costa | Sala Executiva | confirmed | Demo de check-in e QR Code |
+| No-show passado | joao.santos | Sala de Reunião Beta | no_show | Demo de auto-release no dashboard |
+
+Horários relativos a `timezone.now()` (ex.: hoje ±N horas, amanhã, ontem) para permanecerem válidos independentemente da data de execução.
+
+#### Bloqueios de manutenção de exemplo (pt-BR)
+
+| Espaço | Motivo | Período |
+|--------|--------|---------|
+| Auditório Central | Limpeza pós-evento | Amanhã, 08:00–10:00 |
+| Sala de Reunião Beta | Manutenção do ar-condicionado | Próxima semana, dia útil, 14:00–16:00 |
+
+#### Interface do comando
+
+```bash
+python manage.py seed_data          # popula dados padrão (idempotente)
+python manage.py seed_data --flush  # remove dados seedados e recria (opcional)
+make seed                           # atalho via Makefile
+```
+
+#### Decisões técnicas dos seeds
+
+- Módulos em `core/seeds/` isolados por domínio — testáveis unitariamente
+- Chaves naturais para idempotência: `Attribute.name`, `Space.name`, `User.username`
+- Reservas identificadas por tupla `(user, space, start_time)` para evitar duplicatas
+- Flag `--flush` remove apenas registros criados pelo seed (identificados pelas chaves naturais acima), nunca dados customizados do usuário
+- Textos de interface (motivos, descrições) sempre em pt-BR
+- Ordem de execução: atributos → espaços → usuários → reservas → bloqueios de manutenção (respeita FKs)
+
 ## Testing Decisions
 
 - Testar comportamento externo via API (integration tests com APITestCase)
@@ -203,6 +292,9 @@ Um sistema centralizado de reserva de espaços com três pilares (Pareto 80/20):
   - Área do usuário requer login (redirect para login se não autenticado)
   - Área admin requer staff (403 para usuários não-staff)
   - Páginas renderizam corretamente com dados (template assertions)
+  - Comando `seed_data` é idempotente (segunda execução não duplica registros)
+  - Seeds criam atributos, espaços e usuários com textos em pt-BR
+  - Reservas de exemplo cobrem múltiplos status (confirmed, completed, no_show)
 - Coverage mínimo: 80% (já configurado no projeto)
 
 ## Out of Scope
@@ -233,3 +325,5 @@ Um sistema centralizado de reserva de espaços com três pilares (Pareto 80/20):
 - A área do usuário e a API REST coexistem — a API serve integrações futuras e o QR Code de check-in pode usar qualquer uma
 - Django admin padrão (`/admin/`) continua disponível como fallback para superusers, mas o dashboard customizado (`/admin-dashboard/`) é a interface primária para administradores de espaço
 - Caso o projeto evolua além do MVP, migrar de CDN para Tailwind CLI (build local) para purging e performance
+- Executar `make migrate && make seed` após subir o ambiente Docker pela primeira vez para ter dados de demo prontos
+- Credenciais de demo: `admin` / `reserva123` (staff) e `maria.silva` / `reserva123` (usuário comum) — configuráveis via variáveis de ambiente

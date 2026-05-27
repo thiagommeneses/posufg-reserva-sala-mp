@@ -298,7 +298,7 @@
       "Write tests: user cannot access another user's reservation (404)",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -317,6 +317,108 @@
       "Write tests: check-in within valid window succeeds",
       "Write tests: actions on other user's reservations return 404",
       "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": true
+  },
+  {
+    "category": "architectural",
+    "description": "Create seed_data management command with modular seed infrastructure",
+    "steps": [
+      "Create core/management/commands/ directory structure with __init__.py files",
+      "Create core/seeds/ package with __init__.py and separate modules: attributes.py, spaces.py, users.py, reservations.py, maintenance.py",
+      "Create management command seed_data that orchestrates all seed modules in order (attributes → spaces → users → reservations → maintenance)",
+      "Each seed module exposes a seed() function that uses get_or_create for idempotency",
+      "Add optional --flush flag that removes seed-identifiable records (by natural keys) before re-seeding",
+      "Run `uv run python manage.py seed_data --help` and verify command is registered",
+      "Run `uv run python manage.py check` and verify it passes"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Seed default attributes in Portuguese (pt-BR)",
+    "steps": [
+      "Implement core/seeds/attributes.py with seed() function",
+      "Create attributes: Ar-condicionado, Projetor, TV, Webcam, Quadro branco, Videoconferência, Wi-Fi",
+      "Use get_or_create keyed by Attribute.name for idempotency",
+      "Write test: seed creates all 7 attributes",
+      "Write test: running seed twice does not duplicate attributes",
+      "Verify all attribute names are in pt-BR",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Seed default spaces with attributes in Portuguese (pt-BR)",
+    "steps": [
+      "Implement core/seeds/spaces.py with seed() function",
+      "Create spaces: Sala de Reunião Alfa (2º andar, Bloco A, cap 8), Sala de Reunião Beta (3º andar, Bloco B, cap 12), Sala Focus (1º andar, Bloco C, cap 4), Auditório Central (Térreo, cap 50), Sala Executiva (4º andar, Bloco A, cap 6)",
+      "Associate attributes per PRD spec (Alfa: AC+TV+Videoconferência+Wi-Fi, Beta: AC+Projetor+Quadro branco+Wi-Fi, Focus: AC+Webcam+Wi-Fi, Auditório: AC+Projetor+TV+Videoconferência+Wi-Fi, Executiva: AC+TV+Webcam+Videoconferência+Wi-Fi)",
+      "Use get_or_create keyed by Space.name for idempotency",
+      "Write test: seed creates all 5 spaces with correct capacity and location in pt-BR",
+      "Write test: each space has the expected attributes linked via SpaceAttribute",
+      "Write test: running seed twice does not duplicate spaces or SpaceAttribute links",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Seed default users in Portuguese (pt-BR)",
+    "steps": [
+      "Implement core/seeds/users.py with seed() function",
+      "Create users: admin (staff+superuser, first_name=Administrador), maria.silva (Maria Silva), joao.santos (João Santos), ana.costa (Ana Costa)",
+      "Password from SEED_DEFAULT_PASSWORD env var (default: reserva123), document in .env.example",
+      "Use get_or_create keyed by User.username for idempotency; update password only on --flush",
+      "Write test: seed creates admin user with is_staff=True and is_superuser=True",
+      "Write test: seed creates 3 regular users with is_staff=False",
+      "Write test: seeded users can authenticate with default password",
+      "Write test: running seed twice does not duplicate users",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "functional",
+    "description": "Seed sample reservations and maintenance blocks in Portuguese (pt-BR)",
+    "steps": [
+      "Implement core/seeds/reservations.py with seed() function creating 4 demo scenarios: maria.silva future confirmed on Sala de Reunião Alfa, joao.santos past completed on Sala Focus, ana.costa today confirmed on Sala Executiva (check-in window), joao.santos past no_show on Sala de Reunião Beta",
+      "Use relative datetimes based on timezone.now() so seeds remain valid regardless of run date",
+      "Implement core/seeds/maintenance.py with seed() function: Auditório Central 'Limpeza pós-evento' (tomorrow 08:00-10:00), Sala de Reunião Beta 'Manutenção do ar-condicionado' (next week weekday 14:00-16:00)",
+      "Idempotency keyed by (user, space, start_time) for reservations and (space, start_time, reason) for maintenance blocks",
+      "Write test: seed creates reservations with expected statuses (confirmed, completed, no_show)",
+      "Write test: seed creates maintenance blocks with pt-BR reasons",
+      "Write test: seeded reservations do not conflict with each other or maintenance blocks",
+      "Write test: running seed twice does not duplicate reservations or maintenance blocks",
+      "Run `uv run pytest` and verify tests pass with >= 80% coverage"
+    ],
+    "passes": false
+  },
+  {
+    "category": "integration",
+    "description": "Add Makefile seed target and document seed workflow",
+    "steps": [
+      "Add `seed` target to Makefile: docker compose exec web python manage.py seed_data",
+      "Add `seed-flush` target to Makefile: docker compose exec web python manage.py seed_data --flush",
+      "Add seed and seed-flush to Makefile help text",
+      "Add SEED_DEFAULT_PASSWORD to .env.example with comment in pt-BR",
+      "Verify `make seed` runs successfully after migrate on a fresh database",
+      "Verify seeded data is visible: GET /api/spaces/ returns 5 spaces, login as admin succeeds",
+      "Run `uv run pytest` and verify tests pass"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "Test seed_data command end-to-end idempotency and pt-BR content",
+    "steps": [
+      "Write integration test: running seed_data on empty DB creates all expected records (7 attributes, 5 spaces, 4 users, 4 reservations, 2 maintenance blocks)",
+      "Write integration test: running seed_data twice produces same record counts (no duplicates)",
+      "Write integration test: --flush removes seeded data and recreates it fresh",
+      "Write integration test: all seeded text content (names, locations, reasons) is in pt-BR (no English defaults like 'Confirmed' in display names)",
+      "Write integration test: seeded admin can access /admin-dashboard/ and seeded user can access /spaces/",
+      "Run `uv run pytest` and verify all tests pass with >= 80% coverage"
     ],
     "passes": false
   },
