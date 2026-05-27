@@ -431,12 +431,12 @@
       "Document user journeys: end user (search → detail → reserve → check-in → cancel/reschedule → history) and admin (manage spaces/reservations/maintenance → occupancy)",
       "Add one flow per use case, each with steps and the exact routes involved (login/register/logout, spaces list/filter, space detail/availability, create reservation, cancel/reschedule, check-in via QR Code URL, admin dashboard, maintenance blocks)",
       "Add a 'Run locally' section: prerequisites (Docker + Docker Compose) and the core commands (make up, make migrate, make seed, make test, make lint, make format)",
-      "Add a 'Seeds and default users' section: how to run seeds (idempotent), how to flush/reseed, default users and roles, and default password via SEED_DEFAULT_PASSWORD",
+      "Add a 'Seeds and default users' section: how to run seeds (idempotent), how to flush/reseed, default users and roles, default password via SEED_DEFAULT_PASSWORD",
       "Add a 'Main routes' section listing UI and API endpoints relevant to day-to-day testing",
       "Verify README steps are accurate by executing the described commands on a fresh database",
       "Run `uv run pytest` and verify tests still pass"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -459,7 +459,7 @@
       "Write/Update view/template test to ensure the filter form renders the button and fields in the expected structure",
       "Run `uv run pytest` and verify tests pass"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

@@ -651,3 +651,29 @@ Task: Fix login redirect default route to /spaces/ (not /htmx-test/) (prd.json i
 - Ran `uv run pytest` and 225 tests passed with 97.73% coverage (above 80% threshold)
 - Committed inside Docker container: fix(accounts): redirect login and register to /spaces/ instead of htmx-test
 - Files changed: accounts/views.py, accounts/tests.py, core/views.py, config/settings.py, prd.json, .ralph-workflow/progress.txt
+
+Task: Write README (pt-BR) explaining project, user journeys, and flows per use case (prd.json item: integration)
+- Created `README.md` in project root written in Portuguese (pt-BR)
+- Included high-level overview with the three pillars (calendário único, auto-release, filtros por atributos)
+- Documented apps and responsibilities (accounts, spaces, reservations, admin_dashboard)
+- Explained API vs UI coexistence and reservation status lifecycle
+- Documented user journeys for end user and admin with step-by-step flows
+- Added use-case flows covering login/register/logout, spaces list/filter, space detail/availability, create/cancel/reschedule reservation, check-in via QR Code, admin dashboard and maintenance blocks
+- Added 'Run locally' section with prerequisites (Docker + Docker Compose) and core Makefile commands
+- Added 'Seeds and default users' section documenting idempotency, flush, default users/roles, and SEED_DEFAULT_PASSWORD
+- Added 'Main routes' section with UI and API endpoint tables
+- Added technologies section at the end
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 225 tests passed with 97.73% coverage (above 80% threshold)
+- Committed inside Docker container: docs: create README.md in pt-BR with project overview, user journeys, and routes
+- Files changed: README.md, prd.json, .ralph-workflow/progress.txt
+
+Task: Align /spaces/ filter button with other filter fields (prd.json item 22)
+- Fixed `templates/spaces/space_list.html`: changed button container from `flex items-end` to `justify-end` and added an invisible label placeholder so the button aligns vertically with the input fields
+- Added `test_filter_button_aligned_with_fields` in `spaces/tests.py` to verify the form renders the button container with `justify-end` and contains the 'Filtrar' text
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 226 tests passed with 97.73% coverage (above 80% threshold)
+- Committed inside Docker container: fix(spaces): align filter button vertically with input fields
+- Files changed: templates/spaces/space_list.html, spaces/tests.py, prd.json, .ralph-workflow/progress.txt
