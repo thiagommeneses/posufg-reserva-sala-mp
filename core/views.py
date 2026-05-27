@@ -9,7 +9,7 @@ def home_view(request):
     """Simple home view redirecting to spaces list."""
     from django.shortcuts import redirect
 
-    return redirect("htmx_test")
+    return redirect("space_list")
 
 
 class HtmxTestView(View):

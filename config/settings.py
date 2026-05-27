@@ -172,5 +172,5 @@ REST_FRAMEWORK = {
 
 # Authentication redirects
 LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/"
+LOGIN_REDIRECT_URL = "/spaces/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"

@@ -11,7 +11,7 @@ from accounts.forms import UserRegistrationForm
 def login_view(request):
     """Handle user login with DaisyUI-styled form."""
     if request.user.is_authenticated:
-        return redirect("home")
+        return redirect("space_list")
 
     if request.method == "POST":
         form = AuthenticationForm(request, data=request.POST)
@@ -19,7 +19,7 @@ def login_view(request):
             user = form.get_user()
             login(request, user)
             messages.success(request, f"Bem-vindo, {user.username}!")
-            return redirect("home")
+            return redirect("space_list")
         messages.error(request, "Usuário ou senha inválidos.")
     else:
         form = AuthenticationForm(request)
@@ -30,7 +30,7 @@ def login_view(request):
 def register_view(request):
     """Handle user registration with DaisyUI-styled form."""
     if request.user.is_authenticated:
-        return redirect("home")
+        return redirect("space_list")
 
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
@@ -38,7 +38,7 @@ def register_view(request):
             user = form.save()
             login(request, user)
             messages.success(request, "Conta criada com sucesso!")
-            return redirect("home")
+            return redirect("space_list")
         messages.error(request, "Corrija os erros abaixo.")
     else:
         form = UserRegistrationForm()

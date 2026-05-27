@@ -32,13 +32,13 @@ class TestLoginView:
         assert "form" in response.context
 
     def test_login_with_valid_credentials(self, client, user):
-        """Valid credentials should authenticate and redirect."""
+        """Valid credentials should authenticate and redirect to /spaces/."""
         response = client.post(
             reverse("accounts:login"),
             {"username": "testuser", "password": "testpass123"},
         )
         assert response.status_code == 302
-        assert response.url == reverse("home")
+        assert response.url == reverse("space_list")
 
     @pytest.mark.django_db
     def test_login_with_invalid_credentials(self, client):
@@ -56,7 +56,7 @@ class TestLoginView:
         client.force_login(user)
         response = client.get(reverse("accounts:login"))
         assert response.status_code == 302
-        assert response.url == reverse("home")
+        assert response.url == reverse("space_list")
 
 
 class TestRegisterView:
@@ -70,7 +70,7 @@ class TestRegisterView:
 
     @pytest.mark.django_db
     def test_valid_registration_creates_user_and_redirects(self, client):
-        """Valid registration should create user, log in, and redirect."""
+        """Valid registration should create user, log in, and redirect to /spaces/."""
         response = client.post(
             reverse("accounts:register"),
             {
@@ -81,7 +81,7 @@ class TestRegisterView:
             },
         )
         assert response.status_code == 302
-        assert response.url == reverse("home")
+        assert response.url == reverse("space_list")
         assert User.objects.filter(username="newuser").exists()
 
     @pytest.mark.django_db
@@ -105,7 +105,7 @@ class TestRegisterView:
         client.force_login(user)
         response = client.get(reverse("accounts:register"))
         assert response.status_code == 302
-        assert response.url == reverse("home")
+        assert response.url == reverse("space_list")
 
 
 class TestLogoutView:
