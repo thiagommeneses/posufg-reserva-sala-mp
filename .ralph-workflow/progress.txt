@@ -707,3 +707,13 @@ Task: Fix infinite loading indicator (#filter-indicator) on /admin-dashboard/res
 - Ran all feedback loops: lint passed, format passed, 231 tests passed with 97.76% coverage
 - Committed: fix(admin_dashboard): hide filter indicator on initial reservation list load
 - Files changed: templates/admin_dashboard/reservation_list.html, admin_dashboard/tests.py, prd.json
+
+Task: Fix infinite loading spinner inside Filtrar button on /spaces/ (Buscar Espaços) (prd.json item 23)
+- Identified root cause: DaisyUI loading-spinner is visible by default; HTMX's opacity-based htmx-indicator hiding is insufficient
+- Added style="display: none;" to #loading-indicator in templates/spaces/space_list.html so HTMX toggles display instead of opacity
+- Added hx-indicator="#loading-indicator" to each attribute checkbox input so checkbox changes also show/hide the spinner
+- Updated test_filter_spinner_hidden_on_initial_load to assert style="display: none;" is present in the indicator element
+- Renamed test_filter_spinner_only_on_explicit_submit to test_filter_spinner_on_form_and_checkboxes
+- Updated test to verify form and all attribute checkboxes reference the same indicator (excluding drawer toggle checkbox)
+- Ran all feedback loops: lint passed, format passed, 231 tests passed with 97.80% coverage
+- Files changed: templates/spaces/space_list.html, spaces/tests.py, prd.json, .ralph-workflow/progress.txt

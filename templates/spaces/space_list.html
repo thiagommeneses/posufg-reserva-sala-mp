@@ -50,7 +50,7 @@
                 </label>
                 <button type="submit" class="btn btn-primary w-full">
                     Filtrar
-                    <span id="loading-indicator" class="htmx-indicator ml-2">
+                    <span id="loading-indicator" class="htmx-indicator ml-2" style="display: none;">
                         <span class="loading loading-spinner loading-sm"></span>
                     </span>
                 </button>
@@ -74,6 +74,7 @@
                         hx-get="{% url 'space_list' %}"
                         hx-target="#space-results"
                         hx-include="closest form"
+                        hx-indicator="#loading-indicator"
                     >
                     <span class="label-text">{{ attr.name }}</span>
                 </label>

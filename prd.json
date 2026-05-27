@@ -463,12 +463,14 @@
   },
   {
     "category": "functional",
-    "description": "Show /spaces/ filter spinner only on explicit filter action and hide after results load",
+    "description": "Fix infinite loading spinner inside Filtrar button on /spaces/ (Buscar Espaços)",
     "steps": [
-      "Adjust HTMX indicator wiring so the spinner only appears when the user clicks 'Filtrar' (not on initial page load)",
-      "Ensure spinner is removed/hidden after HTMX swap completes and results are rendered",
-      "Verify behavior for both full-page request and HTMX partial swap",
-      "Write/Update test: spinner is not visible on initial /spaces/ load and becomes visible only during filter requests (HTMX)",
+      "Identify why #loading-indicator (htmx-indicator with DaisyUI loading-spinner) is visible on initial page load inside the Filtrar button",
+      "Ensure #loading-indicator is hidden by default (opacity: 0 or display: none) and only visible during active HTMX requests (htmx-request class on form or button)",
+      "Verify GET /spaces/ loads with Filtrar button showing no spinner without any user interaction",
+      "Verify clicking Filtrar shows spinner during request and hides it after #space-results swap completes",
+      "Verify attribute checkbox filter changes also show/hide spinner correctly",
+      "Write/Update test: initial /spaces/ response does not render visible spinner inside Filtrar button (check #loading-indicator has htmx-indicator hidden state)",
       "Run `uv run pytest` and verify tests pass"
     ],
     "passes": true

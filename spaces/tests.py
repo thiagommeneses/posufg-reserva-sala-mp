@@ -539,27 +539,28 @@ class TestSpaceListView:
         assert "Filtrar" in content
 
     def test_filter_spinner_hidden_on_initial_load(self, client, regular_user):
-        """Spinner must have htmx-indicator class so HTMX hides it initially."""
+        """Spinner must be hidden by default and only visible during HTMX requests."""
         client.force_login(regular_user)
         response = client.get("/spaces/")
         assert response.status_code == 200
         content = response.content.decode()
         assert 'id="loading-indicator"' in content
         assert "htmx-indicator" in content
+        assert 'style="display: none;"' in content
 
-    def test_filter_spinner_only_on_explicit_submit(self, client, regular_user):
-        """Only the form submit should trigger the loading indicator."""
+    def test_filter_spinner_on_form_and_checkboxes(self, client, regular_user):
+        """Form submit and checkbox changes should trigger the same loading indicator."""
+        Attribute.objects.create(name="TV")
+        Attribute.objects.create(name="Projetor")
         client.force_login(regular_user)
         response = client.get("/spaces/")
         assert response.status_code == 200
         content = response.content.decode()
-        # The form should reference the indicator exactly once
-        assert content.count('hx-indicator="#loading-indicator"') == 1
-        # Checkboxes must not have their own hx-indicator
-        checkbox_lines = [
-            line
-            for line in content.split("\n")
-            if 'type="checkbox"' in line and 'name="attributes"' in line
-        ]
-        for line in checkbox_lines:
-            assert "hx-indicator" not in line
+        # The form should reference the indicator
+        assert 'hx-indicator="#loading-indicator"' in content
+        # Every attribute checkbox should also reference the same indicator
+        attribute_checkbox_count = content.count('name="attributes"')
+        assert attribute_checkbox_count > 0
+        indicator_count = content.count('hx-indicator="#loading-indicator"')
+        # Form has 1 indicator, each attribute checkbox has 1 indicator
+        assert indicator_count == attribute_checkbox_count + 1
