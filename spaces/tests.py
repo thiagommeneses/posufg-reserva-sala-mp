@@ -528,3 +528,12 @@ class TestSpaceListView:
         spaces = list(response.context["spaces"])
         assert active_space in spaces
         assert not any(s.name == "Inactive Room" for s in spaces)
+
+    def test_filter_button_aligned_with_fields(self, client, regular_user):
+        """The 'Filtrar' button container should vertically align with inputs."""
+        client.force_login(regular_user)
+        response = client.get("/spaces/")
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'class="form-control justify-end"' in content
+        assert "Filtrar" in content
