@@ -53,5 +53,6 @@ urlpatterns = [
         ReservationCheckInView.as_view(),
         name="reservation_checkin",
     ),
+    path("admin-dashboard/", include("admin_dashboard.urls")),
     path("", include("core.urls")),
 ]

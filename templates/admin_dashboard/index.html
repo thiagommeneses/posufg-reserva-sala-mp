@@ -1,0 +1,49 @@
+{% extends "base_admin.html" %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <h1 class="text-3xl font-bold">Dashboard</h1>
+
+    <!-- Stats Row -->
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="stats shadow">
+            <div class="stat">
+                <div class="stat-title">Espaços Totais</div>
+                <div class="stat-value">{{ total_spaces }}</div>
+            </div>
+        </div>
+        <div class="stats shadow">
+            <div class="stat">
+                <div class="stat-title">Ocupados Agora</div>
+                <div class="stat-value text-error">{{ occupied_now }}</div>
+            </div>
+        </div>
+        <div class="stats shadow">
+            <div class="stat">
+                <div class="stat-title">Disponíveis Agora</div>
+                <div class="stat-value text-success">{{ available_now }}</div>
+            </div>
+        </div>
+        <div class="stats shadow">
+            <div class="stat">
+                <div class="stat-title">No-shows Hoje</div>
+                <div class="stat-value text-warning">{{ no_shows_today }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Occupancy Grid (auto-refreshed via HTMX) -->
+    <div>
+        <h2 class="mb-4 text-xl font-semibold">Ocupação em Tempo Real</h2>
+        <div
+            id="occupancy-grid"
+            hx-get="/admin-dashboard/"
+            hx-trigger="every 30s"
+            hx-select="#occupancy-grid > *"
+            hx-swap="innerHTML"
+        >
+            {% include "admin_dashboard/_occupancy_grid.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}

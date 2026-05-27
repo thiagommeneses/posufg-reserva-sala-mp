@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "django_filters",
     "django_htmx",
     "accounts",
+    "admin_dashboard",
     "core",
     "spaces",
     "reservations",
