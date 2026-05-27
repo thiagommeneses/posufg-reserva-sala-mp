@@ -289,3 +289,146 @@ class TestReservationLifecycleIntegration:
         res2 = create_reservation(user2, space, start, end)
         assert res2.status == ReservationStatus.CONFIRMED
         assert res2.pk != reservation.pk
+
+
+@pytest.mark.django_db
+class TestUserInterfaceFlow:
+    """End-to-end tests for user-facing web interface flows."""
+
+    def test_user_registers_logs_in_searches_creates_reservation(self, client):
+        """Full user flow from registration to viewing reservation in list."""
+        space = Space.objects.create(
+            name="Sala UI Flow", capacity=8, location="Térreo", is_active=True
+        )
+
+        # Register
+        response = client.post(
+            "/accounts/register/",
+            {
+                "username": "uiflowuser",
+                "email": "ui@example.com",
+                "password1": "StrongPass123!",
+                "password2": "StrongPass123!",
+            },
+        )
+        assert response.status_code == 302
+        user = User.objects.get(username="uiflowuser")
+
+        # Login
+        client.login(username="uiflowuser", password="StrongPass123!")
+
+        # Search spaces
+        response = client.get("/spaces/")
+        assert response.status_code == 200
+        assert space in list(response.context["spaces"])
+
+        # View space detail
+        response = client.get(f"/spaces/{space.pk}/")
+        assert response.status_code == 200
+        assert response.context["space"] == space
+
+        # Create reservation via web form
+        now = timezone.now()
+        start = now + timezone.timedelta(hours=2)
+        end = now + timezone.timedelta(hours=3)
+        response = client.post(
+            "/reservations/new/",
+            {
+                "space": str(space.pk),
+                "date": start.strftime("%Y-%m-%d"),
+                "start_time": start.strftime("%H:%M"),
+                "end_time": end.strftime("%H:%M"),
+            },
+        )
+        assert response.status_code == 302
+        reservation = Reservation.objects.get(user=user, space=space)
+        assert reservation.status == ReservationStatus.CONFIRMED
+
+        # View reservation in My Reservations
+        response = client.get("/reservations/")
+        assert response.status_code == 200
+        assert reservation in list(response.context["reservations"])
+
+    def test_user_cancels_reservation_via_web_interface(self, client):
+        """User cancels reservation via web and slot becomes available again."""
+        space = Space.objects.create(
+            name="Sala Cancel UI", capacity=5, location="1º andar", is_active=True
+        )
+        user = User.objects.create_user(username="cancelui", password="testpass123")
+        client.login(username="cancelui", password="testpass123")
+
+        now = timezone.now()
+        start = now + timezone.timedelta(hours=1)
+        end = now + timezone.timedelta(hours=2)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        # Verify slot is occupied before cancel
+        availability = get_availability_for_date(space, start.date())
+        assert len(availability["occupied"]) > 0
+
+        # Cancel via web interface
+        response = client.post(f"/reservations/{reservation.pk}/cancel/")
+        assert response.status_code == 302
+
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CANCELLED
+
+        # Verify slot is now available
+        availability = get_availability_for_date(space, start.date())
+        assert len(availability["occupied"]) == 0
+
+    def test_user_checks_in_via_direct_url(self, client):
+        """User accesses check-in page via direct URL and check-in succeeds."""
+        space = Space.objects.create(
+            name="Sala Check-in UI", capacity=5, location="2º andar", is_active=True
+        )
+        user = User.objects.create_user(username="checkinui", password="testpass123")
+        client.login(username="checkinui", password="testpass123")
+
+        now = timezone.now()
+        start = now - timezone.timedelta(minutes=5)
+        end = now + timezone.timedelta(hours=1)
+        reservation = Reservation.objects.create(
+            space=space,
+            user=user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        response = client.post(f"/reservations/{reservation.pk}/check-in/")
+        assert response.status_code == 302
+
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CHECKED_IN
+        assert reservation.checked_in_at is not None
+
+    def test_unauthenticated_user_redirected_to_login(self, client):
+        """Unauthenticated users are redirected to login on all protected pages."""
+        protected_urls = [
+            "/spaces/",
+            "/spaces/1/",
+            "/reservations/",
+            "/reservations/new/",
+            "/reservations/1/",
+            "/reservations/1/cancel/",
+            "/reservations/1/reschedule/",
+            "/reservations/1/check-in/",
+            "/admin-dashboard/",
+            "/admin-dashboard/spaces/",
+            "/admin-dashboard/reservations/",
+            "/admin-dashboard/maintenance/",
+        ]
+        for url in protected_urls:
+            response = client.get(url)
+            assert response.status_code in (302, 403), (
+                f"Unexpected status {response.status_code} for {url}"
+            )
+            if response.status_code == 302:
+                assert "/accounts/login/" in response.url
