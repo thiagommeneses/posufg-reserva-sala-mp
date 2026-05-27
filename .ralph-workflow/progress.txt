@@ -590,3 +590,17 @@ Task: Implement admin maintenance block management pages (prd.json item 30)
 - Ran `uv run pytest` and 212 tests passed with 97.58% coverage (above 80% threshold)
 - Committed: feat(admin_dashboard): implement admin maintenance block management pages
 - Files changed: admin_dashboard/forms.py, admin_dashboard/views.py, admin_dashboard/urls.py, admin_dashboard/tests.py, templates/admin_dashboard/maintenance_list.html, templates/admin_dashboard/maintenance_form.html, templates/admin_dashboard/_maintenance_row.html, prd.json, .ralph-workflow/progress.txt
+
+Task: End-to-end reservation lifecycle test (prd.json item: testing)
+- Added `TestReservationLifecycleIntegration` pytest class to `core/tests.py` with 4 integration tests
+- `test_full_lifecycle_create_search_reserve_checkin`: creates space with attribute, searches by attribute via `/spaces/`, creates reservation via API, checks in using `check_in_reservation` service
+- `test_no_show_flow_auto_releases_slot`: creates past confirmed reservation, verifies slot is occupied via `get_availability_for_date`, runs `auto_release_no_shows`, verifies status changes to `NO_SHOW` and slot becomes available
+- `test_conflict_prevention_two_users_same_slot`: user1 books a slot, user2 attempts overlapping booking and gets `ValidationError`
+- `test_cancel_and_rebook_frees_slot`: user1 creates and cancels reservation, user2 successfully rebooks the same slot
+- Fixed initial test failures: search filter uses attribute names not PKs, check-in requires reservation within 15-minute window
+- Fixed lint issues: removed unused `MaintenanceBlock` import, replaced broad `pytest.raises(Exception)` with `pytest.raises(ValidationError)`
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 216 tests passed with 97.63% coverage (above 80% threshold)
+- Committed: test: add end-to-end reservation lifecycle integration tests
+- Files changed: core/tests.py, prd.json, .ralph-workflow/progress.txt
