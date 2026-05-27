@@ -574,3 +574,19 @@ Task: Implement admin reservation management page (prd.json item 29)
 - Ran `uv run pytest` and 203 tests passed with 97.52% coverage (above 80% threshold)
 - Committed: feat(admin_dashboard): implement admin reservation management pages
 - Files changed: reservations/services.py, admin_dashboard/views.py, admin_dashboard/urls.py, admin_dashboard/tests.py, templates/admin_dashboard/reservation_list.html, templates/admin_dashboard/_reservation_table.html, templates/admin_dashboard/_reservation_row.html, prd.json, .ralph-workflow/progress.txt
+
+Task: Implement admin maintenance block management pages (prd.json item 30)
+- Created `MaintenanceBlockForm` in `admin_dashboard/forms.py` with overlap validation against confirmed/checked_in reservations using `forms.ModelForm` and custom `clean()` method
+- Added `AdminMaintenanceListView` (ListView) at `/admin-dashboard/maintenance/` with StaffRequiredMixin, selecting related spaces, ordered by `-start_time`
+- Added `AdminMaintenanceCreateView` (CreateView) at `/admin-dashboard/maintenance/new/` with MaintenanceBlockForm, setting `created_by` from request user
+- Added `AdminMaintenanceDeleteView` (View) at `/admin-dashboard/maintenance/<int:pk>/delete/` with HTMX support (`hx-delete` inline swap)
+- Created `templates/admin_dashboard/maintenance_list.html` extending `base_admin.html` with DaisyUI table, "Novo Bloqueio" button
+- Created `templates/admin_dashboard/maintenance_form.html` with DaisyUI card, form-control inputs, datetime-local fields, alert-error for non-field errors
+- Created `templates/admin_dashboard/_maintenance_row.html` partial for HTMX inline delete with `hx-confirm` modal
+- Added URL patterns in `admin_dashboard/urls.py` for maintenance_list, maintenance_create, maintenance_delete
+- Wrote 9 tests in `TestAdminMaintenanceManagement` covering: staff list, non-staff 403, unauthenticated redirect, staff create on free slot, non-staff create 403, overlap with reservation shows error, staff delete, HTMX delete returns empty, non-staff delete 403
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 212 tests passed with 97.58% coverage (above 80% threshold)
+- Committed: feat(admin_dashboard): implement admin maintenance block management pages
+- Files changed: admin_dashboard/forms.py, admin_dashboard/views.py, admin_dashboard/urls.py, admin_dashboard/tests.py, templates/admin_dashboard/maintenance_list.html, templates/admin_dashboard/maintenance_form.html, templates/admin_dashboard/_maintenance_row.html, prd.json, .ralph-workflow/progress.txt
