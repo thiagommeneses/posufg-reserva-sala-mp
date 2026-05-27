@@ -617,3 +617,17 @@ Task: End-to-end user interface flow test (prd.json item: testing)
 - Ran `uv run pytest` and 220 tests passed with 97.68% coverage (above 80% threshold)
 - Committed: test: add end-to-end user interface flow tests
 - Files changed: core/tests.py, prd.json, .ralph-workflow/progress.txt
+
+Task: End-to-end admin interface flow test (prd.json item: testing)
+- Added `TestAdminInterfaceFlow` pytest class to `core/tests.py` with 5 integration tests
+- `test_admin_logs_in_sees_dashboard_navigates_to_spaces`: staff user logs in, accesses `/admin-dashboard/`, verifies occupancy metrics and space cards, navigates to `/admin-dashboard/spaces/`
+- `test_admin_creates_space_with_attributes_appears_in_user_search`: admin creates space with attribute via `/admin-dashboard/spaces/new/`, regular user finds it in `/spaces/` search
+- `test_admin_cancels_user_reservation`: admin cancels any user's reservation via `/admin-dashboard/reservations/{id}/cancel/`, verifies status changes to `CANCELLED`
+- `test_admin_creates_maintenance_block_blocks_user_reservation`: admin creates maintenance block, user attempt to reserve same slot via API returns 400
+- `test_non_staff_gets_403_on_all_admin_dashboard_routes`: tests 6 admin URLs all return 403 for non-staff user
+- Fixed lint issues: removed unused local variable assignments (F841) in test methods where users were created but only referenced via `client.login(username=...)`
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 225 tests passed with 97.73% coverage (above 80% threshold)
+- Committed: test: add end-to-end admin interface flow tests
+- Files changed: core/tests.py, prd.json, .ralph-workflow/progress.txt
