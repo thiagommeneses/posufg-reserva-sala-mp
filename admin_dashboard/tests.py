@@ -318,3 +318,206 @@ class TestAdminSpaceManagement:
             HTTP_HX_REQUEST="true",
         )
         assert response.status_code == 403
+
+
+@pytest.mark.django_db
+class TestAdminReservationManagement:
+    """Tests for admin reservation management views."""
+
+    def test_staff_can_view_all_reservations(
+        self, client, staff_user, dashboard_space, non_staff_user
+    ):
+        """Staff users should see all reservations, not just their own."""
+        now = timezone.now()
+        Reservation.objects.create(
+            space=dashboard_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            status=ReservationStatus.CONFIRMED,
+        )
+        client.force_login(staff_user)
+        response = client.get("/admin-dashboard/reservations/")
+        assert response.status_code == 200
+        assert "reservations" in response.context
+        assert len(response.context["reservations"]) == 1
+
+    def test_non_staff_cannot_view_reservations(self, client, non_staff_user):
+        """Non-staff users should get 403 on reservation list."""
+        client.force_login(non_staff_user)
+        response = client.get("/admin-dashboard/reservations/")
+        assert response.status_code == 403
+
+    def test_unauthenticated_user_redirected_to_login(self, client):
+        """Unauthenticated users should be redirected to login on admin reservation pages."""
+        response = client.get("/admin-dashboard/reservations/")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url
+
+    def test_staff_can_cancel_any_reservation(
+        self, client, staff_user, dashboard_space, non_staff_user
+    ):
+        """Staff users should be able to cancel any user's reservation."""
+        now = timezone.now()
+        reservation = Reservation.objects.create(
+            space=dashboard_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            status=ReservationStatus.CONFIRMED,
+        )
+        client.force_login(staff_user)
+        response = client.post(f"/admin-dashboard/reservations/{reservation.pk}/cancel/")
+        assert response.status_code == 200
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CANCELLED
+
+    def test_staff_cancel_htmx_returns_updated_row(
+        self, client, staff_user, dashboard_space, non_staff_user
+    ):
+        """HTMX cancel request should return the updated row partial."""
+        now = timezone.now()
+        reservation = Reservation.objects.create(
+            space=dashboard_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            status=ReservationStatus.CONFIRMED,
+        )
+        client.force_login(staff_user)
+        response = client.post(
+            f"/admin-dashboard/reservations/{reservation.pk}/cancel/",
+            HTTP_HX_REQUEST="true",
+        )
+        assert response.status_code == 200
+        assert "admin_dashboard/_reservation_row.html" in [t.name for t in response.templates]
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CANCELLED
+        content = response.content.decode()
+        assert "Cancelada" in content
+
+    def test_non_staff_cannot_cancel_reservation(self, client, non_staff_user, dashboard_space):
+        """Non-staff users should get 403 when cancelling a reservation."""
+        now = timezone.now()
+        reservation = Reservation.objects.create(
+            space=dashboard_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            status=ReservationStatus.CONFIRMED,
+        )
+        client.force_login(non_staff_user)
+        response = client.post(f"/admin-dashboard/reservations/{reservation.pk}/cancel/")
+        assert response.status_code == 403
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CONFIRMED
+
+    def test_filter_by_status(self, client, staff_user, dashboard_space, non_staff_user):
+        """Filtering by status should return only matching reservations."""
+        now = timezone.now()
+        Reservation.objects.create(
+            space=dashboard_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            status=ReservationStatus.CONFIRMED,
+        )
+        Reservation.objects.create(
+            space=dashboard_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=3),
+            end_time=now + timezone.timedelta(hours=4),
+            status=ReservationStatus.CANCELLED,
+        )
+        client.force_login(staff_user)
+        response = client.get("/admin-dashboard/reservations/?status=confirmed")
+        assert response.status_code == 200
+        assert len(response.context["reservations"]) == 1
+        assert response.context["reservations"][0].status == ReservationStatus.CONFIRMED
+
+    def test_filter_by_space(self, client, staff_user, dashboard_space, non_staff_user):
+        """Filtering by space should return only matching reservations."""
+        now = timezone.now()
+        other_space = Space.objects.create(name="Other Room", capacity=5, location="Floor 2")
+        Reservation.objects.create(
+            space=dashboard_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            status=ReservationStatus.CONFIRMED,
+        )
+        Reservation.objects.create(
+            space=other_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            status=ReservationStatus.CONFIRMED,
+        )
+        client.force_login(staff_user)
+        response = client.get(f"/admin-dashboard/reservations/?space={dashboard_space.pk}")
+        assert response.status_code == 200
+        assert len(response.context["reservations"]) == 1
+        assert response.context["reservations"][0].space == dashboard_space
+
+    def test_filter_by_user_search(self, client, staff_user, dashboard_space, non_staff_user):
+        """Filtering by user search should return only matching reservations."""
+        now = timezone.now()
+        other_user = User.objects.create_user(
+            username="other_user", email="other@example.com", password="pass"
+        )
+        Reservation.objects.create(
+            space=dashboard_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            status=ReservationStatus.CONFIRMED,
+        )
+        Reservation.objects.create(
+            space=dashboard_space,
+            user=other_user,
+            start_time=now + timezone.timedelta(hours=3),
+            end_time=now + timezone.timedelta(hours=4),
+            status=ReservationStatus.CONFIRMED,
+        )
+        client.force_login(staff_user)
+        response = client.get("/admin-dashboard/reservations/?user_search=regular")
+        assert response.status_code == 200
+        assert len(response.context["reservations"]) == 1
+        assert response.context["reservations"][0].user == non_staff_user
+
+    def test_htmx_filter_returns_partial(self, client, staff_user, dashboard_space, non_staff_user):
+        """HTMX filter request should return partial template without base layout."""
+        now = timezone.now()
+        Reservation.objects.create(
+            space=dashboard_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            status=ReservationStatus.CONFIRMED,
+        )
+        client.force_login(staff_user)
+        response = client.get(
+            "/admin-dashboard/reservations/?status=confirmed",
+            HTTP_HX_REQUEST="true",
+        )
+        assert response.status_code == 200
+        assert "admin_dashboard/_reservation_table.html" in [t.name for t in response.templates]
+        assert "base.html" not in [t.name for t in response.templates]
+
+    def test_cancel_already_cancelled_returns_error(
+        self, client, staff_user, dashboard_space, non_staff_user
+    ):
+        """Cancelling an already cancelled reservation should return an error."""
+        now = timezone.now()
+        reservation = Reservation.objects.create(
+            space=dashboard_space,
+            user=non_staff_user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            status=ReservationStatus.CANCELLED,
+        )
+        client.force_login(staff_user)
+        response = client.post(f"/admin-dashboard/reservations/{reservation.pk}/cancel/")
+        assert response.status_code == 400
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CANCELLED

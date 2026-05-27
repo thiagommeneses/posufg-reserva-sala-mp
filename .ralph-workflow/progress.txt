@@ -538,3 +538,20 @@ Task: Add Makefile seed target and document seed workflow (prd.json item: integr
 - Ran `uv run pytest` and 181 tests passed with 97.78% coverage (above 80% threshold)
 - Committed: feat: add Makefile seed targets and document seed workflow
 - Files changed: Makefile, .env.example, prd.json
+
+Task: Implement admin space management pages (prd.json item 28)
+- Created `SpaceForm` in `admin_dashboard/forms.py` with custom `attributes` field (ModelMultipleChoiceField) and manual SpaceAttribute synchronization
+- Created `AdminSpaceListView` (ListView) at `/admin-dashboard/spaces/` with DaisyUI table, prefetching space_attributes
+- Created `AdminSpaceCreateView` (CreateView) at `/admin-dashboard/spaces/new/` with SpaceForm
+- Created `AdminSpaceUpdateView` (UpdateView) at `/admin-dashboard/spaces/<int:pk>/` with SpaceForm
+- Created `AdminSpaceToggleView` (View) at `/admin-dashboard/spaces/<int:pk>/toggle/` for inline hx-patch toggle of `is_active`
+- Created `templates/admin_dashboard/space_list.html` with DaisyUI table, status badges, inline HTMX toggle, and "Novo Espaço" button
+- Created `templates/admin_dashboard/space_form.html` with DaisyUI card, form-control inputs, checkbox group for attributes
+- Added `app_name = "admin_dashboard"` to `admin_dashboard/urls.py` and registered new URL patterns
+- Updated `config/urls.py` to use `admin_dashboard` namespace (implicit via app_name)
+- Wrote 11 tests in `TestAdminSpaceManagement` covering: staff list/create/update/toggle, non-staff 403, unauthenticated redirect, attribute persistence on create/update
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 192 tests passed with 97.84% coverage (above 80% threshold)
+- Committed: feat(admin_dashboard): implement admin space management pages
+- Files changed: admin_dashboard/forms.py, admin_dashboard/views.py, admin_dashboard/urls.py, admin_dashboard/tests.py, templates/admin_dashboard/space_list.html, templates/admin_dashboard/space_form.html, prd.json

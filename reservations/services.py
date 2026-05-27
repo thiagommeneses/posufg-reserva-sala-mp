@@ -282,6 +282,28 @@ def create_reservation(user, space, start_time, end_time):
     )
 
 
+def admin_cancel_reservation(reservation):
+    """Cancel any reservation regardless of owner (admin only).
+
+    Args:
+        reservation: The Reservation instance to cancel.
+
+    Raises:
+        ValidationError: If the reservation cannot be cancelled in its
+            current status.
+    """
+    if reservation.status not in {
+        ReservationStatus.CONFIRMED,
+        ReservationStatus.CHECKED_IN,
+    }:
+        raise ValidationError(
+            "Only confirmed or checked-in reservations can be cancelled.",
+        )
+
+    reservation.status = ReservationStatus.CANCELLED
+    reservation.save(update_fields=["status", "updated_at"])
+
+
 def auto_release_no_shows(threshold_minutes=DEFAULT_NO_SHOW_THRESHOLD_MINUTES):
     """Mark confirmed reservations as no-show if they have passed the threshold.
 

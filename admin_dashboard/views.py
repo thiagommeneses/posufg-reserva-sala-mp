@@ -3,6 +3,7 @@
 import datetime
 
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse_lazy
@@ -10,6 +11,7 @@ from django.views import View
 from django.views.generic import CreateView, ListView, UpdateView
 
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
+from reservations.services import admin_cancel_reservation
 from spaces.models import Space
 
 from .forms import SpaceForm
@@ -152,3 +154,100 @@ class AdminSpaceToggleView(StaffRequiredMixin, View):
         else:
             badge = '<span class="badge badge-ghost">Inativo</span>'
         return HttpResponse(badge)
+
+
+class AdminReservationListView(StaffRequiredMixin, ListView):
+    """List view for admin reservation management with filtering."""
+
+    model = Reservation
+    template_name = "admin_dashboard/reservation_list.html"
+    context_object_name = "reservations"
+    paginate_by = 25
+
+    def get_queryset(self):
+        """Return filtered queryset based on query parameters."""
+        queryset = Reservation.objects.select_related("space", "user").order_by("-start_time")
+
+        status_filter = self.request.GET.get("status")
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        space_filter = self.request.GET.get("space")
+        if space_filter:
+            queryset = queryset.filter(space_id=space_filter)
+
+        start_date = self.request.GET.get("start_date")
+        if start_date:
+            try:
+                parsed = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+                dt_start = datetime.datetime.combine(parsed, datetime.time.min).replace(
+                    tzinfo=datetime.UTC,
+                )
+                queryset = queryset.filter(start_time__gte=dt_start)
+            except ValueError:
+                pass
+
+        end_date = self.request.GET.get("end_date")
+        if end_date:
+            try:
+                parsed = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+                dt_end = datetime.datetime.combine(parsed, datetime.time.max).replace(
+                    tzinfo=datetime.UTC,
+                )
+                queryset = queryset.filter(start_time__lte=dt_end)
+            except ValueError:
+                pass
+
+        user_search = self.request.GET.get("user_search")
+        if user_search:
+            queryset = queryset.filter(user__username__icontains=user_search)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        """Add filter options and current filter values to context."""
+        context = super().get_context_data(**kwargs)
+        context["spaces"] = Space.objects.order_by("name")
+        context["status_choices"] = ReservationStatus.choices
+        context["current_filters"] = {
+            "status": self.request.GET.get("status", ""),
+            "space": self.request.GET.get("space", ""),
+            "start_date": self.request.GET.get("start_date", ""),
+            "end_date": self.request.GET.get("end_date", ""),
+            "user_search": self.request.GET.get("user_search", ""),
+        }
+        return context
+
+    def render_to_response(self, context, **response_kwargs):
+        """Return partial template for HTMX filter requests."""
+        if self.request.headers.get("HX-Request") == "true":
+            return render(
+                self.request,
+                "admin_dashboard/_reservation_table.html",
+                context,
+            )
+        return super().render_to_response(context, **response_kwargs)
+
+
+class AdminReservationCancelView(StaffRequiredMixin, View):
+    """Cancel any reservation (admin only)."""
+
+    def post(self, request, pk):
+        """Cancel the reservation and return the updated row HTML."""
+        reservation = get_object_or_404(Reservation, pk=pk)
+        try:
+            admin_cancel_reservation(reservation)
+        except ValidationError as exc:
+            return HttpResponse(
+                f'<span class="text-error text-sm">{exc.message}</span>',
+                status=400,
+            )
+
+        if request.headers.get("HX-Request") == "true":
+            return render(
+                request,
+                "admin_dashboard/_reservation_row.html",
+                {"reservation": reservation},
+            )
+
+        return render(request, "admin_dashboard/reservation_list.html")
