@@ -50,7 +50,9 @@
                 </label>
                 <button type="submit" class="btn btn-primary w-full">
                     Filtrar
-                    <span id="loading-indicator" class="htmx-indicator ml-2 loading loading-spinner loading-sm"></span>
+                    <span id="loading-indicator" class="htmx-indicator ml-2">
+                        <span class="loading loading-spinner loading-sm"></span>
+                    </span>
                 </button>
             </div>
         </div>
@@ -63,15 +65,14 @@
             <div class="flex flex-wrap gap-4">
                 {% for attr in attributes %}
                 <label class="label cursor-pointer gap-2">
-                    <input 
-                        type="checkbox" 
-                        name="attributes" 
+                    <input
+                        type="checkbox"
+                        name="attributes"
                         value="{{ attr.name }}"
                         class="checkbox checkbox-primary"
                         {% if attr.name in selected_attributes %}checked{% endif %}
                         hx-get="{% url 'space_list' %}"
                         hx-target="#space-results"
-                        hx-indicator="#loading-indicator"
                         hx-include="closest form"
                     >
                     <span class="label-text">{{ attr.name }}</span>

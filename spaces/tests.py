@@ -537,3 +537,29 @@ class TestSpaceListView:
         content = response.content.decode()
         assert 'class="form-control justify-end"' in content
         assert "Filtrar" in content
+
+    def test_filter_spinner_hidden_on_initial_load(self, client, regular_user):
+        """Spinner must have htmx-indicator class so HTMX hides it initially."""
+        client.force_login(regular_user)
+        response = client.get("/spaces/")
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'id="loading-indicator"' in content
+        assert "htmx-indicator" in content
+
+    def test_filter_spinner_only_on_explicit_submit(self, client, regular_user):
+        """Only the form submit should trigger the loading indicator."""
+        client.force_login(regular_user)
+        response = client.get("/spaces/")
+        assert response.status_code == 200
+        content = response.content.decode()
+        # The form should reference the indicator exactly once
+        assert content.count('hx-indicator="#loading-indicator"') == 1
+        # Checkboxes must not have their own hx-indicator
+        checkbox_lines = [
+            line
+            for line in content.split("\n")
+            if 'type="checkbox"' in line and 'name="attributes"' in line
+        ]
+        for line in checkbox_lines:
+            assert "hx-indicator" not in line
