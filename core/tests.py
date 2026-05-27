@@ -490,7 +490,6 @@ class TestAdminInterfaceFlow:
             name="Sala Admin Cancel", capacity=5, location="1º andar", is_active=True
         )
         User.objects.create_user(username="admincancel", password="testpass123", is_staff=True)
-        User.objects.create_user(username="reservationowner", password="testpass123")
         user = User.objects.create_user(username="reservationowner", password="testpass123")
 
         now = timezone.now()
