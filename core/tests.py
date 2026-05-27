@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from reservations.models import Reservation, ReservationStatus
+from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 from reservations.services import (
     auto_release_no_shows,
     check_in_reservation,
@@ -432,3 +432,136 @@ class TestUserInterfaceFlow:
             )
             if response.status_code == 302:
                 assert "/accounts/login/" in response.url
+
+
+@pytest.mark.django_db
+class TestAdminInterfaceFlow:
+    """End-to-end tests for admin-facing web interface flows."""
+
+    def test_admin_logs_in_sees_dashboard_navigates_to_spaces(self, client):
+        """Admin logs in, sees dashboard with occupancy data, navigates to spaces."""
+        space = Space.objects.create(
+            name="Sala Admin Flow", capacity=5, location="Térreo", is_active=True
+        )
+        User.objects.create_user(username="adminflow", password="testpass123", is_staff=True)
+        client.login(username="adminflow", password="testpass123")
+
+        response = client.get("/admin-dashboard/")
+        assert response.status_code == 200
+        assert response.context["total_spaces"] == 1
+        assert "space_cards" in response.context
+
+        response = client.get("/admin-dashboard/spaces/")
+        assert response.status_code == 200
+        assert space in list(response.context["spaces"])
+
+    def test_admin_creates_space_with_attributes_appears_in_user_search(self, client):
+        """Admin creates space with attributes; it appears in user-facing search."""
+        User.objects.create_user(username="admincreate", password="testpass123", is_staff=True)
+        User.objects.create_user(username="regularsearch", password="testpass123")
+        attr = Attribute.objects.create(name="Webcam")
+
+        client.login(username="admincreate", password="testpass123")
+        response = client.post(
+            "/admin-dashboard/spaces/new/",
+            {
+                "name": "Sala Nova Admin",
+                "description": "",
+                "capacity": 10,
+                "location": "Bloco D",
+                "is_active": "on",
+                "attributes": [str(attr.pk)],
+            },
+        )
+        assert response.status_code == 302
+        space = Space.objects.get(name="Sala Nova Admin")
+        attr_names = set(space.space_attributes.values_list("attribute__name", flat=True))
+        assert attr_names == {"Webcam"}
+
+        # Regular user searches and finds the new space
+        client.login(username="regularsearch", password="testpass123")
+        response = client.get("/spaces/", {"attributes": "Webcam"})
+        assert response.status_code == 200
+        assert space in list(response.context["spaces"])
+
+    def test_admin_cancels_user_reservation(self, client):
+        """Admin cancels any user's reservation and status changes to cancelled."""
+        space = Space.objects.create(
+            name="Sala Admin Cancel", capacity=5, location="1º andar", is_active=True
+        )
+        User.objects.create_user(username="admincancel", password="testpass123", is_staff=True)
+        User.objects.create_user(username="reservationowner", password="testpass123")
+        user = User.objects.create_user(username="reservationowner", password="testpass123")
+
+        now = timezone.now()
+        reservation = Reservation.objects.create(
+            space=space,
+            user=user,
+            start_time=now + timezone.timedelta(hours=1),
+            end_time=now + timezone.timedelta(hours=2),
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        client.login(username="admincancel", password="testpass123")
+        response = client.post(f"/admin-dashboard/reservations/{reservation.pk}/cancel/")
+        assert response.status_code == 200
+
+        reservation.refresh_from_db()
+        assert reservation.status == ReservationStatus.CANCELLED
+
+    def test_admin_creates_maintenance_block_blocks_user_reservation(self, client):
+        """Admin creates maintenance block; user cannot reserve that slot."""
+        space = Space.objects.create(
+            name="Sala Admin Maint", capacity=5, location="2º andar", is_active=True
+        )
+        User.objects.create_user(username="adminmaint", password="testpass123", is_staff=True)
+        User.objects.create_user(username="regularuser", password="testpass123")
+
+        now = timezone.now()
+        start = now + timezone.timedelta(hours=1)
+        end = now + timezone.timedelta(hours=2)
+
+        client.login(username="adminmaint", password="testpass123")
+        response = client.post(
+            "/admin-dashboard/maintenance/new/",
+            {
+                "space": str(space.pk),
+                "start_time": start.strftime("%Y-%m-%dT%H:%M"),
+                "end_time": end.strftime("%Y-%m-%dT%H:%M"),
+                "reason": "Manutenção preventiva",
+            },
+        )
+        assert response.status_code == 302
+        assert MaintenanceBlock.objects.filter(reason="Manutenção preventiva").exists()
+
+        # User tries to reserve the same slot and is rejected
+        client.login(username="regularuser", password="testpass123")
+        response = client.post(
+            "/api/reservations/",
+            {
+                "space": space.pk,
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+            },
+            content_type="application/json",
+        )
+        assert response.status_code == 400
+
+    def test_non_staff_gets_403_on_all_admin_dashboard_routes(self, client):
+        """Non-staff users get 403 on all admin-dashboard routes."""
+        User.objects.create_user(username="nonstaff", password="testpass123")
+        client.login(username="nonstaff", password="testpass123")
+
+        admin_urls = [
+            "/admin-dashboard/",
+            "/admin-dashboard/spaces/",
+            "/admin-dashboard/spaces/new/",
+            "/admin-dashboard/reservations/",
+            "/admin-dashboard/maintenance/",
+            "/admin-dashboard/maintenance/new/",
+        ]
+        for url in admin_urls:
+            response = client.get(url)
+            assert response.status_code == 403, (
+                f"Expected 403 for {url}, got {response.status_code}"
+            )
