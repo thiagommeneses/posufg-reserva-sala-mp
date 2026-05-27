@@ -484,7 +484,7 @@
       "Write/Update test: GET /admin-dashboard/spaces/ renders without an always-on spinner/indicator",
       "Run `uv run pytest` and verify tests pass"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -497,7 +497,7 @@
       "Write/Update test: GET /admin-dashboard/reservations/ does not include a default-active loading indicator",
       "Run `uv run pytest` and verify tests pass"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

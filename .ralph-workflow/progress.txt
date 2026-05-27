@@ -688,3 +688,22 @@ Task: Show /spaces/ filter spinner only on explicit filter action and hide after
 - Ran `uv run pytest` and 228 tests passed with 97.71% coverage (above 80% threshold)
 - Committed inside Docker container: fix(spaces): show filter spinner only on explicit submit and hide on load
 - Files changed: templates/spaces/space_list.html, spaces/tests.py, prd.json, .ralph-workflow/progress.txt
+
+Task: Fix infinite loading spinner in /admin-dashboard/spaces/ status column (prd.json item 26)
+- Created partial template _space_status_badge.html with self-contained HTMX toggle logic
+- Moved spinner inside the badge container so hx-swap="outerHTML" replaces both on toggle
+- Added style="display: none;" to the spinner to ensure it is hidden on initial page load
+- Updated space_list.html to include the partial template instead of inline badge+indicator
+- Updated AdminSpaceToggleView.patch to render the partial template instead of returning raw HTML
+- Wrote test test_space_list_no_infinite_spinner: verifies indicator has style="display: none;" on initial load
+- Wrote test test_toggle_response_includes_functional_badge: verifies toggle response includes hx-patch and hidden spinner
+- Ran all feedback loops: lint passed, format passed, 230 tests passed with 97.76% coverage
+- Committed: fix(admin_dashboard): stop infinite loading spinner in spaces status column
+- Files changed: templates/admin_dashboard/_space_status_badge.html, templates/admin_dashboard/space_list.html, admin_dashboard/views.py, admin_dashboard/tests.py, prd.json
+
+Task: Fix infinite loading indicator (#filter-indicator) on /admin-dashboard/reservations/ without user action (prd.json item 27)
+- Added style="display: none;" to #filter-indicator in reservation_list.html to ensure it is hidden on initial page load
+- Wrote test test_reservation_list_no_infinite_filter_indicator: verifies filter indicator has style="display: none;" on initial load
+- Ran all feedback loops: lint passed, format passed, 231 tests passed with 97.76% coverage
+- Committed: fix(admin_dashboard): hide filter indicator on initial reservation list load
+- Files changed: templates/admin_dashboard/reservation_list.html, admin_dashboard/tests.py, prd.json
