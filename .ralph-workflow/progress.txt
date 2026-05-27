@@ -604,3 +604,16 @@ Task: End-to-end reservation lifecycle test (prd.json item: testing)
 - Ran `uv run pytest` and 216 tests passed with 97.63% coverage (above 80% threshold)
 - Committed: test: add end-to-end reservation lifecycle integration tests
 - Files changed: core/tests.py, prd.json, .ralph-workflow/progress.txt
+
+Task: End-to-end user interface flow test (prd.json item: testing)
+- Added `TestUserInterfaceFlow` pytest class to `core/tests.py` with 4 integration tests
+- `test_user_registers_logs_in_searches_creates_reservation`: registers via `/accounts/register/`, logs in, searches spaces, views detail, creates reservation via web form at `/reservations/new/`, verifies it appears in `/reservations/`
+- `test_user_cancels_reservation_via_web_interface`: creates confirmed reservation, cancels via `/reservations/{id}/cancel/`, verifies status changes to `CANCELLED` and slot frees up in availability
+- `test_user_checks_in_via_direct_url`: creates reservation within check-in window, accesses `/reservations/{id}/check-in/`, verifies status changes to `CHECKED_IN`
+- `test_unauthenticated_user_redirected_to_login`: tests 12 protected URLs (user and admin areas) all return 302 or 403 with login redirect
+- Fixed initial test failure: web form uses separate `date`, `start_time`, `end_time` fields (not datetime-local)
+- Ran `uv run ruff check .` and lint feedback loop passed
+- Ran `uv run ruff format --check .` and all files formatted
+- Ran `uv run pytest` and 220 tests passed with 97.68% coverage (above 80% threshold)
+- Committed: test: add end-to-end user interface flow tests
+- Files changed: core/tests.py, prd.json, .ralph-workflow/progress.txt
