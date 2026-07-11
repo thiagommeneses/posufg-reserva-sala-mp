@@ -1,0 +1,188 @@
+"""Tests for the ai_assistant app."""
+
+from unittest.mock import patch
+
+import pytest
+from django.contrib.auth import get_user_model
+from rest_framework.test import APIClient
+
+from ai_assistant.exceptions import AIServiceError
+from ai_assistant.services import classify_maintenance_reason, extract_room_search_filters
+from spaces.models import Attribute, Space, SpaceAttribute
+
+User = get_user_model()
+
+
+@pytest.fixture
+def user(db):
+    """Create a test user."""
+    return User.objects.create_user(username="ai_user", password="testpass123")
+
+
+@pytest.fixture
+def api_client(user):
+    """Return an API client authenticated as the test user."""
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client
+
+
+@pytest.fixture
+def projector_space(db):
+    """Create a space with capacity 10 and a projector attribute."""
+    space = Space.objects.create(name="Sala Grande", capacity=10, location="Bloco A")
+    attribute = Attribute.objects.create(name="projetor")
+    SpaceAttribute.objects.create(space=space, attribute=attribute)
+    return space
+
+
+@pytest.fixture
+def small_space(db):
+    """Create a small space without any attributes."""
+    return Space.objects.create(name="Sala Pequena", capacity=2, location="Bloco B")
+
+
+class TestExtractRoomSearchFilters:
+    """Unit tests for services.extract_room_search_filters."""
+
+    @patch("ai_assistant.services._run_json_completion")
+    def test_returns_parsed_filters(self, mock_completion):
+        """It should return the filters parsed from the LLM JSON response."""
+        mock_completion.return_value = {
+            "min_capacity": 8,
+            "attributes": ["projetor"],
+            "location": None,
+            "summary": "Sala para 8 pessoas com projetor.",
+        }
+
+        result = extract_room_search_filters("sala para 8 pessoas com projetor")
+
+        assert result["min_capacity"] == 8
+        assert result["attributes"] == ["projetor"]
+        assert result["summary"] == "Sala para 8 pessoas com projetor."
+
+    @patch("ai_assistant.services._get_client")
+    def test_raises_ai_service_error_when_client_unavailable(self, mock_get_client):
+        """It should propagate AIServiceError raised while building the client."""
+        mock_get_client.side_effect = AIServiceError("Serviço de IA não configurado.")
+
+        with pytest.raises(AIServiceError):
+            extract_room_search_filters("sala para 8 pessoas")
+
+
+class TestClassifyMaintenanceReason:
+    """Unit tests for services.classify_maintenance_reason."""
+
+    @patch("ai_assistant.services._run_json_completion")
+    def test_returns_valid_category(self, mock_completion):
+        """It should return the category classified by the LLM."""
+        mock_completion.return_value = {
+            "category": "eletrica",
+            "confidence": "alta",
+            "justification": "Menciona troca de lâmpadas.",
+        }
+
+        result = classify_maintenance_reason("Troca de lâmpadas queimadas")
+
+        assert result["category"] == "eletrica"
+        assert result["confidence"] == "alta"
+
+    @patch("ai_assistant.services._run_json_completion")
+    def test_falls_back_to_outros_for_unknown_category(self, mock_completion):
+        """It should fall back to 'outros' when the LLM returns an unexpected category."""
+        mock_completion.return_value = {
+            "category": "categoria-invalida",
+            "confidence": "baixa",
+            "justification": "",
+        }
+
+        result = classify_maintenance_reason("Algo estranho")
+
+        assert result["category"] == "outros"
+
+
+class TestRoomSearchAssistantView:
+    """Integration tests for the room search assistant endpoint."""
+
+    @patch("ai_assistant.views.extract_room_search_filters")
+    def test_returns_matching_spaces(
+        self, mock_extract, api_client, projector_space, small_space,
+    ):
+        """It should return only spaces matching the extracted filters."""
+        mock_extract.return_value = {
+            "min_capacity": 8,
+            "attributes": ["projetor"],
+            "location": None,
+            "summary": "Sala para 8 pessoas com projetor.",
+        }
+
+        response = api_client.post(
+            "/api/v1/ai/room-search/", {"query": "sala para 8 pessoas com projetor"},
+        )
+
+        assert response.status_code == 200
+        result_ids = [item["id"] for item in response.data["results"]]
+        assert result_ids == [projector_space.id]
+
+    def test_rejects_short_query(self, api_client):
+        """It should return 400 for a query below the minimum length."""
+        response = api_client.post("/api/v1/ai/room-search/", {"query": "ab"})
+
+        assert response.status_code == 400
+
+    def test_requires_authentication(self):
+        """It should reject unauthenticated requests."""
+        client = APIClient()
+
+        response = client.post(
+            "/api/v1/ai/room-search/", {"query": "sala para 8 pessoas"},
+        )
+
+        assert response.status_code in (401, 403)
+
+    @patch("ai_assistant.views.extract_room_search_filters")
+    def test_returns_502_when_ai_service_fails(self, mock_extract, api_client):
+        """It should return 502 when the AI provider is unavailable."""
+        mock_extract.side_effect = AIServiceError("Não foi possível consultar o serviço de IA.")
+
+        response = api_client.post(
+            "/api/v1/ai/room-search/", {"query": "sala para 8 pessoas"},
+        )
+
+        assert response.status_code == 502
+
+
+class TestMaintenanceReasonClassifierView:
+    """Integration tests for the maintenance reason classifier endpoint."""
+
+    @patch("ai_assistant.views.classify_maintenance_reason")
+    def test_returns_classification(self, mock_classify, api_client):
+        """It should return the classification produced by the AI service."""
+        mock_classify.return_value = {
+            "category": "eletrica",
+            "confidence": "alta",
+            "justification": "Menciona lâmpadas.",
+        }
+
+        response = api_client.post(
+            "/api/v1/ai/maintenance-classify/", {"reason": "Troca de lâmpadas queimadas"},
+        )
+
+        assert response.status_code == 200
+        assert response.data["category"] == "eletrica"
+
+    def test_rejects_empty_reason(self, api_client):
+        """It should return 400 when the reason is empty."""
+        response = api_client.post("/api/v1/ai/maintenance-classify/", {"reason": ""})
+
+        assert response.status_code == 400
+
+    def test_requires_authentication(self):
+        """It should reject unauthenticated requests."""
+        client = APIClient()
+
+        response = client.post(
+            "/api/v1/ai/maintenance-classify/", {"reason": "Troca de lâmpadas"},
+        )
+
+        assert response.status_code in (401, 403)

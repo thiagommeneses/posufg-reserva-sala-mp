@@ -7,6 +7,7 @@ Sistema centralizado para descoberta e reserva de salas e espaços físicos. Res
 1. **Calendário único e centralizado** — se não está no sistema, não existe.
 2. **Liberação automática de no-shows** — sem check-in em 15 minutos, a sala volta a ficar disponível.
 3. **Filtros por atributos mínimos** — busca por capacidade e equipamentos (TV, projetor, videoconferência etc.).
+4. **Assistência por IA** — busca de salas em linguagem natural e classificação automática de motivos de manutenção, via LLM (Groq).
 
 ---
 
@@ -20,6 +21,7 @@ Sistema centralizado para descoberta e reserva de salas e espaços físicos. Res
 | `spaces` | Cadastro de espaços e seus atributos (capacidade, localização, equipamentos) |
 | `reservations` | Ciclo de vida da reserva: criar, cancelar, reagendar, check-in e auto-release |
 | `admin_dashboard` | Interface administrativa customizada (ocupação, gestão de espaços, manutenção) |
+| `ai_assistant` | Serviços de IA (LLM via Groq): busca de salas em linguagem natural e classificação de motivos de manutenção |
 
 ### API vs Interface Web
 
@@ -124,6 +126,15 @@ make seed
 # 5. Acesse a aplicação em http://localhost:8000
 ```
 
+### Variáveis de ambiente
+
+Copie `.env.example` para `.env` e preencha. Para usar os endpoints de IA (`/api/v1/ai/...`), é necessário definir:
+
+| Variável | Descrição |
+|----------|-----------|
+| `GROQ_API_KEY` | Chave de API do Groq (gratuita em https://console.groq.com/keys). Sem ela, os endpoints de IA retornam erro 502. |
+| `GROQ_MODEL` | Modelo usado nas chamadas (padrão: `llama-3.3-70b-versatile`) |
+
 ### Comandos úteis
 
 | Comando | Descrição |
@@ -196,19 +207,4 @@ make seed-flush
 | GET | `/api/spaces/` | Listar espaços (com filtros) |
 | GET | `/api/spaces/{id}/` | Detalhe do espaço |
 | GET | `/api/spaces/{id}/availability/` | Disponibilidade por data |
-| GET | `/api/reservations/` | Listar minhas reservas |
-| POST | `/api/reservations/` | Criar reserva |
-| PATCH | `/api/reservations/{id}/cancel/` | Cancelar reserva |
-| PATCH | `/api/reservations/{id}/reschedule/` | Reagendar reserva |
-| POST | `/api/reservations/{id}/check-in/` | Fazer check-in |
-| GET | `/api/admin/occupancy/` | Dashboard de ocupação (admin) |
-| POST | `/api/admin/maintenance-blocks/` | Criar bloqueio de manutenção (admin) |
-
----
-
-## Tecnologias
-
-- **Backend:** Django 5.2, Django REST Framework, PostgreSQL
-- **Frontend:** Django Templates, HTMX, DaisyUI (sobre Tailwind CSS)
-- **Infra:** Docker, Docker Compose
-- **Qualidade:** pytest (com cobertura mínima de 80%), ruff, pre-commit, commitizen
+| GET | `/api/reservations/` | Lis

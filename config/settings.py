@@ -50,11 +50,13 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_filters",
     "django_htmx",
+    "drf_yasg",
     "accounts",
     "admin_dashboard",
     "core",
     "spaces",
     "reservations",
+    "ai_assistant",
 ]
 
 MIDDLEWARE = [
@@ -174,3 +176,42 @@ REST_FRAMEWORK = {
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/spaces/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
+
+# AI services (Groq LLM)
+# https://console.groq.com/docs/overview
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+# Logging
+# https://docs.djangoproject.com/en/5.2/topics/logging/
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "ai_assistant": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

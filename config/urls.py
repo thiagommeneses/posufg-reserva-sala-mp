@@ -17,6 +17,9 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
+from drf_yasg import openapi
+from drf_yasg.views import get_schema_view
+from rest_framework import permissions as drf_permissions
 
 from reservations.views import (
     ReservationCancelView,
@@ -28,12 +31,35 @@ from reservations.views import (
 )
 from spaces.views import SpaceDetailView, SpaceListView
 
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Sistema de Reserva de Espaços API",
+        default_version="v1",
+        description=(
+            "API REST para reserva de salas e assistentes de IA "
+            "(busca de salas em linguagem natural e classificação de manutenção)."
+        ),
+        contact=openapi.Contact(email="rogerior@ufg.br"),
+    ),
+    public=True,
+    permission_classes=[drf_permissions.AllowAny],
+)
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("spaces.urls")),
     path("api/", include("reservations.urls")),
     path("api/admin/", include("reservations.admin_urls")),
     path("api/", include("rest_framework.urls", namespace="rest_framework")),
+    # Endpoints versionados (v1) — convenção adotada a partir dos serviços de IA,
+    # a ser estendida gradualmente para os demais endpoints da API.
+    path("api/v1/", include("ai_assistant.urls")),
+    path(
+        "swagger/",
+        schema_view.with_ui("swagger", cache_timeout=0),
+        name="schema-swagger-ui",
+    ),
+    path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
     path("accounts/", include("accounts.urls", namespace="accounts")),
     path("spaces/", SpaceListView.as_view(), name="space_list"),
     path("spaces/<int:pk>/", SpaceDetailView.as_view(), name="space_detail"),
