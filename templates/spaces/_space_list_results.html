@@ -25,9 +25,9 @@
             {% endwith %}
             
             <div class="card-actions justify-end mt-auto">
-                <button class="btn btn-primary btn-sm" disabled>
-                    Reservar
-                </button>
+                <a href="{% url 'space_detail' space.id %}" class="btn btn-primary btn-sm">
+                    Ver disponibilidade
+                </a>
             </div>
         </div>
     </div>

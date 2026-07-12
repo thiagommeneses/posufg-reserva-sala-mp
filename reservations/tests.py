@@ -6,6 +6,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -1494,6 +1495,21 @@ class TestReservationCreateView:
         )
         assert response.status_code == 200
         assert "Formato de data ou hora inválido" in response.context["error"]
+
+    def test_post_without_space_redirects_with_error(self, client, regular_user):
+        """POST with no space selected should redirect instead of crashing."""
+        client.force_login(regular_user)
+        response = client.post(
+            "/reservations/new/",
+            {
+                "space": "",
+                "date": "2025-12-25",
+                "start_time": "10:00",
+                "end_time": "12:00",
+            },
+        )
+        assert response.status_code == 302
+        assert response.url == reverse("space_list")
 
 
 @pytest.mark.django_db

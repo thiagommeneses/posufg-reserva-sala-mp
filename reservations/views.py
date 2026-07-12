@@ -367,6 +367,9 @@ class ReservationCreateView(LoginRequiredMixin, View):
     def post(self, request):
         """Process the reservation creation form."""
         space_id = request.POST.get("space")
+        if not space_id:
+            messages.error(request, "Selecione um espaço antes de reservar.")
+            return redirect("space_list")
         space = get_object_or_404(Space, pk=space_id, is_active=True)
 
         date_str = request.POST.get("date", "").strip()
