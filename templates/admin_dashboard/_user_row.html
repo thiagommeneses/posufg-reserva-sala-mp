@@ -1,0 +1,32 @@
+<tr id="user-row-{{ user_obj.pk }}">
+    <td>{{ user_obj.username }}</td>
+    <td>{{ user_obj.email }}</td>
+    <td>
+        {% if user_obj.is_staff %}
+        <span class="badge badge-primary badge-sm">Admin</span>
+        {% else %}
+        <span class="badge badge-ghost badge-sm">Usuário</span>
+        {% endif %}
+    </td>
+    <td>
+        {% if user_obj.is_active %}
+        <span class="badge badge-success badge-sm">Ativo</span>
+        {% else %}
+        <span class="badge badge-error badge-sm">Inativo</span>
+        {% endif %}
+    </td>
+    <td class="flex gap-2">
+        <a href="{% url 'admin_dashboard:user_update' user_obj.pk %}" class="btn btn-sm btn-outline">Editar</a>
+        {% if user_obj.pk != request.user.pk %}
+        <button
+            class="btn btn-error btn-sm"
+            hx-delete="{% url 'admin_dashboard:user_delete' user_obj.pk %}"
+            hx-target="#user-row-{{ user_obj.pk }}"
+            hx-swap="outerHTML"
+            hx-confirm="Tem certeza que deseja remover o usuário {{ user_obj.username }}?"
+        >
+            Remover
+        </button>
+        {% endif %}
+    </td>
+</tr>

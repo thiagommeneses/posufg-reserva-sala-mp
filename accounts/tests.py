@@ -22,6 +22,17 @@ def user(db):
     )
 
 
+@pytest.fixture
+def staff_user(db):
+    """Create a test staff user."""
+    return User.objects.create_user(
+        username="staffuser",
+        email="staff@example.com",
+        password="testpass123",  # noqa: S106
+        is_staff=True,
+    )
+
+
 class TestLoginView:
     """Tests for the login view."""
 
@@ -55,6 +66,40 @@ class TestLoginView:
         """Already authenticated users should be redirected away."""
         client.force_login(user)
         response = client.get(reverse("accounts:login"))
+        assert response.status_code == 302
+        assert response.url == reverse("space_list")
+
+    def test_authenticated_staff_redirected_to_admin_dashboard(self, client, staff_user):
+        """Already authenticated staff users should be redirected to the admin dashboard."""
+        client.force_login(staff_user)
+        response = client.get(reverse("accounts:login"))
+        assert response.status_code == 302
+        assert response.url == reverse("admin_dashboard:admin_dashboard")
+
+    def test_login_as_admin_with_staff_user_succeeds(self, client, staff_user):
+        """Staff user choosing the admin path should log in and reach the dashboard."""
+        response = client.post(
+            reverse("accounts:login"),
+            {"username": "staffuser", "password": "testpass123", "login_as": "admin"},
+        )
+        assert response.status_code == 302
+        assert response.url == reverse("admin_dashboard:admin_dashboard")
+
+    def test_login_as_admin_with_regular_user_is_blocked(self, client, user):
+        """Regular user choosing the admin path should be rejected and not logged in."""
+        response = client.post(
+            reverse("accounts:login"),
+            {"username": "testuser", "password": "testpass123", "login_as": "admin"},
+        )
+        assert response.status_code == 200
+        assert "_auth_user_id" not in client.session
+
+    def test_login_as_user_with_staff_user_goes_to_spaces(self, client, staff_user):
+        """Staff user choosing the regular path should still land on the spaces list."""
+        response = client.post(
+            reverse("accounts:login"),
+            {"username": "staffuser", "password": "testpass123", "login_as": "user"},
+        )
         assert response.status_code == 302
         assert response.url == reverse("space_list")
 

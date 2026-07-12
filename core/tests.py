@@ -189,7 +189,7 @@ class TestReservationLifecycleIntegration:
         start = now - timezone.timedelta(minutes=5)
         end = now + timezone.timedelta(hours=1)
         response = client.post(
-            "/api/reservations/",
+            "/api/v1/reservations/",
             {
                 "space": space.pk,
                 "start_time": start.isoformat(),
@@ -536,7 +536,7 @@ class TestAdminInterfaceFlow:
         # User tries to reserve the same slot and is rejected
         client.login(username="regularuser", password="testpass123")
         response = client.post(
-            "/api/reservations/",
+            "/api/v1/reservations/",
             {
                 "space": space.pk,
                 "start_time": start.isoformat(),

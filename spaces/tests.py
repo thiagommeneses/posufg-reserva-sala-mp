@@ -184,7 +184,7 @@ class TestSpaceApiList:
     def test_list_spaces_authenticated(self, api_client, regular_user, space_with_tv):
         """Authenticated users should receive a list of spaces with attributes."""
         api_client.force_authenticate(user=regular_user)
-        response = api_client.get("/api/spaces/")
+        response = api_client.get("/api/v1/spaces/")
         assert response.status_code == 200
         assert len(response.data) >= 1
         space_data = next(s for s in response.data if s["id"] == space_with_tv.id)
@@ -192,13 +192,13 @@ class TestSpaceApiList:
 
     def test_list_spaces_unauthenticated(self, api_client):
         """Unauthenticated requests should be rejected."""
-        response = api_client.get("/api/spaces/")
+        response = api_client.get("/api/v1/spaces/")
         assert response.status_code in (401, 403)
 
     def test_filter_by_min_capacity(self, api_client, regular_user, space_with_tv, small_space):
         """Filtering by min_capacity should exclude smaller spaces."""
         api_client.force_authenticate(user=regular_user)
-        response = api_client.get("/api/spaces/?min_capacity=6")
+        response = api_client.get("/api/v1/spaces/?min_capacity=6")
         assert response.status_code == 200
         names = {s["name"] for s in response.data}
         assert "Room with TV" in names
@@ -207,7 +207,7 @@ class TestSpaceApiList:
     def test_filter_by_attributes(self, api_client, regular_user, space_with_tv, small_space):
         """Filtering by attributes should return only matching spaces."""
         api_client.force_authenticate(user=regular_user)
-        response = api_client.get("/api/spaces/?attributes=TV")
+        response = api_client.get("/api/v1/spaces/?attributes=TV")
         assert response.status_code == 200
         names = {s["name"] for s in response.data}
         assert "Room with TV" in names
@@ -216,7 +216,7 @@ class TestSpaceApiList:
     def test_filter_by_location_case_insensitive(self, api_client, regular_user, space_with_tv):
         """Location filter should be case-insensitive."""
         api_client.force_authenticate(user=regular_user)
-        response = api_client.get("/api/spaces/?location=building a")
+        response = api_client.get("/api/v1/spaces/?location=building a")
         assert response.status_code == 200
         names = {s["name"] for s in response.data}
         assert "Room with TV" in names
@@ -228,7 +228,7 @@ class TestSpaceApiRetrieve:
     def test_retrieve_space_detail(self, api_client, regular_user, space_with_tv):
         """Authenticated users should be able to retrieve space details."""
         api_client.force_authenticate(user=regular_user)
-        response = api_client.get(f"/api/spaces/{space_with_tv.id}/")
+        response = api_client.get(f"/api/v1/spaces/{space_with_tv.id}/")
         assert response.status_code == 200
         assert response.data["name"] == "Room with TV"
         assert "TV" in response.data["attributes"]
@@ -241,7 +241,7 @@ class TestSpaceApiCreate:
         """Admin users should be able to create new spaces."""
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
-            "/api/spaces/",
+            "/api/v1/spaces/",
             {
                 "name": "New Room",
                 "capacity": 20,
@@ -256,7 +256,7 @@ class TestSpaceApiCreate:
         """Non-admin users should be forbidden from creating spaces."""
         api_client.force_authenticate(user=regular_user)
         response = api_client.post(
-            "/api/spaces/",
+            "/api/v1/spaces/",
             {
                 "name": "New Room",
                 "capacity": 20,
@@ -282,7 +282,7 @@ class TestSpaceAvailability:
             end_time=end,
         )
         response = api_client.get(
-            f"/api/spaces/{space_with_tv.id}/availability/?date={today.isoformat()}"
+            f"/api/v1/spaces/{space_with_tv.id}/availability/?date={today.isoformat()}"
         )
         assert response.status_code == 200
         assert response.data["date"] == today.isoformat()
@@ -311,7 +311,7 @@ class TestSpaceAvailability:
             created_by=regular_user,
         )
         response = api_client.get(
-            f"/api/spaces/{space_with_tv.id}/availability/?date={today.isoformat()}"
+            f"/api/v1/spaces/{space_with_tv.id}/availability/?date={today.isoformat()}"
         )
         assert response.status_code == 200
         occupied = response.data["occupied"]
@@ -332,7 +332,7 @@ class TestSpaceAvailability:
             status=ReservationStatus.CANCELLED,
         )
         response = api_client.get(
-            f"/api/spaces/{space_with_tv.id}/availability/?date={today.isoformat()}"
+            f"/api/v1/spaces/{space_with_tv.id}/availability/?date={today.isoformat()}"
         )
         assert response.status_code == 200
         assert response.data["occupied"] == []

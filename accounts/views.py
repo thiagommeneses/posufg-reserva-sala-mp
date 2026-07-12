@@ -8,17 +8,30 @@ from django.shortcuts import redirect, render
 from accounts.forms import UserRegistrationForm
 
 
+def _redirect_for_user(user):
+    """Return the redirect target based on the user's role."""
+    if user.is_staff:
+        return redirect("admin_dashboard:admin_dashboard")
+    return redirect("space_list")
+
+
 def login_view(request):
-    """Handle user login with DaisyUI-styled form."""
+    """Handle login with an explicit choice between admin and regular user."""
     if request.user.is_authenticated:
-        return redirect("space_list")
+        return _redirect_for_user(request.user)
 
     if request.method == "POST":
+        login_as = request.POST.get("login_as", "user")
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
+            if login_as == "admin" and not user.is_staff:
+                messages.error(request, "Esta conta não tem permissão de administrador.")
+                return render(request, "accounts/login.html", {"form": form})
             login(request, user)
             messages.success(request, f"Bem-vindo, {user.username}!")
+            if login_as == "admin":
+                return redirect("admin_dashboard:admin_dashboard")
             return redirect("space_list")
         messages.error(request, "Usuário ou senha inválidos.")
     else:
@@ -30,7 +43,7 @@ def login_view(request):
 def register_view(request):
     """Handle user registration with DaisyUI-styled form."""
     if request.user.is_authenticated:
-        return redirect("space_list")
+        return _redirect_for_user(request.user)
 
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)

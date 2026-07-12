@@ -1,4 +1,4 @@
-"""URL configuration for the ai_assistant app API (versioned under /api/v1/)."""
+"""URL configuration for the ai_assistant app API."""
 
 from django.urls import path
 

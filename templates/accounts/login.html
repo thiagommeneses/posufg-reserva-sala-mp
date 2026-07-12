@@ -37,7 +37,17 @@
                         {% endif %}
                     </div>
                     <div class="form-control">
-                        <button type="submit" class="btn btn-primary w-full">Entrar</button>
+                        <label class="label">
+                            <span class="label-text">Entrar como</span>
+                        </label>
+                        <div class="flex gap-2">
+                            <button type="submit" name="login_as" value="user" class="btn btn-primary flex-1">
+                                Usuário
+                            </button>
+                            <button type="submit" name="login_as" value="admin" class="btn btn-outline flex-1">
+                                Admin
+                            </button>
+                        </div>
                     </div>
                 </form>
                 <div class="mt-4 text-center">

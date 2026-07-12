@@ -13,6 +13,10 @@ from .views import (
     AdminSpaceListView,
     AdminSpaceToggleView,
     AdminSpaceUpdateView,
+    AdminUserCreateView,
+    AdminUserDeleteView,
+    AdminUserListView,
+    AdminUserUpdateView,
 )
 
 app_name = "admin_dashboard"
@@ -44,4 +48,8 @@ urlpatterns = [
         AdminMaintenanceDeleteView.as_view(),
         name="maintenance_delete",
     ),
+    path("users/", AdminUserListView.as_view(), name="user_list"),
+    path("users/new/", AdminUserCreateView.as_view(), name="user_create"),
+    path("users/<int:pk>/", AdminUserUpdateView.as_view(), name="user_update"),
+    path("users/<int:pk>/delete/", AdminUserDeleteView.as_view(), name="user_delete"),
 ]

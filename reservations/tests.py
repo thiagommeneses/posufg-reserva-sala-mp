@@ -528,7 +528,7 @@ class TestReservationApiCreate:
         start = timezone.now()
         end = start + timedelta(hours=1)
         response = api_client.post(
-            "/api/reservations/",
+            "/api/v1/reservations/",
             {
                 "space": space.id,
                 "start_time": start.isoformat(),
@@ -555,7 +555,7 @@ class TestReservationApiCreate:
             end_time=end,
         )
         response = api_client.post(
-            "/api/reservations/",
+            "/api/v1/reservations/",
             {
                 "space": space.id,
                 "start_time": (start + timedelta(hours=1)).isoformat(),
@@ -571,7 +571,7 @@ class TestReservationApiCreate:
         start = timezone.now()
         end = start + timedelta(hours=1)
         response = api_client.post(
-            "/api/reservations/",
+            "/api/v1/reservations/",
             {
                 "space": inactive_space.id,
                 "start_time": start.isoformat(),
@@ -586,7 +586,7 @@ class TestReservationApiCreate:
         start = timezone.now()
         end = start + timedelta(hours=1)
         response = api_client.post(
-            "/api/reservations/",
+            "/api/v1/reservations/",
             {
                 "space": space.id,
                 "start_time": start.isoformat(),
@@ -608,7 +608,7 @@ class TestReservationApiCreate:
             created_by=regular_user,
         )
         response = api_client.post(
-            "/api/reservations/",
+            "/api/v1/reservations/",
             {
                 "space": space.id,
                 "start_time": (start + timedelta(minutes=30)).isoformat(),
@@ -624,7 +624,7 @@ class TestReservationApiCreate:
         start = timezone.now()
         end = start - timedelta(hours=1)
         response = api_client.post(
-            "/api/reservations/",
+            "/api/v1/reservations/",
             {
                 "space": space.id,
                 "start_time": start.isoformat(),
@@ -651,7 +651,7 @@ class TestReservationApiCreate:
             start_time=start + timedelta(hours=2),
             end_time=start + timedelta(hours=3),
         )
-        response = api_client.get("/api/reservations/")
+        response = api_client.get("/api/v1/reservations/")
         assert response.status_code == 200
         assert len(response.data) == 1
         assert response.data[0]["user"] == regular_user.id
@@ -676,7 +676,7 @@ class TestReservationApiList:
             start_time=now + timedelta(hours=3),
             end_time=now + timedelta(hours=4),
         )
-        response = api_client.get("/api/reservations/")
+        response = api_client.get("/api/v1/reservations/")
         assert response.status_code == 200
         assert len(response.data) == 2
         assert response.data[0]["id"] == r2.id
@@ -700,7 +700,7 @@ class TestReservationApiList:
             end_time=now + timedelta(hours=3),
             status=ReservationStatus.CANCELLED,
         )
-        response = api_client.get("/api/reservations/?status=confirmed")
+        response = api_client.get("/api/v1/reservations/?status=confirmed")
         assert response.status_code == 200
         assert len(response.data) == 1
         assert response.data[0]["id"] == confirmed.id
@@ -722,7 +722,7 @@ class TestReservationApiList:
             start_time=now + timedelta(hours=2),
             end_time=now + timedelta(hours=3),
         )
-        response = api_client.get(f"/api/reservations/?space={space.id}")
+        response = api_client.get(f"/api/v1/reservations/?space={space.id}")
         assert response.status_code == 200
         assert len(response.data) == 1
         assert response.data[0]["space"] == space.id
@@ -746,7 +746,7 @@ class TestReservationApiList:
         gte = now.isoformat()
         lte = (now + timedelta(days=1)).isoformat()
         response = api_client.get(
-            "/api/reservations/",
+            "/api/v1/reservations/",
             {"start_time__gte": gte, "start_time__lte": lte},
         )
         assert response.status_code == 200
@@ -755,7 +755,7 @@ class TestReservationApiList:
 
     def test_unauthenticated_list_is_rejected(self, api_client):
         """Unauthenticated requests to list reservations should be rejected."""
-        response = api_client.get("/api/reservations/")
+        response = api_client.get("/api/v1/reservations/")
         assert response.status_code in (401, 403)
 
 
@@ -773,7 +773,7 @@ class TestReservationApiCancel:
             start_time=start,
             end_time=end,
         )
-        response = api_client.patch(f"/api/reservations/{reservation.id}/cancel/")
+        response = api_client.patch(f"/api/v1/reservations/{reservation.id}/cancel/")
         assert response.status_code == 200
         assert response.data["status"] == ReservationStatus.CANCELLED
         reservation.refresh_from_db()
@@ -792,7 +792,7 @@ class TestReservationApiCancel:
             status=ReservationStatus.CHECKED_IN,
             checked_in_at=start,
         )
-        response = api_client.patch(f"/api/reservations/{reservation.id}/cancel/")
+        response = api_client.patch(f"/api/v1/reservations/{reservation.id}/cancel/")
         assert response.status_code == 200
         assert response.data["status"] == ReservationStatus.CANCELLED
         reservation.refresh_from_db()
@@ -809,7 +809,7 @@ class TestReservationApiCancel:
             start_time=start,
             end_time=end,
         )
-        response = api_client.patch(f"/api/reservations/{reservation.id}/cancel/")
+        response = api_client.patch(f"/api/v1/reservations/{reservation.id}/cancel/")
         assert response.status_code == 403
         reservation.refresh_from_db()
         assert reservation.status == ReservationStatus.CONFIRMED
@@ -826,7 +826,7 @@ class TestReservationApiCancel:
             end_time=end,
             status=ReservationStatus.CANCELLED,
         )
-        response = api_client.patch(f"/api/reservations/{reservation.id}/cancel/")
+        response = api_client.patch(f"/api/v1/reservations/{reservation.id}/cancel/")
         assert response.status_code == 400
         assert "cancelled" in str(response.data).lower()
 
@@ -841,9 +841,9 @@ class TestReservationApiCancel:
             start_time=start,
             end_time=end,
         )
-        api_client.patch(f"/api/reservations/{reservation.id}/cancel/")
+        api_client.patch(f"/api/v1/reservations/{reservation.id}/cancel/")
         response = api_client.post(
-            "/api/reservations/",
+            "/api/v1/reservations/",
             {
                 "space": space.id,
                 "start_time": start.isoformat(),
@@ -871,7 +871,7 @@ class TestReservationApiReschedule:
             end_time=original_end,
         )
         response = api_client.patch(
-            f"/api/reservations/{reservation.id}/reschedule/",
+            f"/api/v1/reservations/{reservation.id}/reschedule/",
             {
                 "start_time": new_start.isoformat(),
                 "end_time": new_end.isoformat(),
@@ -902,7 +902,7 @@ class TestReservationApiReschedule:
             end_time=now + timedelta(hours=5),
         )
         response = api_client.patch(
-            f"/api/reservations/{reservation.id}/reschedule/",
+            f"/api/v1/reservations/{reservation.id}/reschedule/",
             {
                 "start_time": (now + timedelta(hours=2)).isoformat(),
                 "end_time": (now + timedelta(hours=4)).isoformat(),
@@ -923,7 +923,7 @@ class TestReservationApiReschedule:
             end_time=end,
         )
         response = api_client.patch(
-            f"/api/reservations/{reservation.id}/reschedule/",
+            f"/api/v1/reservations/{reservation.id}/reschedule/",
             {
                 "start_time": (start + timedelta(hours=2)).isoformat(),
                 "end_time": (start + timedelta(hours=3)).isoformat(),
@@ -943,7 +943,7 @@ class TestReservationApiReschedule:
             end_time=end,
         )
         response = api_client.patch(
-            f"/api/reservations/{reservation.id}/reschedule/",
+            f"/api/v1/reservations/{reservation.id}/reschedule/",
             {
                 "start_time": end.isoformat(),
                 "end_time": start.isoformat(),
@@ -967,7 +967,7 @@ class TestReservationApiReschedule:
             end_time=original_end,
         )
         api_client.patch(
-            f"/api/reservations/{reservation.id}/reschedule/",
+            f"/api/v1/reservations/{reservation.id}/reschedule/",
             {
                 "start_time": new_start.isoformat(),
                 "end_time": new_end.isoformat(),
@@ -975,7 +975,7 @@ class TestReservationApiReschedule:
         )
         # Original slot should now be available
         response = api_client.post(
-            "/api/reservations/",
+            "/api/v1/reservations/",
             {
                 "space": space.id,
                 "start_time": original_start.isoformat(),
@@ -1000,7 +1000,7 @@ class TestReservationApiCheckIn:
             start_time=start,
             end_time=end,
         )
-        response = api_client.post(f"/api/reservations/{reservation.id}/check-in/")
+        response = api_client.post(f"/api/v1/reservations/{reservation.id}/check-in/")
         assert response.status_code == 200
         assert response.data["status"] == ReservationStatus.CHECKED_IN
         assert response.data["checked_in_at"] is not None
@@ -1020,7 +1020,7 @@ class TestReservationApiCheckIn:
             start_time=start,
             end_time=end,
         )
-        response = api_client.post(f"/api/reservations/{reservation.id}/check-in/")
+        response = api_client.post(f"/api/v1/reservations/{reservation.id}/check-in/")
         assert response.status_code == 400
         assert "check-in" in str(response.data).lower()
         reservation.refresh_from_db()
@@ -1042,7 +1042,7 @@ class TestReservationApiCheckIn:
             end_time=end,
             status=ReservationStatus.CANCELLED,
         )
-        response = api_client.post(f"/api/reservations/{reservation.id}/check-in/")
+        response = api_client.post(f"/api/v1/reservations/{reservation.id}/check-in/")
         assert response.status_code == 400
         assert "confirmed" in str(response.data).lower()
         reservation.refresh_from_db()
@@ -1061,7 +1061,7 @@ class TestReservationApiCheckIn:
             start_time=start,
             end_time=end,
         )
-        response = api_client.post(f"/api/reservations/{reservation.id}/check-in/")
+        response = api_client.post(f"/api/v1/reservations/{reservation.id}/check-in/")
         assert response.status_code == 403
         reservation.refresh_from_db()
         assert reservation.status == ReservationStatus.CONFIRMED
@@ -1150,7 +1150,7 @@ class TestMaintenanceBlockApi:
         start = timezone.now()
         end = start + timedelta(hours=2)
         response = api_client.post(
-            "/api/admin/maintenance-blocks/",
+            "/api/v1/admin/maintenance-blocks/",
             {
                 "space": space.id,
                 "start_time": start.isoformat(),
@@ -1169,7 +1169,7 @@ class TestMaintenanceBlockApi:
         start = timezone.now()
         end = start + timedelta(hours=2)
         response = api_client.post(
-            "/api/admin/maintenance-blocks/",
+            "/api/v1/admin/maintenance-blocks/",
             {
                 "space": space.id,
                 "start_time": start.isoformat(),
@@ -1193,7 +1193,7 @@ class TestMaintenanceBlockApi:
             end_time=end,
         )
         response = api_client.post(
-            "/api/admin/maintenance-blocks/",
+            "/api/v1/admin/maintenance-blocks/",
             {
                 "space": space.id,
                 "start_time": (start + timedelta(minutes=30)).isoformat(),
@@ -1219,7 +1219,8 @@ class TestMaintenanceBlockApi:
         from datetime import date as _date
 
         today = _date.today()
-        response = api_client.get(f"/api/spaces/{space.id}/availability/?date={today.isoformat()}")
+        url = f"/api/v1/spaces/{space.id}/availability/?date={today.isoformat()}"
+        response = api_client.get(url)
         assert response.status_code == 200
         occupied = response.data["occupied"]
         assert any(slot["type"] == "maintenance" for slot in occupied)
@@ -1234,14 +1235,14 @@ class TestMaintenanceBlockApi:
             reason="Cleaning",
             created_by=admin_user,
         )
-        response = api_client.get("/api/admin/maintenance-blocks/")
+        response = api_client.get("/api/v1/admin/maintenance-blocks/")
         assert response.status_code == 200
         assert len(response.data) == 1
 
     def test_non_admin_cannot_list_maintenance_blocks(self, api_client, regular_user):
         """Non-admin should get 403 when listing maintenance blocks."""
         api_client.force_authenticate(user=regular_user)
-        response = api_client.get("/api/admin/maintenance-blocks/")
+        response = api_client.get("/api/v1/admin/maintenance-blocks/")
         assert response.status_code in (401, 403)
 
     def test_admin_can_delete_maintenance_block(self, api_client, admin_user, space):
@@ -1254,7 +1255,7 @@ class TestMaintenanceBlockApi:
             reason="Cleaning",
             created_by=admin_user,
         )
-        response = api_client.delete(f"/api/admin/maintenance-blocks/{block.id}/")
+        response = api_client.delete(f"/api/v1/admin/maintenance-blocks/{block.id}/")
         assert response.status_code == 204
         assert not MaintenanceBlock.objects.filter(id=block.id).exists()
 
@@ -1274,7 +1275,7 @@ class TestOccupancyApi:
             end_time=timezone.now() + timedelta(hours=1),
         )
 
-        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        response = api_client.get(f"/api/v1/admin/occupancy/?date={today.isoformat()}")
         assert response.status_code == 200
         assert response.data["date"] == today.isoformat()
         assert len(response.data["spaces"]) >= 1
@@ -1291,7 +1292,7 @@ class TestOccupancyApi:
         """Non-admin should get 403 when viewing occupancy."""
         api_client.force_authenticate(user=regular_user)
         today = timezone.now().date()
-        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        response = api_client.get(f"/api/v1/admin/occupancy/?date={today.isoformat()}")
         assert response.status_code in (401, 403)
 
     def test_occupancy_includes_all_spaces(self, api_client, admin_user, space):
@@ -1299,7 +1300,7 @@ class TestOccupancyApi:
         api_client.force_authenticate(user=admin_user)
         today = timezone.now().date()
 
-        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        response = api_client.get(f"/api/v1/admin/occupancy/?date={today.isoformat()}")
         assert response.status_code == 200
 
         space_ids = [s["id"] for s in response.data["spaces"]]
@@ -1312,14 +1313,14 @@ class TestOccupancyApi:
     def test_occupancy_requires_date_parameter(self, api_client, admin_user):
         """Occupancy endpoint should require date parameter."""
         api_client.force_authenticate(user=admin_user)
-        response = api_client.get("/api/admin/occupancy/")
+        response = api_client.get("/api/v1/admin/occupancy/")
         assert response.status_code == 400
         assert "date" in str(response.data).lower()
 
     def test_occupancy_validates_date_format(self, api_client, admin_user):
         """Occupancy endpoint should validate date format."""
         api_client.force_authenticate(user=admin_user)
-        response = api_client.get("/api/admin/occupancy/?date=invalid")
+        response = api_client.get("/api/v1/admin/occupancy/?date=invalid")
         assert response.status_code == 400
         assert "invalid" in str(response.data).lower()
 
@@ -1336,7 +1337,7 @@ class TestOccupancyApi:
             created_by=admin_user,
         )
 
-        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        response = api_client.get(f"/api/v1/admin/occupancy/?date={today.isoformat()}")
         assert response.status_code == 200
 
         space_data = next(s for s in response.data["spaces"] if s["id"] == space.id)
@@ -1356,7 +1357,7 @@ class TestOccupancyApi:
             status=ReservationStatus.CHECKED_IN,
         )
 
-        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        response = api_client.get(f"/api/v1/admin/occupancy/?date={today.isoformat()}")
         assert response.status_code == 200
 
         space_data = next(s for s in response.data["spaces"] if s["id"] == space.id)
@@ -1375,13 +1376,13 @@ class TestOccupancyApi:
             end_time=timezone.now() + timedelta(days=1, hours=1),
         )
 
-        response = api_client.get(f"/api/admin/occupancy/?date={today.isoformat()}")
+        response = api_client.get(f"/api/v1/admin/occupancy/?date={today.isoformat()}")
         assert response.status_code == 200
 
         space_data = next(s for s in response.data["spaces"] if s["id"] == space.id)
         assert len(space_data["reservations"]) == 0
 
-        response = api_client.get(f"/api/admin/occupancy/?date={tomorrow.isoformat()}")
+        response = api_client.get(f"/api/v1/admin/occupancy/?date={tomorrow.isoformat()}")
         assert response.status_code == 200
 
         space_data = next(s for s in response.data["spaces"] if s["id"] == space.id)

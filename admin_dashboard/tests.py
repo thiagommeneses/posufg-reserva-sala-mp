@@ -706,3 +706,152 @@ class TestAdminMaintenanceManagement:
         response = client.delete(f"/admin-dashboard/maintenance/{block.pk}/delete/")
         assert response.status_code == 403
         assert MaintenanceBlock.objects.filter(pk=block.pk).exists()
+
+
+@pytest.mark.django_db
+class TestAdminUserManagement:
+    """Tests for admin user management views."""
+
+    def test_staff_can_list_users(self, client, staff_user, non_staff_user):
+        """Staff users should see the user list."""
+        client.force_login(staff_user)
+        response = client.get("/admin-dashboard/users/")
+        assert response.status_code == 200
+        assert non_staff_user in list(response.context["users"])
+
+    def test_non_staff_cannot_list_users(self, client, non_staff_user):
+        """Non-staff users should get 403 on the user list."""
+        client.force_login(non_staff_user)
+        response = client.get("/admin-dashboard/users/")
+        assert response.status_code == 403
+
+    def test_unauthenticated_user_redirected_to_login(self, client):
+        """Unauthenticated users should be redirected to login on the user list."""
+        response = client.get("/admin-dashboard/users/")
+        assert response.status_code == 302
+        assert "/accounts/login/" in response.url
+
+    def test_staff_can_create_regular_user(self, client, staff_user):
+        """Staff users should be able to create a new regular user."""
+        client.force_login(staff_user)
+        response = client.post(
+            "/admin-dashboard/users/new/",
+            {
+                "username": "novousuario",
+                "email": "novo@example.com",
+                "is_active": "on",
+                "password1": "StrongPass123!",
+                "password2": "StrongPass123!",
+            },
+        )
+        assert response.status_code == 302
+        user = User.objects.get(username="novousuario")
+        assert user.is_staff is False
+        assert user.check_password("StrongPass123!")
+
+    def test_staff_can_create_admin_user(self, client, staff_user):
+        """Staff users should be able to promote a new user to admin via the is_staff field."""
+        client.force_login(staff_user)
+        response = client.post(
+            "/admin-dashboard/users/new/",
+            {
+                "username": "novoadmin",
+                "email": "admin2@example.com",
+                "is_staff": "on",
+                "is_active": "on",
+                "password1": "StrongPass123!",
+                "password2": "StrongPass123!",
+            },
+        )
+        assert response.status_code == 302
+        user = User.objects.get(username="novoadmin")
+        assert user.is_staff is True
+
+    def test_create_user_password_mismatch_shows_error(self, client, staff_user):
+        """Mismatched passwords should re-render the form with an error."""
+        client.force_login(staff_user)
+        response = client.post(
+            "/admin-dashboard/users/new/",
+            {
+                "username": "novousuario",
+                "email": "novo@example.com",
+                "password1": "StrongPass123!",
+                "password2": "Diferente123!",
+            },
+        )
+        assert response.status_code == 200
+        assert not User.objects.filter(username="novousuario").exists()
+
+    def test_non_staff_cannot_create_user(self, client, non_staff_user):
+        """Non-staff users should get 403 when creating a user."""
+        client.force_login(non_staff_user)
+        response = client.post(
+            "/admin-dashboard/users/new/",
+            {
+                "username": "novousuario",
+                "email": "novo@example.com",
+                "password1": "StrongPass123!",
+                "password2": "StrongPass123!",
+            },
+        )
+        assert response.status_code == 403
+
+    def test_staff_can_update_user_without_changing_password(self, client, staff_user):
+        """Editing a user without filling password fields should keep the old password."""
+        target = User.objects.create_user(
+            username="editme", email="editme@example.com", password="original123"
+        )
+        client.force_login(staff_user)
+        response = client.post(
+            f"/admin-dashboard/users/{target.pk}/",
+            {
+                "username": "editme",
+                "email": "changed@example.com",
+                "is_active": "on",
+            },
+        )
+        assert response.status_code == 302
+        target.refresh_from_db()
+        assert target.email == "changed@example.com"
+        assert target.check_password("original123")
+
+    def test_staff_can_reset_user_password(self, client, staff_user):
+        """Editing a user with new password fields should update the password."""
+        target = User.objects.create_user(
+            username="editme", email="editme@example.com", password="original123"
+        )
+        client.force_login(staff_user)
+        response = client.post(
+            f"/admin-dashboard/users/{target.pk}/",
+            {
+                "username": "editme",
+                "email": "editme@example.com",
+                "is_active": "on",
+                "password1": "NewStrongPass123!",
+                "password2": "NewStrongPass123!",
+            },
+        )
+        assert response.status_code == 302
+        target.refresh_from_db()
+        assert target.check_password("NewStrongPass123!")
+
+    def test_staff_can_delete_other_user(self, client, staff_user, non_staff_user):
+        """Staff users should be able to delete another user."""
+        client.force_login(staff_user)
+        response = client.delete(f"/admin-dashboard/users/{non_staff_user.pk}/delete/")
+        assert response.status_code == 200
+        assert not User.objects.filter(pk=non_staff_user.pk).exists()
+
+    def test_staff_cannot_delete_own_account(self, client, staff_user):
+        """Staff users should not be able to delete their own account."""
+        client.force_login(staff_user)
+        response = client.delete(f"/admin-dashboard/users/{staff_user.pk}/delete/")
+        assert response.status_code == 400
+        assert User.objects.filter(pk=staff_user.pk).exists()
+
+    def test_non_staff_cannot_delete_user(self, client, non_staff_user, staff_user):
+        """Non-staff users should get 403 when deleting a user."""
+        client.force_login(non_staff_user)
+        response = client.delete(f"/admin-dashboard/users/{staff_user.pk}/delete/")
+        assert response.status_code == 403
+        assert User.objects.filter(pk=staff_user.pk).exists()

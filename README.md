@@ -20,12 +20,12 @@ Sistema centralizado para descoberta e reserva de salas e espaços físicos. Res
 | `accounts` | Autenticação, registro, login/logout |
 | `spaces` | Cadastro de espaços e seus atributos (capacidade, localização, equipamentos) |
 | `reservations` | Ciclo de vida da reserva: criar, cancelar, reagendar, check-in e auto-release |
-| `admin_dashboard` | Interface administrativa customizada (ocupação, gestão de espaços, manutenção) |
+| `admin_dashboard` | Interface administrativa customizada (ocupação, gestão de espaços, reservas, manutenção e usuários) |
 | `ai_assistant` | Serviços de IA (LLM via Groq): busca de salas em linguagem natural e classificação de motivos de manutenção |
 
 ### API vs Interface Web
 
-- **API REST** (`/api/...`): serve integrações futuras e o QR Code de check-in.
+- **API REST** (`/api/v1/...`): serve integrações futuras e o QR Code de check-in.
 - **Interface Web** (templates + HTMX + DaisyUI): navegação server-side com atualizações parciais de página, sem SPA.
 
 ### Estados de uma reserva
@@ -44,7 +44,7 @@ Sistema centralizado para descoberta e reserva de salas e espaços físicos. Res
 
 ### Usuário final
 
-1. Faz login em `/accounts/login/`.
+1. Acessa `/accounts/login/` e escolhe **"Entrar como Usuário"**.
 2. Busca espaços em `/spaces/` filtrando por capacidade, localização e equipamentos.
 3. Visualiza detalhes do espaço em `/spaces/{id}/` e confere a disponibilidade por data.
 4. Seleciona um horário livre e cria a reserva em `/reservations/new/?space={id}`.
@@ -53,11 +53,12 @@ Sistema centralizado para descoberta e reserva de salas e espaços físicos. Res
 
 ### Administrador do espaço
 
-1. Faz login com conta staff.
+1. Acessa `/accounts/login/` e escolhe **"Entrar como Admin"** (exige conta com permissão de staff).
 2. Acessa o dashboard em `/admin-dashboard/` para ver ocupação em tempo real.
 3. Gerencia espaços em `/admin-dashboard/spaces/` (criar, editar, ativar/desativar).
 4. Visualiza e cancela reservas em `/admin-dashboard/reservations/`.
 5. Cria bloqueios de manutenção em `/admin-dashboard/maintenance/` para impedir reservas em determinados horários.
+6. Gerencia usuários em `/admin-dashboard/users/` (criar, editar, remover, promover a admin).
 
 ---
 
@@ -65,8 +66,8 @@ Sistema centralizado para descoberta e reserva de salas e espaços físicos. Res
 
 ### Login / Registro / Logout
 
-1. Acesse `/accounts/login/` para entrar.
-2. Acesse `/accounts/register/` para criar uma conta.
+1. Acesse `/accounts/login/` e escolha entrar como **Admin** ou **Usuário**. A escolha é validada: contas sem permissão de staff não conseguem entrar pelo caminho "Admin".
+2. Acesse `/accounts/register/` para criar uma conta (sempre como usuário comum).
 3. Clique em "Sair" na barra de navegação para encerrar a sessão.
 
 ### Listagem e filtro de espaços
@@ -99,6 +100,7 @@ Sistema centralizado para descoberta e reserva de salas e espaços físicos. Res
 2. Acesse `/admin-dashboard/spaces/` para gerenciar espaços.
 3. Acesse `/admin-dashboard/reservations/` para gerenciar reservas.
 4. Acesse `/admin-dashboard/maintenance/` para criar bloqueios de manutenção.
+5. Acesse `/admin-dashboard/users/` para gerenciar usuários.
 
 ---
 
@@ -187,7 +189,7 @@ make seed-flush
 
 | Rota | Descrição |
 |------|-----------|
-| `/accounts/login/` | Login |
+| `/accounts/login/` | Login (escolha entre Admin e Usuário) |
 | `/accounts/register/` | Registro de conta |
 | `/spaces/` | Busca de espaços com filtros |
 | `/spaces/{id}/` | Detalhe do espaço e disponibilidade |
@@ -199,12 +201,35 @@ make seed-flush
 | `/admin-dashboard/spaces/` | Gestão de espaços |
 | `/admin-dashboard/reservations/` | Gestão de reservas |
 | `/admin-dashboard/maintenance/` | Bloqueios de manutenção |
+| `/admin-dashboard/users/` | Gestão de usuários |
 
-### API REST
+### API REST (`/api/v1/`)
+
+Toda a API é versionada sob `/api/v1/`.
 
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
-| GET | `/api/spaces/` | Listar espaços (com filtros) |
-| GET | `/api/spaces/{id}/` | Detalhe do espaço |
-| GET | `/api/spaces/{id}/availability/` | Disponibilidade por data |
-| GET | `/api/reservations/` | Lis
+| GET | `/api/v1/spaces/` | Listar espaços (com filtros) |
+| GET | `/api/v1/spaces/{id}/` | Detalhe do espaço |
+| GET | `/api/v1/spaces/{id}/availability/` | Disponibilidade por data |
+| GET | `/api/v1/reservations/` | Listar minhas reservas |
+| POST | `/api/v1/reservations/` | Criar reserva |
+| PATCH | `/api/v1/reservations/{id}/cancel/` | Cancelar reserva |
+| PATCH | `/api/v1/reservations/{id}/reschedule/` | Reagendar reserva |
+| POST | `/api/v1/reservations/{id}/check-in/` | Fazer check-in |
+| GET | `/api/v1/admin/occupancy/` | Dashboard de ocupação (admin) |
+| POST | `/api/v1/admin/maintenance-blocks/` | Criar bloqueio de manutenção (admin) |
+| POST | `/api/v1/ai/room-search/` | Busca de salas a partir de uma descrição em linguagem natural (ex.: "sala para 8 pessoas com projetor perto da recepção"). O LLM extrai os filtros (capacidade, atributos, localização) e a API retorna os espaços correspondentes. |
+| POST | `/api/v1/ai/maintenance-classify/` | Classifica um motivo de manutenção em texto livre em uma categoria fixa (elétrica, hidráulica, limpeza, TI/equipamentos, mobiliário, segurança, outros), com justificativa e nível de confiança. |
+
+Os endpoints de IA exigem autenticação (`IsAuthenticated`), validam a entrada (tamanho mínimo/máximo do texto) e retornam `502` se o provedor de IA falhar. Documentação interativa (Swagger/Redoc) disponível em `/swagger/` e `/redoc/`.
+
+---
+
+## Tecnologias
+
+- **Backend:** Django 5.2, Django REST Framework, PostgreSQL
+- **IA:** Groq (LLM) para busca em linguagem natural e classificação de texto
+- **Frontend:** Django Templates, HTMX, DaisyUI (sobre Tailwind CSS)
+- **Infra:** Docker, Docker Compose
+- **Qualidade:** pytest (com cobertura mínima de 80%), ruff, pre-commit, commitizen

@@ -47,12 +47,10 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/", include("spaces.urls")),
-    path("api/", include("reservations.urls")),
-    path("api/admin/", include("reservations.admin_urls")),
-    path("api/", include("rest_framework.urls", namespace="rest_framework")),
-    # Endpoints versionados (v1) — convenção adotada a partir dos serviços de IA,
-    # a ser estendida gradualmente para os demais endpoints da API.
+    path("api/v1/", include("spaces.urls")),
+    path("api/v1/", include("reservations.urls")),
+    path("api/v1/admin/", include("reservations.admin_urls")),
+    path("api/v1/", include("rest_framework.urls", namespace="rest_framework")),
     path("api/v1/", include("ai_assistant.urls")),
     path(
         "swagger/",

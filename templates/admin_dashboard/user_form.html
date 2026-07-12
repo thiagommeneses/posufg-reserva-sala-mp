@@ -1,0 +1,49 @@
+{% extends "base_admin.html" %}
+
+{% block admin_content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6">
+        {% if object %}Editar Usuário{% else %}Novo Usuário{% endif %}
+    </h1>
+
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-error">
+                    {{ form.non_field_errors|first }}
+                </div>
+                {% endif %}
+
+                {% for field in form %}
+                <div class="form-control">
+                    {% if field.name == "is_staff" or field.name == "is_active" %}
+                    <label class="label cursor-pointer justify-start gap-2">
+                        {{ field }}
+                        <span class="label-text">{{ field.label }}</span>
+                    </label>
+                    {% else %}
+                    <label class="label" for="{{ field.id_for_label }}">
+                        <span class="label-text">{{ field.label }}</span>
+                    </label>
+                    {{ field }}
+                    {% endif %}
+                    {% if field.errors %}
+                    <label class="label">
+                        <span class="label-text-alt text-error">{{ field.errors|first }}</span>
+                    </label>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <div class="flex gap-2 mt-6">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <a href="{% url 'admin_dashboard:user_list' %}" class="btn btn-ghost">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

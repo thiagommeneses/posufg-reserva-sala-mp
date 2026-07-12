@@ -3,6 +3,7 @@
 import datetime
 
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -14,7 +15,7 @@ from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 from reservations.services import admin_cancel_reservation
 from spaces.models import Space
 
-from .forms import MaintenanceBlockForm, SpaceForm
+from .forms import AdminUserCreateForm, AdminUserUpdateForm, MaintenanceBlockForm, SpaceForm
 
 
 class StaffRequiredMixin(UserPassesTestMixin):
@@ -281,4 +282,46 @@ class AdminMaintenanceDeleteView(StaffRequiredMixin, View):
         block.delete()
         if request.headers.get("HX-Request") == "true":
             return HttpResponse("", status=200)
+        return HttpResponse("", status=200)
+
+
+class AdminUserListView(StaffRequiredMixin, ListView):
+    """List view for admin user management."""
+
+    model = User
+    template_name = "admin_dashboard/user_list.html"
+    context_object_name = "users"
+    queryset = User.objects.all().order_by("username")
+
+
+class AdminUserCreateView(StaffRequiredMixin, CreateView):
+    """Create view for users (admin only)."""
+
+    model = User
+    form_class = AdminUserCreateForm
+    template_name = "admin_dashboard/user_form.html"
+    success_url = reverse_lazy("admin_dashboard:user_list")
+
+
+class AdminUserUpdateView(StaffRequiredMixin, UpdateView):
+    """Update view for users (admin only)."""
+
+    model = User
+    form_class = AdminUserUpdateForm
+    template_name = "admin_dashboard/user_form.html"
+    success_url = reverse_lazy("admin_dashboard:user_list")
+
+
+class AdminUserDeleteView(StaffRequiredMixin, View):
+    """Delete a user (admin only)."""
+
+    def delete(self, request, pk):
+        """Delete the user, refusing to let an admin delete their own account."""
+        user = get_object_or_404(User, pk=pk)
+        if user.pk == request.user.pk:
+            return HttpResponse(
+                '<span class="text-error text-sm">Você não pode remover sua própria conta.</span>',
+                status=400,
+            )
+        user.delete()
         return HttpResponse("", status=200)
