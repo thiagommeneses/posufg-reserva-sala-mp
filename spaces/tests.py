@@ -1,6 +1,7 @@
 """Tests for the spaces app models and API."""
 
 from datetime import datetime, time
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import User
@@ -8,6 +9,7 @@ from django.db.utils import IntegrityError
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from ai_assistant.exceptions import AIServiceError
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 
 from .models import Attribute, Space, SpaceAttribute
@@ -564,3 +566,49 @@ class TestSpaceListView:
         indicator_count = content.count('hx-indicator="#loading-indicator"')
         # Form has 1 indicator, each attribute checkbox has 1 indicator
         assert indicator_count == attribute_checkbox_count + 1
+
+
+@pytest.mark.django_db
+class TestSpaceListViewAISearch:
+    """Tests for the natural-language AI search on the space list view."""
+
+    @patch("spaces.views.extract_room_search_filters")
+    def test_ai_query_filters_spaces(
+        self, mock_extract, client, regular_user, space_with_tv, small_space
+    ):
+        """A successful AI query should filter spaces using the extracted filters."""
+        mock_extract.return_value = {
+            "min_capacity": 6,
+            "attributes": [],
+            "location": None,
+            "summary": "Sala para 6 ou mais pessoas.",
+        }
+        client.force_login(regular_user)
+        response = client.get("/spaces/?ai_query=sala+para+6+pessoas")
+        assert response.status_code == 200
+        mock_extract.assert_called_once_with("sala para 6 pessoas")
+        spaces = list(response.context["spaces"])
+        assert space_with_tv in spaces
+        assert small_space not in spaces
+        assert response.context["ai_summary"] == "Sala para 6 ou mais pessoas."
+
+    @patch("spaces.views.extract_room_search_filters")
+    def test_ai_query_service_error_shows_message(self, mock_extract, client, regular_user):
+        """When the AI service fails, the view should show an error, not crash."""
+        mock_extract.side_effect = AIServiceError("Não foi possível consultar o serviço de IA.")
+        client.force_login(regular_user)
+        response = client.get("/spaces/?ai_query=sala+para+6+pessoas")
+        assert response.status_code == 200
+        assert response.context["ai_error"] == "Não foi possível consultar o serviço de IA."
+        assert list(response.context["spaces"]) == []
+
+    def test_blank_ai_query_falls_back_to_manual_filters(
+        self, client, regular_user, space_with_tv, small_space
+    ):
+        """A blank ai_query should be ignored in favor of the manual filter fields."""
+        client.force_login(regular_user)
+        response = client.get("/spaces/?ai_query=&min_capacity=6")
+        assert response.status_code == 200
+        spaces = list(response.context["spaces"])
+        assert space_with_tv in spaces
+        assert small_space not in spaces

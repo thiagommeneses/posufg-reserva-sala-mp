@@ -4,6 +4,7 @@ from django.urls import path
 
 from .views import (
     AdminDashboardView,
+    AdminMaintenanceClassifyView,
     AdminMaintenanceCreateView,
     AdminMaintenanceDeleteView,
     AdminMaintenanceListView,
@@ -42,6 +43,11 @@ urlpatterns = [
         "maintenance/new/",
         AdminMaintenanceCreateView.as_view(),
         name="maintenance_create",
+    ),
+    path(
+        "maintenance/classify/",
+        AdminMaintenanceClassifyView.as_view(),
+        name="maintenance_classify",
     ),
     path(
         "maintenance/<int:pk>/delete/",

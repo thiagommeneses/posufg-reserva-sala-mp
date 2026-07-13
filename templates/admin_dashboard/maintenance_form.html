@@ -26,6 +26,21 @@
                         <span class="label-text-alt text-error">{{ field.errors|first }}</span>
                     </label>
                     {% endif %}
+                    {% if field.name == "reason" %}
+                    <div class="mt-2">
+                        <button
+                            type="button"
+                            class="btn btn-outline btn-secondary btn-sm"
+                            hx-post="{% url 'admin_dashboard:maintenance_classify' %}"
+                            hx-target="#ai-suggestion"
+                            hx-indicator="#ai-classify-loading"
+                        >
+                            Sugerir categoria via IA
+                            <span id="ai-classify-loading" class="htmx-indicator loading loading-spinner loading-sm ml-2"></span>
+                        </button>
+                        <div id="ai-suggestion"></div>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
 

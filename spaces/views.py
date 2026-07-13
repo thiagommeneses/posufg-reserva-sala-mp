@@ -10,6 +10,8 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
+from ai_assistant.exceptions import AIServiceError
+from ai_assistant.services import extract_room_search_filters
 from reservations.services import get_availability_for_date
 
 from .models import Attribute, Space
@@ -86,6 +88,10 @@ class SpaceListView(LoginRequiredMixin, ListView):
             "space_attributes__attribute"
         )
 
+        ai_query = self.request.GET.get("ai_query", "").strip()
+        if ai_query:
+            return self._filter_by_ai_query(queryset, ai_query)
+
         # Filter by minimum capacity
         min_capacity = self.request.GET.get("min_capacity")
         if min_capacity:
@@ -109,6 +115,27 @@ class SpaceListView(LoginRequiredMixin, ListView):
 
         return queryset.order_by("name")
 
+    def _filter_by_ai_query(self, queryset, ai_query):
+        """Interpret a natural-language search via the AI service and filter spaces.
+
+        Stores ``ai_summary`` or ``ai_error`` on the instance for get_context_data.
+        """
+        try:
+            filters = extract_room_search_filters(ai_query)
+        except AIServiceError as exc:
+            self.ai_error = str(exc)
+            return queryset.none()
+
+        self.ai_summary = filters["summary"]
+        if filters["min_capacity"]:
+            queryset = queryset.filter(capacity__gte=filters["min_capacity"])
+        if filters["location"]:
+            queryset = queryset.filter(location__icontains=filters["location"])
+        for attribute_name in filters["attributes"]:
+            queryset = queryset.filter(space_attributes__attribute__name__icontains=attribute_name)
+
+        return queryset.distinct().order_by("name")
+
     def get_context_data(self, **kwargs):
         """Add filter options and selected filters to context."""
         context = super().get_context_data(**kwargs)
@@ -116,6 +143,9 @@ class SpaceListView(LoginRequiredMixin, ListView):
         context["selected_attributes"] = self.request.GET.get("attributes", "")
         context["min_capacity"] = self.request.GET.get("min_capacity", "")
         context["location"] = self.request.GET.get("location", "")
+        context["ai_query"] = self.request.GET.get("ai_query", "")
+        context["ai_summary"] = getattr(self, "ai_summary", "")
+        context["ai_error"] = getattr(self, "ai_error", "")
         context["is_htmx"] = self.request.headers.get("HX-Request") == "true"
         return context
 

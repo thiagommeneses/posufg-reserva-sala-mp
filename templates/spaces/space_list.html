@@ -5,7 +5,35 @@
 {% block user_content %}
 <div class="mb-8">
     <h1 class="text-3xl font-bold mb-6">Buscar Espaços</h1>
-    
+
+    <!-- AI Natural-language Search -->
+    <form
+        hx-get="{% url 'space_list' %}"
+        hx-target="#space-results"
+        hx-indicator="#ai-loading-indicator"
+        class="card bg-base-100 border border-base-300 shadow-sm mb-6"
+    >
+        <div class="card-body">
+            <h2 class="card-title text-lg">Busca com IA</h2>
+            <p class="text-sm text-base-content/70 mb-2">
+                Descreva o que você precisa em linguagem natural, ex.: "sala para 8 pessoas com projetor".
+            </p>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input
+                    type="text"
+                    name="ai_query"
+                    value="{{ ai_query }}"
+                    placeholder="Ex: preciso de uma sala para 10 pessoas com projetor"
+                    class="input input-bordered w-full"
+                >
+                <button type="submit" class="btn btn-secondary whitespace-nowrap">
+                    Buscar com IA
+                    <span id="ai-loading-indicator" class="htmx-indicator loading loading-spinner loading-sm ml-2"></span>
+                </button>
+            </div>
+        </div>
+    </form>
+
     <!-- Filter Form -->
     <form 
         hx-get="{% url 'space_list' %}"

@@ -11,6 +11,8 @@ from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, ListView, UpdateView
 
+from ai_assistant.exceptions import AIServiceError
+from ai_assistant.services import classify_maintenance_reason
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 from reservations.services import admin_cancel_reservation
 from spaces.models import Space
@@ -271,6 +273,35 @@ class AdminMaintenanceCreateView(StaffRequiredMixin, CreateView):
         """Set created_by to the current user before saving."""
         form.instance.created_by = self.request.user
         return super().form_valid(form)
+
+
+class AdminMaintenanceClassifyView(StaffRequiredMixin, View):
+    """Classify a free-text maintenance reason into a category via AI (admin only)."""
+
+    def post(self, request):
+        """Call the AI classification service and return a suggestion partial."""
+        reason = request.POST.get("reason", "").strip()
+        if not reason:
+            return render(
+                request,
+                "admin_dashboard/_maintenance_ai_suggestion.html",
+                {"ai_error": "Descreva o motivo antes de pedir a sugestão da IA."},
+            )
+
+        try:
+            classification = classify_maintenance_reason(reason)
+        except AIServiceError as exc:
+            return render(
+                request,
+                "admin_dashboard/_maintenance_ai_suggestion.html",
+                {"ai_error": str(exc)},
+            )
+
+        return render(
+            request,
+            "admin_dashboard/_maintenance_ai_suggestion.html",
+            {"classification": classification},
+        )
 
 
 class AdminMaintenanceDeleteView(StaffRequiredMixin, View):

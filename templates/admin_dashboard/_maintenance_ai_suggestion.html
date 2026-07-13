@@ -1,0 +1,14 @@
+{% if ai_error %}
+<div class="alert alert-error alert-sm mt-2">
+    <span>{{ ai_error }}</span>
+</div>
+{% elif classification %}
+<div class="alert alert-info alert-sm mt-2">
+    <span>
+        <strong>Categoria sugerida:</strong> {{ classification.category }}
+        <span class="badge badge-ghost badge-sm ml-1">confiança: {{ classification.confidence }}</span>
+        <br>
+        {{ classification.justification }}
+    </span>
+</div>
+{% endif %}

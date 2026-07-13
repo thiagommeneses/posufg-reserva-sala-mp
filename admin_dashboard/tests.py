@@ -1,9 +1,12 @@
 """Tests for the admin dashboard app."""
 
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from ai_assistant.exceptions import AIServiceError
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 from spaces.models import Attribute, Space, SpaceAttribute
 
@@ -709,6 +712,58 @@ class TestAdminMaintenanceManagement:
         response = client.delete(f"/admin-dashboard/maintenance/{block.pk}/delete/")
         assert response.status_code == 403
         assert MaintenanceBlock.objects.filter(pk=block.pk).exists()
+
+
+@pytest.mark.django_db
+class TestAdminMaintenanceClassifyView:
+    """Tests for the AI-powered maintenance reason classification endpoint."""
+
+    @patch("admin_dashboard.views.classify_maintenance_reason")
+    def test_staff_gets_classification_suggestion(self, mock_classify, client, staff_user):
+        """A valid reason should return the AI-suggested category."""
+        mock_classify.return_value = {
+            "category": "eletrica",
+            "confidence": "alta",
+            "justification": "Menciona curto-circuito no quadro de energia.",
+        }
+        client.force_login(staff_user)
+        response = client.post(
+            "/admin-dashboard/maintenance/classify/",
+            {"reason": "curto-circuito no quadro de energia"},
+        )
+        assert response.status_code == 200
+        mock_classify.assert_called_once_with("curto-circuito no quadro de energia")
+        content = response.content.decode()
+        assert "eletrica" in content
+        assert "alta" in content
+
+    def test_blank_reason_shows_error_without_calling_ai(self, client, staff_user):
+        """An empty reason should be rejected before calling the AI service."""
+        client.force_login(staff_user)
+        response = client.post("/admin-dashboard/maintenance/classify/", {"reason": "  "})
+        assert response.status_code == 200
+        assert "Descreva o motivo" in response.content.decode()
+
+    @patch("admin_dashboard.views.classify_maintenance_reason")
+    def test_ai_service_error_shows_message(self, mock_classify, client, staff_user):
+        """A failing AI service should return a friendly error, not crash."""
+        mock_classify.side_effect = AIServiceError("Serviço de IA indisponível.")
+        client.force_login(staff_user)
+        response = client.post(
+            "/admin-dashboard/maintenance/classify/",
+            {"reason": "cheiro de queimado na tomada"},
+        )
+        assert response.status_code == 200
+        assert "Serviço de IA indisponível." in response.content.decode()
+
+    def test_non_staff_cannot_classify(self, client, non_staff_user):
+        """Non-staff users should get 403."""
+        client.force_login(non_staff_user)
+        response = client.post(
+            "/admin-dashboard/maintenance/classify/",
+            {"reason": "cheiro de queimado na tomada"},
+        )
+        assert response.status_code == 403
 
 
 @pytest.mark.django_db
