@@ -32,15 +32,10 @@ class SmokeTestCase(TestCase):
 class TemplateInfrastructureTestCase(TestCase):
     """Tests for template infrastructure, HTMX, DaisyUI, and Tailwind setup."""
 
-    def test_base_template_contains_tailwind_cdn(self):
-        """Verify base.html includes Tailwind CSS CDN."""
+    def test_base_template_contains_tailwind_stylesheet(self):
+        """Verify base.html includes the compiled Tailwind CSS bundle."""
         response = self.client.get(reverse("htmx_test"))
-        self.assertContains(response, "cdn.tailwindcss.com")
-
-    def test_base_template_contains_daisyui_cdn(self):
-        """Verify base.html includes DaisyUI CDN."""
-        response = self.client.get(reverse("htmx_test"))
-        self.assertContains(response, "daisyui")
+        self.assertContains(response, "tailwind.css")
 
     def test_base_template_contains_htmx_cdn(self):
         """Verify base.html includes HTMX CDN."""
@@ -50,7 +45,7 @@ class TemplateInfrastructureTestCase(TestCase):
     def test_base_template_has_theme_attribute(self):
         """Verify base.html has DaisyUI theme data-theme attribute."""
         response = self.client.get(reverse("htmx_test"))
-        self.assertContains(response, 'data-theme="light"')
+        self.assertContains(response, 'data-theme="mpgo"')
 
     def test_htmx_test_view_returns_full_page(self):
         """Verify HTMX test view returns full HTML page for regular requests."""

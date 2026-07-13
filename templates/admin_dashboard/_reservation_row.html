@@ -4,19 +4,7 @@
     <td>{{ reservation.start_time|date:"d/m/Y H:i" }}</td>
     <td>{{ reservation.end_time|date:"d/m/Y H:i" }}</td>
     <td>
-        {% if reservation.status == "confirmed" %}
-        <span class="badge badge-success">Confirmada</span>
-        {% elif reservation.status == "checked_in" %}
-        <span class="badge badge-info">Check-in</span>
-        {% elif reservation.status == "completed" %}
-        <span class="badge badge-ghost">Concluída</span>
-        {% elif reservation.status == "no_show" %}
-        <span class="badge badge-error">No-show</span>
-        {% elif reservation.status == "cancelled" %}
-        <span class="badge badge-ghost">Cancelada</span>
-        {% else %}
-        <span class="badge">{{ reservation.get_status_display }}</span>
-        {% endif %}
+        {% include "components/_reservation_status_badge.html" with reservation=reservation %}
     </td>
     <td>
         {% if reservation.status == "confirmed" or reservation.status == "checked_in" %}

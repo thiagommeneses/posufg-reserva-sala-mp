@@ -4,11 +4,12 @@
 
 {% block user_content %}
 <div class="max-w-2xl mx-auto">
+    {% include "components/_reservation_steps.html" with current_step=3 %}
     <h1 class="text-3xl font-bold mb-6">Nova Reserva</h1>
 
     {% if space %}
     <!-- Space Info Summary -->
-    <div class="card card-compact bg-base-100 shadow-xl mb-6">
+    <div class="card card-compact bg-base-100 border border-base-300 shadow-sm mb-6">
         <div class="card-body">
             <h2 class="card-title">{{ space.name }}</h2>
             <div class="flex flex-wrap gap-2">
@@ -23,7 +24,7 @@
     {% endif %}
 
     <!-- Reservation Form -->
-    <div class="card bg-base-100 shadow-xl">
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
         <div class="card-body">
             {% if error %}
             <div class="alert alert-error mb-4">

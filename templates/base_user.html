@@ -5,7 +5,7 @@
 <div class="drawer drawer-end">
     <input id="user-drawer" type="checkbox" class="drawer-toggle" />
     <div class="drawer-content flex flex-col">
-        <div class="navbar bg-base-100 shadow-sm">
+        <div class="navbar bg-base-100 border-b border-base-300">
             <div class="flex-1">
                 <a href="/" class="btn btn-ghost text-xl gap-2">
                     <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-8 w-8">
@@ -15,10 +15,10 @@
             <div class="flex-none hidden md:flex items-center gap-2">
                 <span class="text-sm opacity-70">Olá, {{ request.user.username }}</span>
                 <ul class="menu menu-horizontal px-1">
-                    <li><a href="/spaces/">Espaços</a></li>
-                    <li><a href="/reservations/">Minhas Reservas</a></li>
+                    <li><a href="/spaces/" class="{% if "/spaces/" in request.path %}menu-active{% endif %}">Espaços</a></li>
+                    <li><a href="/reservations/" class="{% if "/reservations/" in request.path %}menu-active{% endif %}">Minhas Reservas</a></li>
                     {% if request.user.is_staff %}
-                    <li><a href="/admin-dashboard/">Painel Admin</a></li>
+                    <li><a href="/admin-dashboard/" class="{% if "/admin-dashboard/" in request.path %}menu-active{% endif %}">Painel Admin</a></li>
                     {% endif %}
                     <li>
                         <form method="post" action="/accounts/logout/" class="inline">
@@ -44,10 +44,10 @@
         <label for="user-drawer" class="drawer-overlay"></label>
         <ul class="menu bg-base-200 min-h-full w-80 p-4">
             <li class="menu-title">Olá, {{ request.user.username }}</li>
-            <li><a href="/spaces/">Espaços</a></li>
-            <li><a href="/reservations/">Minhas Reservas</a></li>
+            <li><a href="/spaces/" class="{% if "/spaces/" in request.path %}menu-active{% endif %}">Espaços</a></li>
+            <li><a href="/reservations/" class="{% if "/reservations/" in request.path %}menu-active{% endif %}">Minhas Reservas</a></li>
             {% if request.user.is_staff %}
-            <li><a href="/admin-dashboard/">Painel Admin</a></li>
+            <li><a href="/admin-dashboard/" class="{% if "/admin-dashboard/" in request.path %}menu-active{% endif %}">Painel Admin</a></li>
             {% endif %}
             <li>
                 <form method="post" action="/accounts/logout/">

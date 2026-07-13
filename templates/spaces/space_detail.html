@@ -4,8 +4,9 @@
 
 {% block user_content %}
 <div class="mb-8">
+    {% include "components/_reservation_steps.html" with current_step=2 %}
     <!-- Space Info Card -->
-    <div class="card bg-base-100 shadow-xl mb-8">
+    <div class="card bg-base-100 border border-base-300 shadow-sm mb-8">
         <div class="card-body">
             <h1 class="card-title text-3xl">{{ space.name }}</h1>
             
@@ -31,7 +32,7 @@
     </div>
 
     <!-- Availability Section -->
-    <div class="card bg-base-100 shadow-xl">
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">Disponibilidade</h2>
             

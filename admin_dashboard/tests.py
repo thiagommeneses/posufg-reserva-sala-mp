@@ -112,12 +112,14 @@ class TestAdminDashboardView:
         self, client, staff_user, dashboard_space, non_staff_user
     ):
         """Context should reflect no-show reservations from today."""
-        now = timezone.now()
+        # Anchored to the start of today (not "now - 2h") so this can't flake
+        # when the suite runs shortly after midnight.
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
         Reservation.objects.create(
             space=dashboard_space,
             user=non_staff_user,
-            start_time=now - timezone.timedelta(hours=2),
-            end_time=now - timezone.timedelta(hours=1),
+            start_time=today_start + timezone.timedelta(hours=1),
+            end_time=today_start + timezone.timedelta(hours=2),
             status=ReservationStatus.NO_SHOW,
         )
         client.force_login(staff_user)
@@ -320,16 +322,16 @@ class TestAdminSpaceManagement:
         assert response.status_code == 403
 
     def test_space_list_no_infinite_spinner(self, client, staff_user, dashboard_space):
-        """Status column should not show an infinite loading spinner on page load."""
+        """Status column spinner must be an htmx-indicator, hidden by default via CSS."""
         client.force_login(staff_user)
         response = client.get("/admin-dashboard/spaces/")
         assert response.status_code == 200
         content = response.content.decode()
         assert 'class="spinner htmx-indicator' in content
-        assert 'style="display: none;"' in content
+        assert "style=\"display: none;\"" not in content
 
     def test_toggle_response_includes_functional_badge(self, client, staff_user, dashboard_space):
-        """Toggle response should include a functional badge with hidden spinner."""
+        """Toggle response should include a functional badge with a real htmx-indicator spinner."""
         client.force_login(staff_user)
         response = client.patch(
             f"/admin-dashboard/spaces/{dashboard_space.pk}/toggle/",
@@ -339,7 +341,7 @@ class TestAdminSpaceManagement:
         content = response.content.decode()
         assert "hx-patch=" in content
         assert 'class="spinner htmx-indicator' in content
-        assert 'style="display: none;"' in content
+        assert "style=\"display: none;\"" not in content
 
 
 @pytest.mark.django_db
@@ -545,13 +547,14 @@ class TestAdminReservationManagement:
         assert reservation.status == ReservationStatus.CANCELLED
 
     def test_reservation_list_no_infinite_filter_indicator(self, client, staff_user):
-        """Filter indicator should not be active on initial page load."""
+        """Filter indicator must be an htmx-indicator, hidden by default via CSS."""
         client.force_login(staff_user)
         response = client.get("/admin-dashboard/reservations/")
         assert response.status_code == 200
         content = response.content.decode()
         assert 'id="filter-indicator"' in content
-        assert 'style="display: none;"' in content
+        assert "htmx-indicator" in content
+        assert "style=\"display: none;\"" not in content
 
 
 @pytest.mark.django_db

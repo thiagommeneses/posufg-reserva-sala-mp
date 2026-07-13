@@ -1,0 +1,10 @@
+{% comment %}
+Steps indicator for the room-reservation flow.
+Usage: {% include "components/_reservation_steps.html" with current_step=2 %}
+current_step: 1 = escolhendo espaço/horário, 2 = confirmando dados, 3 = concluído
+{% endcomment %}
+<ul class="steps steps-horizontal w-full mb-6">
+    <li class="step step-primary">Espaço</li>
+    <li class="step {% if current_step >= 2 %}step-primary{% endif %}">Horário</li>
+    <li class="step {% if current_step >= 3 %}step-primary{% endif %}">Confirmação</li>
+</ul>

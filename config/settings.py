@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "django_filters",
     "django_htmx",
     "drf_yasg",
+    "django_tailwind_cli",
     "accounts",
     "admin_dashboard",
     "core",
@@ -181,6 +182,15 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 # https://console.groq.com/docs/overview
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+# Tailwind CSS (django-tailwind-cli) — no Node.js needed, downloads its own
+# standalone binary. DaisyUI is enabled via TAILWIND_CLI_USE_DAISY_UI and the
+# custom "mpgo" theme (cores institucionais do MPGO) is defined directly in
+# TAILWIND_CLI_SRC_CSS.
+# https://django-tailwind-cli.readthedocs.io/
+TAILWIND_CLI_VERSION = "2.8.3"
+TAILWIND_CLI_SRC_CSS = "assets/css/source.css"
+TAILWIND_CLI_USE_DAISY_UI = True
 
 # Logging
 # https://docs.djangoproject.com/en/5.2/topics/logging/

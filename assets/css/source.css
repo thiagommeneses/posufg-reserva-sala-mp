@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&display=swap");
+
+@plugin "daisyui";
+
+@plugin "daisyui/theme" {
+  name: "mpgo";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  /* Cores institucionais do Ministério Público do Estado de Goiás, conforme
+     Manual de Identidade Visual: Preto (CMYK K100 / Pantone Process Black CV)
+     e Vermelho (CMYK C20 M95 Y100 K12 / Pantone 1797C). */
+  --color-base-100: #ffffff;
+  --color-base-200: #f5f5f4;
+  --color-base-300: #e7e5e4;
+  --color-base-content: #1a1a1a;
+
+  --color-primary: #b40b00;
+  --color-primary-content: #ffffff;
+
+  --color-secondary: #4b4b4b;
+  --color-secondary-content: #ffffff;
+
+  --color-accent: #7a1810;
+  --color-accent-content: #ffffff;
+
+  --color-neutral: #000000;
+  --color-neutral-content: #ffffff;
+
+  --color-info: #0369a1;
+  --color-info-content: #ffffff;
+
+  --color-success: #15803d;
+  --color-success-content: #ffffff;
+
+  --color-warning: #b45309;
+  --color-warning-content: #ffffff;
+
+  --color-error: #dc2626;
+  --color-error-content: #ffffff;
+
+  --radius-selector: 0.5rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+}
+
+@source "../../templates";
+
+/*
+ * Tipografia institucional: a fonte do manual de marca (Swis721 BlkCn BT) é
+ * proprietária e não está disponível como webfont livre. Usamos "Barlow
+ * Condensed" (Google Fonts) como substituta gratuita de peso/estilo
+ * semelhante nos títulos e elementos de marca; o corpo do texto segue a
+ * fonte padrão do Tailwind para manter a legibilidade. Se o MPGO tiver a
+ * licença/arquivo da Swis721, basta trocar o import e o font-family abaixo.
+ */
+h1,
+h2,
+h3,
+.card-title,
+.hero-content h1 {
+  font-family: "Barlow Condensed", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/*
+ * Hide HTMX indicators by default at the CSS level (not just via htmx.js's
+ * own injected styles), so spinners stay hidden even if htmx.js fails to
+ * load. htmx.js still toggles the "htmx-request" class during requests,
+ * which is what makes them appear.
+ */
+.htmx-indicator {
+  opacity: 0;
+}
+.htmx-request.htmx-indicator,
+.htmx-request .htmx-indicator {
+  opacity: 1;
+}

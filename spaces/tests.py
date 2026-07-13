@@ -539,14 +539,14 @@ class TestSpaceListView:
         assert "Filtrar" in content
 
     def test_filter_spinner_hidden_on_initial_load(self, client, regular_user):
-        """Spinner must be hidden by default and only visible during HTMX requests."""
+        """Spinner must be an htmx-indicator, hidden by default via CSS (not inline style)."""
         client.force_login(regular_user)
         response = client.get("/spaces/")
         assert response.status_code == 200
         content = response.content.decode()
         assert 'id="loading-indicator"' in content
         assert "htmx-indicator" in content
-        assert 'style="display: none;"' in content
+        assert "style=\"display: none;\"" not in content
 
     def test_filter_spinner_on_form_and_checkboxes(self, client, regular_user):
         """Form submit and checkbox changes should trigger the same loading indicator."""

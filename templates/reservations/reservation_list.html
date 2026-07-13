@@ -22,7 +22,7 @@
     {% if filtered_reservations %}
     <div class="space-y-4" id="reservation-list">
         {% for reservation in filtered_reservations %}
-        <div class="card bg-base-100 shadow-xl" id="reservation-{{ reservation.id }}">
+        <div class="card bg-base-100 border border-base-300 shadow-sm" id="reservation-{{ reservation.id }}">
             <div class="card-body">
                 <div class="flex justify-between items-start">
                     <div>
@@ -34,14 +34,7 @@
                             {{ reservation.space.location }}
                         </p>
                     </div>
-                    <span class="badge
-                        {% if reservation.status == 'confirmed' %}badge-success
-                        {% elif reservation.status == 'checked_in' %}badge-info
-                        {% elif reservation.status == 'no_show' %}badge-error
-                        {% elif reservation.status == 'cancelled' %}badge-ghost
-                        {% else %}badge-neutral{% endif %}">
-                        {{ reservation.get_status_display }}
-                    </span>
+                    {% include "components/_reservation_status_badge.html" with reservation=reservation %}
                 </div>
                 <div class="card-actions justify-end mt-4">
                     <a href="{% url 'reservation_detail' reservation.id %}" class="btn btn-sm btn-outline">Ver detalhes</a>

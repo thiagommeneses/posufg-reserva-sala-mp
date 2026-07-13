@@ -44,7 +44,7 @@ Sistema centralizado para descoberta e reserva de salas e espaços físicos. Res
 
 ### Usuário final
 
-1. Acessa `/accounts/login/` e escolhe **"Entrar como Usuário"**.
+1. Acessa `/accounts/login/` e entra com usuário e senha (redirecionamento é automático conforme o perfil da conta).
 2. Busca espaços em `/spaces/` filtrando por capacidade, localização e equipamentos.
 3. Visualiza detalhes do espaço em `/spaces/{id}/` e confere a disponibilidade por data.
 4. Seleciona um horário livre e cria a reserva em `/reservations/new/?space={id}`.
@@ -53,7 +53,7 @@ Sistema centralizado para descoberta e reserva de salas e espaços físicos. Res
 
 ### Administrador do espaço
 
-1. Acessa `/accounts/login/` e escolhe **"Entrar como Admin"** (exige conta com permissão de staff).
+1. Acessa `/accounts/login/` com uma conta com permissão de staff — é redirecionado automaticamente para o painel admin.
 2. Acessa o dashboard em `/admin-dashboard/` para ver ocupação em tempo real.
 3. Gerencia espaços em `/admin-dashboard/spaces/` (criar, editar, ativar/desativar).
 4. Visualiza e cancela reservas em `/admin-dashboard/reservations/`.

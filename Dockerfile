@@ -23,6 +23,9 @@ RUN uv sync --frozen
 # Copy project code
 COPY . .
 
+# Build the Tailwind CSS bundle (downloads its own standalone CLI, no Node.js)
+RUN python manage.py tailwind build
+
 EXPOSE 8000
 
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

@@ -16,23 +16,17 @@ def _redirect_for_user(user):
 
 
 def login_view(request):
-    """Handle login with an explicit choice between admin and regular user."""
+    """Handle login, redirecting automatically based on the user's role."""
     if request.user.is_authenticated:
         return _redirect_for_user(request.user)
 
     if request.method == "POST":
-        login_as = request.POST.get("login_as", "user")
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
-            if login_as == "admin" and not user.is_staff:
-                messages.error(request, "Esta conta não tem permissão de administrador.")
-                return render(request, "accounts/login.html", {"form": form})
             login(request, user)
             messages.success(request, f"Bem-vindo, {user.username}!")
-            if login_as == "admin":
-                return redirect("admin_dashboard:admin_dashboard")
-            return redirect("space_list")
+            return _redirect_for_user(user)
         messages.error(request, "Usuário ou senha inválidos.")
     else:
         form = AuthenticationForm(request)
