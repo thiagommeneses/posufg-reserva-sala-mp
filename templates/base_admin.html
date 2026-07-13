@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 <div class="drawer lg:drawer-open">
@@ -13,7 +14,10 @@
                 </label>
             </div>
             <div class="flex-1">
-                <a href="/admin-dashboard/" class="btn btn-ghost text-xl">Admin Dashboard</a>
+                <a href="/admin-dashboard/" class="btn btn-ghost text-xl gap-2">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-8 w-8">
+                    Admin Dashboard
+                </a>
             </div>
         </div>
         <main class="p-4 lg:p-8">
@@ -23,7 +27,15 @@
     <div class="drawer-side">
         <label for="admin-drawer" class="drawer-overlay lg:hidden"></label>
         <ul class="menu bg-base-200 min-h-full w-80 p-4">
-            <li class="menu-title text-xl mb-4">Admin</li>
+            <li class="menu-title mb-2">
+                <div class="flex items-center gap-2 normal-case">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-8 w-8">
+                    <div class="flex flex-col">
+                        <span class="text-base font-bold text-base-content">Admin</span>
+                        <span class="text-xs opacity-70">Olá, {{ request.user.username }}</span>
+                    </div>
+                </div>
+            </li>
             <li><a href="/admin-dashboard/">Dashboard</a></li>
             <li><a href="/admin-dashboard/spaces/">Espaços</a></li>
             <li><a href="/admin-dashboard/reservations/">Reservas</a></li>
