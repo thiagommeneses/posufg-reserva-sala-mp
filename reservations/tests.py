@@ -1,6 +1,7 @@
 """Tests for the reservations app."""
 
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -581,6 +582,30 @@ class TestReservationApiCreate:
         )
         assert response.status_code == 400
         assert "not available" in str(response.data).lower()
+
+    def test_db_level_conflict_returns_friendly_error(self, api_client, regular_user, space):
+        """A race that slips past the pre-check should still be rejected cleanly.
+
+        Simulates two near-simultaneous requests by forcing the DB-level
+        exclusion constraint (IntegrityError) to fire on creation.
+        """
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now()
+        end = start + timedelta(hours=1)
+        with patch(
+            "reservations.serializers.Reservation.objects.create",
+            side_effect=IntegrityError("exclude_overlapping_reservations"),
+        ):
+            response = api_client.post(
+                "/api/v1/reservations/",
+                {
+                    "space": space.id,
+                    "start_time": start.isoformat(),
+                    "end_time": end.isoformat(),
+                },
+            )
+        assert response.status_code == 400
+        assert "overlaps" in str(response.data).lower()
 
     def test_unauthenticated_request_is_rejected(self, api_client, space):
         """Unauthenticated requests should be rejected."""
@@ -1510,6 +1535,29 @@ class TestReservationCreateView:
         )
         assert response.status_code == 302
         assert response.url == reverse("space_list")
+
+    def test_db_level_conflict_renders_friendly_error(self, client, regular_user, space):
+        """A race that slips past the pre-check should still show a friendly error.
+
+        Simulates two near-simultaneous requests by forcing the DB-level
+        exclusion constraint (IntegrityError) to fire on creation.
+        """
+        client.force_login(regular_user)
+        with patch(
+            "reservations.services.Reservation.objects.create",
+            side_effect=IntegrityError("exclude_overlapping_reservations"),
+        ):
+            response = client.post(
+                "/reservations/new/",
+                {
+                    "space": space.id,
+                    "date": "2025-12-25",
+                    "start_time": "10:00",
+                    "end_time": "12:00",
+                },
+            )
+        assert response.status_code == 200
+        assert "overlaps" in response.context["error"].lower()
 
 
 @pytest.mark.django_db

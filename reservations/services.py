@@ -3,7 +3,7 @@
 import datetime
 
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import IntegrityError, models, transaction
 
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
 
@@ -273,13 +273,17 @@ def create_reservation(user, space, start_time, end_time):
     if overlapping_blocks.exists():
         raise ValidationError("This time slot overlaps with a maintenance block.")
 
-    return Reservation.objects.create(
-        space=space,
-        user=user,
-        start_time=start_time,
-        end_time=end_time,
-        status=ReservationStatus.CONFIRMED,
-    )
+    try:
+        with transaction.atomic():
+            return Reservation.objects.create(
+                space=space,
+                user=user,
+                start_time=start_time,
+                end_time=end_time,
+                status=ReservationStatus.CONFIRMED,
+            )
+    except IntegrityError as exc:
+        raise ValidationError("This time slot overlaps with an existing reservation.") from exc
 
 
 def admin_cancel_reservation(reservation):

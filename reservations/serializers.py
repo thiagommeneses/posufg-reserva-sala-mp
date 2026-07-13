@@ -1,6 +1,7 @@
 """Serializers for the reservations app."""
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from rest_framework import serializers
 
@@ -144,6 +145,11 @@ class ReservationSerializer(serializers.ModelSerializer):
         """Create a reservation with confirmed status."""
         validated_data["status"] = ReservationStatus.CONFIRMED
         try:
-            return super().create(validated_data)
+            with transaction.atomic():
+                return super().create(validated_data)
         except DjangoValidationError as exc:
             raise serializers.ValidationError(exc.message_dict) from exc
+        except IntegrityError as exc:
+            raise serializers.ValidationError(
+                {"non_field_errors": "This time slot overlaps with an existing reservation."}
+            ) from exc
