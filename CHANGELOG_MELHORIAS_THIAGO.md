@@ -14,3 +14,4 @@ Melhorias Pós Entrega:
 1. Adicionada logo na tela de login e na barra de navegação.
 2. Atualização da versão do Tailwind CSS + DaisyUI.
 3. Melhoria do visual para ficar mais institucional. Quanto às cores e telas.
+5. Indicador de etapas na reserva de salas.

@@ -7,12 +7,13 @@
 <div class="hero min-h-screen bg-gradient-to-b from-base-200 to-base-300">
     <div class="hero-content flex-col">
         <div class="flex flex-col items-center gap-2 mb-2">
-            <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-16 w-16">
+            <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-16 w-16" style="width: 100px; height: auto;">
+            <br>
             <h1 class="text-lg font-semibold text-base-content/80 tracking-wide">Reserva de Espaços</h1>
         </div>
         <div class="card w-full max-w-sm bg-base-100 border border-base-300 shadow-sm">
             <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">Entrar</h2>
+                <h2 class="card-title text-2xl mb-4">LOGIN</h2>
                 <form method="post" action="{% url 'accounts:login' %}">
                     {% csrf_token %}
                     <div class="form-control mb-3">
