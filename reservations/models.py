@@ -4,9 +4,23 @@ from django.conf import settings
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import DateTimeRangeField
 from django.contrib.postgres.fields.ranges import RangeOperators
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import F, Func, Q
+
+from reservations.enums import ACTIVE_RESERVATION_STATUSES, ReservationStatus
+from reservations.validators import (
+    validate_maintenance_slot,
+    validate_no_reservation_overlap,
+    validate_time_range,
+)
+
+__all__ = [
+    "ACTIVE_RESERVATION_STATUSES",
+    "MaintenanceBlock",
+    "Reservation",
+    "ReservationStatus",
+    "TstzRange",
+]
 
 
 class TstzRange(Func):
@@ -14,16 +28,6 @@ class TstzRange(Func):
 
     function = "tstzrange"
     output_field = DateTimeRangeField()
-
-
-class ReservationStatus(models.TextChoices):
-    """Status choices for a reservation."""
-
-    CONFIRMED = "confirmed", "Confirmed"
-    CANCELLED = "cancelled", "Cancelled"
-    CHECKED_IN = "checked_in", "Checked In"
-    COMPLETED = "completed", "Completed"
-    NO_SHOW = "no_show", "No Show"
 
 
 class Reservation(models.Model):
@@ -75,33 +79,21 @@ class Reservation(models.Model):
         return f"{self.space.name} — {self.start_time} to {self.end_time}"
 
     def clean(self):
-        """Validate the reservation data."""
-        super().clean()
-        if self.end_time <= self.start_time:
-            raise ValidationError("End time must be after start time.")
+        """Validate the reservation data.
 
-        if self.status not in {
-            ReservationStatus.CANCELLED,
-            ReservationStatus.COMPLETED,
-            ReservationStatus.NO_SHOW,
-        }:
-            overlapping = (
-                Reservation.objects.filter(
-                    space=self.space,
-                    status__in=[
-                        ReservationStatus.CONFIRMED,
-                        ReservationStatus.CHECKED_IN,
-                    ],
-                )
-                .exclude(pk=self.pk)
-                .filter(
-                    models.Q(start_time__lt=self.end_time) & models.Q(end_time__gt=self.start_time),
-                )
+        Delegates to :mod:`reservations.validators` so the rules stay identical
+        to the ones applied by the service layer and by the API serializers.
+        """
+        super().clean()
+        validate_time_range(self.start_time, self.end_time)
+
+        if self.status in ACTIVE_RESERVATION_STATUSES:
+            validate_no_reservation_overlap(
+                self.space,
+                self.start_time,
+                self.end_time,
+                exclude_pk=self.pk,
             )
-            if overlapping.exists():
-                raise ValidationError(
-                    "This time slot overlaps with an existing reservation.",
-                )
 
 
 class MaintenanceBlock(models.Model):
@@ -135,19 +127,4 @@ class MaintenanceBlock(models.Model):
     def clean(self):
         """Validate the maintenance block data."""
         super().clean()
-        if self.end_time <= self.start_time:
-            raise ValidationError("End time must be after start time.")
-
-        overlapping_reservations = Reservation.objects.filter(
-            space=self.space,
-            status__in=[
-                ReservationStatus.CONFIRMED,
-                ReservationStatus.CHECKED_IN,
-            ],
-        ).filter(
-            models.Q(start_time__lt=self.end_time) & models.Q(end_time__gt=self.start_time),
-        )
-        if overlapping_reservations.exists():
-            raise ValidationError(
-                "This maintenance block overlaps with an existing reservation.",
-            )
+        validate_maintenance_slot(self.space, self.start_time, self.end_time)

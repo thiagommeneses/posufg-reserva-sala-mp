@@ -3,9 +3,15 @@
 import datetime
 
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, models, transaction
+from django.db import IntegrityError, transaction
 
-from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
+from reservations.models import (
+    ACTIVE_RESERVATION_STATUSES,
+    MaintenanceBlock,
+    Reservation,
+    ReservationStatus,
+)
+from reservations.validators import RESERVATION_OVERLAP_MESSAGE, validate_reservation_slot
 
 CHECK_IN_WINDOW_MINUTES = 15
 DEFAULT_NO_SHOW_THRESHOLD_MINUTES = 15
@@ -42,7 +48,7 @@ def get_availability_for_date(space, date):
 
     reservations = Reservation.objects.filter(
         space=space,
-        status__in=[ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN],
+        status__in=ACTIVE_RESERVATION_STATUSES,
         start_time__lt=date_end,
         end_time__gt=date_start,
     )
@@ -130,10 +136,7 @@ def cancel_reservation(reservation, user):
     if reservation.user != user:
         raise OwnershipError("You can only cancel your own reservations.")
 
-    if reservation.status not in {
-        ReservationStatus.CONFIRMED,
-        ReservationStatus.CHECKED_IN,
-    }:
+    if reservation.status not in ACTIVE_RESERVATION_STATUSES:
         raise ValidationError(
             "Only confirmed or checked-in reservations can be cancelled.",
         )
@@ -161,35 +164,15 @@ def reschedule_reservation(reservation, user, start_time, end_time):
     if reservation.user != user:
         raise OwnershipError("You can only reschedule your own reservations.")
 
-    if end_time <= start_time:
-        raise ValidationError("End time must be after start time.")
-
-    # Check overlapping confirmed/checked_in reservations (excluding self)
-    overlapping_reservations = (
-        Reservation.objects.filter(
-            space=reservation.space,
-            status__in=[ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN],
-        )
-        .exclude(pk=reservation.pk)
-        .filter(
-            models.Q(start_time__lt=end_time) & models.Q(end_time__gt=start_time),
-        )
+    # An existing reservation stays manageable even if its space was later
+    # deactivated, so the active-space rule does not apply here.
+    validate_reservation_slot(
+        reservation.space,
+        start_time,
+        end_time,
+        exclude_pk=reservation.pk,
+        require_active_space=False,
     )
-    if overlapping_reservations.exists():
-        raise ValidationError(
-            "This time slot overlaps with an existing reservation.",
-        )
-
-    # Check overlapping maintenance blocks
-    overlapping_blocks = MaintenanceBlock.objects.filter(
-        space=reservation.space,
-        start_time__lt=end_time,
-        end_time__gt=start_time,
-    )
-    if overlapping_blocks.exists():
-        raise ValidationError(
-            "This time slot overlaps with a maintenance block.",
-        )
 
     reservation.start_time = start_time
     reservation.end_time = end_time
@@ -250,28 +233,7 @@ def create_reservation(user, space, start_time, end_time):
         ValidationError: If the space is inactive, times are invalid,
             or there is an overlap with existing reservations or maintenance blocks.
     """
-    if not space.is_active:
-        raise ValidationError("This space is not available for reservations.")
-
-    if end_time <= start_time:
-        raise ValidationError("End time must be after start time.")
-
-    overlapping_reservations = Reservation.objects.filter(
-        space=space,
-        status__in=[ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN],
-    ).filter(
-        models.Q(start_time__lt=end_time) & models.Q(end_time__gt=start_time),
-    )
-    if overlapping_reservations.exists():
-        raise ValidationError("This time slot overlaps with an existing reservation.")
-
-    overlapping_blocks = MaintenanceBlock.objects.filter(
-        space=space,
-        start_time__lt=end_time,
-        end_time__gt=start_time,
-    )
-    if overlapping_blocks.exists():
-        raise ValidationError("This time slot overlaps with a maintenance block.")
+    validate_reservation_slot(space, start_time, end_time)
 
     try:
         with transaction.atomic():
@@ -283,7 +245,9 @@ def create_reservation(user, space, start_time, end_time):
                 status=ReservationStatus.CONFIRMED,
             )
     except IntegrityError as exc:
-        raise ValidationError("This time slot overlaps with an existing reservation.") from exc
+        # Last line of defence: the database exclusion constraint wins any race
+        # that slipped past the checks above.
+        raise ValidationError(RESERVATION_OVERLAP_MESSAGE) from exc
 
 
 def admin_cancel_reservation(reservation):
@@ -296,10 +260,7 @@ def admin_cancel_reservation(reservation):
         ValidationError: If the reservation cannot be cancelled in its
             current status.
     """
-    if reservation.status not in {
-        ReservationStatus.CONFIRMED,
-        ReservationStatus.CHECKED_IN,
-    }:
+    if reservation.status not in ACTIVE_RESERVATION_STATUSES:
         raise ValidationError(
             "Only confirmed or checked-in reservations can be cancelled.",
         )

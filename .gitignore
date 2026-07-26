@@ -54,3 +54,10 @@ htmlcov/
 
 # Docker
 *.pid
+
+# Zone Identifier (for Windows)
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Zone.Identifier
