@@ -40,7 +40,7 @@ DEFAULT_RESERVATIONS = [
 
 
 def _anchor_now():
-    """Return a stable anchor time rounded to the minute."""
+    """Return the reference time for the sample reservations, rounded to the minute."""
     return timezone.now().replace(second=0, microsecond=0)
 
 
@@ -64,19 +64,27 @@ def seed() -> list[Reservation]:
         start_time = now + res_data["start_offset"]
         end_time = now + res_data["end_offset"]
 
+        # A identidade é (usuário, espaço), não o horário. Os horários derivam de
+        # timezone.now() e portanto mudam entre execuções; usá-los como chave faria a
+        # segunda execução tentar inserir uma reserva deslocada em alguns minutos, que
+        # colide com a primeira na exclusion constraint. Cada par abaixo é único em
+        # DEFAULT_RESERVATIONS, o que torna a chave estável.
         reservation, created = Reservation.objects.get_or_create(
             user=user,
             space=space,
-            start_time=start_time,
             defaults={
+                "start_time": start_time,
                 "end_time": end_time,
                 "status": res_data["status"],
             },
         )
         if not created:
+            reservation.start_time = start_time
             reservation.end_time = end_time
             reservation.status = res_data["status"]
-            reservation.save()
+            reservation.save(
+                update_fields=["start_time", "end_time", "status", "updated_at"],
+            )
 
         reservations.append(reservation)
 
@@ -84,15 +92,13 @@ def seed() -> list[Reservation]:
 
 
 def flush() -> None:
-    """Remove seeded reservations identified by user+space+start_time."""
+    """Remove seeded reservations, identified by the same user+space key used to seed."""
     from django.contrib.auth.models import User
 
-    now = _anchor_now()
     for res_data in DEFAULT_RESERVATIONS:
         try:
             user = User.objects.get(username=res_data["username"])
             space = Space.objects.get(name=res_data["space_name"])
-            start_time = now + res_data["start_offset"]
-            Reservation.objects.filter(user=user, space=space, start_time=start_time).delete()
         except (User.DoesNotExist, Space.DoesNotExist):
-            pass
+            continue
+        Reservation.objects.filter(user=user, space=space).delete()

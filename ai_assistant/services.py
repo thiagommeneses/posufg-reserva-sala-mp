@@ -14,6 +14,8 @@ from groq import Groq, GroqError
 
 from ai_assistant.exceptions import AIServiceError
 from core.seeds.attributes import DEFAULT_ATTRIBUTES
+from knowledge import retrieval
+from knowledge.embedding import EmbeddingError
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +110,7 @@ _ROOM_SEARCH_SYSTEM_PROMPT = (
     "adicional, no formato exato: "
     '{"min_capacity": <int ou null>, "attributes": [<string>, ...], '
     '"location": <string ou null>, "summary": <string curta explicando o que foi '
-    'entendido, em português>}. '
+    "entendido, em português>}. "
     f"Os itens de 'attributes' DEVEM sair EXCLUSIVAMENTE deste catálogo: "
     f"{_KNOWN_ATTRIBUTES_LIST}. Não invente equipamentos fora da lista. "
     "Mapeie sinônimos populares para o catálogo (ex.: 'internet'/'wifi'/'rede' → "
@@ -282,4 +284,130 @@ def classify_maintenance_reason(reason: str) -> dict:
         "category": category,
         "confidence": data.get("confidence", "baixa"),
         "justification": data.get("justification", ""),
+    }
+
+
+_DOCUMENT_QA_SYSTEM_PROMPT = (
+    "Você é um assistente que responde perguntas sobre normas de uso de espaços "
+    "físicos (auditórios, salas de reunião, cessão a terceiros) em instituições "
+    "públicas brasileiras.\n\n"
+    "Regras obrigatórias:\n"
+    "1. Responda EXCLUSIVAMENTE com base nos trechos numerados fornecidos. Não use "
+    "conhecimento próprio nem complete lacunas por conta própria.\n"
+    "2. Ao afirmar uma regra, diga de qual instituição ela é. As normas variam entre "
+    "instituições e uma resposta sem essa atribuição é enganosa.\n"
+    "3. Quando os trechos divergirem entre si, apresente as diferenças em vez de "
+    "escolher uma versão.\n"
+    "4. Se os trechos não permitirem responder, diga isso claramente. Não invente.\n"
+    "5. Cite os trechos usados pelo número, no formato [1], [2].\n"
+    "6. Responda em português do Brasil, de forma direta e objetiva."
+)
+
+#: Resposta padrão quando o corpus não tem nada relacionado à pergunta. Evita
+#: chamar o LLM sem contexto, situação em que ele tenderia a responder de memória.
+NO_CONTEXT_ANSWER = (
+    "Não encontrei nada na base de normas que responda a essa pergunta. "
+    "O corpus cobre regulamentos de uso de auditórios, salas e cessão de espaços "
+    "em instituições públicas."
+)
+
+
+def _run_text_completion(system_prompt: str, user_content: str) -> str:
+    """Call the Groq chat completion API and return the raw text answer.
+
+    Args:
+        system_prompt: Instructions describing how to answer.
+        user_content: The question plus its retrieved context.
+
+    Returns:
+        str: The model's answer.
+
+    Raises:
+        AIServiceError: If the API call fails or returns an empty answer.
+    """
+    client = _get_client()
+    try:
+        completion = client.chat.completions.create(
+            model=settings.GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            temperature=0.1,
+        )
+    except GroqError:
+        logger.exception("Falha ao chamar a API da Groq.")
+        raise AIServiceError("Não foi possível consultar o serviço de IA no momento.") from None
+
+    answer = (completion.choices[0].message.content or "").strip()
+    if not answer:
+        raise AIServiceError("O serviço de IA devolveu uma resposta vazia.")
+    return answer
+
+
+def _build_context(chunks: list) -> str:
+    """Format retrieved passages as a numbered context block.
+
+    The institution is repeated on every excerpt so the model can attribute each rule
+    without having to infer provenance from the text.
+
+    Args:
+        chunks: Retrieved passages, best first.
+
+    Returns:
+        str: The context block sent to the model.
+    """
+    return "\n\n".join(
+        f"[{position}] {chunk.institution} — {chunk.document_title}\n{chunk.text}"
+        for position, chunk in enumerate(chunks, start=1)
+    )
+
+
+def answer_from_documents(question: str, top_k: int | None = None, *, hybrid: bool = True) -> dict:
+    """Answer a question about the normative corpus, citing the passages used.
+
+    Retrieval-augmented generation: the corpus is searched first, and only the
+    retrieved passages are given to the model. When retrieval comes back empty the
+    model is not called at all — without context it would answer from memory, which is
+    exactly what this feature exists to avoid.
+
+    Args:
+        question: Natural-language question.
+        top_k: How many passages to retrieve. Defaults to ``RAG_TOP_K``.
+        hybrid: Whether to combine semantic and lexical search.
+
+    Returns:
+        dict: With keys ``answer``, ``sources`` and ``used_context``.
+
+    Raises:
+        AIServiceError: If retrieval or the LLM call fails.
+    """
+    logger.info("Respondendo pergunta sobre a base de normas.")
+
+    try:
+        chunks = retrieval.search(question, top_k, hybrid=hybrid)
+    except EmbeddingError as exc:
+        logger.warning("Falha ao gerar embedding da pergunta: %s", exc)
+        raise AIServiceError(str(exc)) from exc
+
+    if not chunks:
+        return {"answer": NO_CONTEXT_ANSWER, "sources": [], "used_context": False}
+
+    prompt = f"Pergunta: {question}\n\nTrechos disponíveis:\n\n{_build_context(chunks)}"
+    answer = _run_text_completion(_DOCUMENT_QA_SYSTEM_PROMPT, prompt)
+
+    return {
+        "answer": answer,
+        "sources": [
+            {
+                "position": position,
+                "institution": chunk.institution,
+                "document": chunk.document_title,
+                "url": chunk.source_url,
+                "excerpt": chunk.text,
+                "score": round(chunk.score, 6),
+            }
+            for position, chunk in enumerate(chunks, start=1)
+        ],
+        "used_context": True,
     }

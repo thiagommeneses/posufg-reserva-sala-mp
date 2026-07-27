@@ -2,7 +2,11 @@
 
 from django.urls import path
 
-from ai_assistant.views import MaintenanceReasonClassifierView, RoomSearchAssistantView
+from ai_assistant.views import (
+    DocumentQAView,
+    MaintenanceReasonClassifierView,
+    RoomSearchAssistantView,
+)
 
 urlpatterns = [
     path("ai/room-search/", RoomSearchAssistantView.as_view(), name="ai-room-search"),
@@ -11,4 +15,5 @@ urlpatterns = [
         MaintenanceReasonClassifierView.as_view(),
         name="ai-maintenance-classify",
     ),
+    path("ai/document-qa/", DocumentQAView.as_view(), name="ai-document-qa"),
 ]

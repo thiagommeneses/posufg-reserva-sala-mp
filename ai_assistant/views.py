@@ -18,12 +18,18 @@ from rest_framework.views import APIView
 
 from ai_assistant.exceptions import AIServiceError
 from ai_assistant.serializers import (
+    DocumentQARequestSerializer,
+    DocumentQAResponseSerializer,
     MaintenanceClassifyRequestSerializer,
     MaintenanceClassifyResponseSerializer,
     RoomSearchRequestSerializer,
     RoomSearchResponseSerializer,
 )
-from ai_assistant.services import classify_maintenance_reason, extract_room_search_filters
+from ai_assistant.services import (
+    answer_from_documents,
+    classify_maintenance_reason,
+    extract_room_search_filters,
+)
 from spaces.models import Space
 
 logger = logging.getLogger(__name__)
@@ -89,4 +95,29 @@ class MaintenanceReasonClassifierView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
         response_serializer = MaintenanceClassifyResponseSerializer(classification)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+
+class DocumentQAView(APIView):
+    """Answers questions about the normative corpus, citing the passages used (RAG)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        """Answer a natural-language question grounded on the indexed documents."""
+        request_serializer = DocumentQARequestSerializer(data=request.data)
+        request_serializer.is_valid(raise_exception=True)
+        dados = request_serializer.validated_data
+
+        try:
+            resultado = answer_from_documents(
+                dados["question"],
+                dados.get("top_k"),
+                hybrid=dados["hybrid"],
+            )
+        except AIServiceError as exc:
+            logger.warning("Falha no serviço de consulta documental: %s", exc)
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        response_serializer = DocumentQAResponseSerializer(resultado)
         return Response(response_serializer.data, status=status.HTTP_200_OK)

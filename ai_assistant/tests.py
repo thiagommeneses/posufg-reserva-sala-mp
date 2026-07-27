@@ -161,7 +161,11 @@ class TestRoomSearchAssistantView:
 
     @patch("ai_assistant.views.extract_room_search_filters")
     def test_returns_matching_spaces(
-        self, mock_extract, api_client, projector_space, small_space,
+        self,
+        mock_extract,
+        api_client,
+        projector_space,
+        small_space,
     ):
         """It should return only spaces matching the extracted filters."""
         mock_extract.return_value = {
@@ -172,7 +176,8 @@ class TestRoomSearchAssistantView:
         }
 
         response = api_client.post(
-            "/api/v1/ai/room-search/", {"query": "sala para 8 pessoas com projetor"},
+            "/api/v1/ai/room-search/",
+            {"query": "sala para 8 pessoas com projetor"},
         )
 
         assert response.status_code == 200
@@ -190,7 +195,8 @@ class TestRoomSearchAssistantView:
         client = APIClient()
 
         response = client.post(
-            "/api/v1/ai/room-search/", {"query": "sala para 8 pessoas"},
+            "/api/v1/ai/room-search/",
+            {"query": "sala para 8 pessoas"},
         )
 
         assert response.status_code in (401, 403)
@@ -201,7 +207,8 @@ class TestRoomSearchAssistantView:
         mock_extract.side_effect = AIServiceError("Não foi possível consultar o serviço de IA.")
 
         response = api_client.post(
-            "/api/v1/ai/room-search/", {"query": "sala para 8 pessoas"},
+            "/api/v1/ai/room-search/",
+            {"query": "sala para 8 pessoas"},
         )
 
         assert response.status_code == 502
@@ -220,7 +227,8 @@ class TestMaintenanceReasonClassifierView:
         }
 
         response = api_client.post(
-            "/api/v1/ai/maintenance-classify/", {"reason": "Troca de lâmpadas queimadas"},
+            "/api/v1/ai/maintenance-classify/",
+            {"reason": "Troca de lâmpadas queimadas"},
         )
 
         assert response.status_code == 200
@@ -237,7 +245,8 @@ class TestMaintenanceReasonClassifierView:
         client = APIClient()
 
         response = client.post(
-            "/api/v1/ai/maintenance-classify/", {"reason": "Troca de lâmpadas"},
+            "/api/v1/ai/maintenance-classify/",
+            {"reason": "Troca de lâmpadas"},
         )
 
         assert response.status_code in (401, 403)

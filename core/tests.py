@@ -123,15 +123,39 @@ class SeedDataCommandTestCase(TestCase):
         attr_count_first = Attribute.objects.count()
         space_count_first = Space.objects.count()
         user_count_first = User.objects.count()
+        reservation_count_first = Reservation.objects.count()
+        block_count_first = MaintenanceBlock.objects.count()
 
         call_command("seed_data")
-        attr_count_second = Attribute.objects.count()
-        space_count_second = Space.objects.count()
-        user_count_second = User.objects.count()
 
-        assert attr_count_first == attr_count_second
-        assert space_count_first == space_count_second
-        assert user_count_first == user_count_second
+        assert Attribute.objects.count() == attr_count_first
+        assert Space.objects.count() == space_count_first
+        assert User.objects.count() == user_count_first
+        assert Reservation.objects.count() == reservation_count_first
+        assert MaintenanceBlock.objects.count() == block_count_first
+
+    def test_command_is_idempotent_across_time(self):
+        """Seeding twice is idempotent even when the clock moves between runs.
+
+        Os horários das reservas e bloqueios derivam de ``timezone.now()``. Quando as
+        duas execuções caíam em minutos diferentes, a segunda deixava de reconhecer os
+        registros da primeira: reservas colidiam na exclusion constraint e bloqueios de
+        manutenção eram duplicados em silêncio. A identidade passou a ser a chave
+        natural (usuário+espaço, espaço+motivo), independente do relógio.
+        """
+        from datetime import timedelta
+        from unittest.mock import patch
+
+        call_command("seed_data")
+        reservation_count = Reservation.objects.count()
+        block_count = MaintenanceBlock.objects.count()
+
+        agora = timezone.now()
+        with patch("django.utils.timezone.now", return_value=agora + timedelta(minutes=7)):
+            call_command("seed_data")
+
+        assert Reservation.objects.count() == reservation_count
+        assert MaintenanceBlock.objects.count() == block_count
 
     def test_flush_flag_removes_and_recreates(self):
         """Verify --flush removes seed data and recreates it."""
