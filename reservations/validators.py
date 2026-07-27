@@ -58,25 +58,21 @@ def active_reservations_overlapping(space, start_time, end_time, *, exclude_pk=N
     return queryset
 
 
-def maintenance_blocks_overlapping(space, start_time, end_time, *, exclude_pk=None):
+def maintenance_blocks_overlapping(space, start_time, end_time):
     """Return the maintenance blocks covering ``space`` during the given interval.
 
     Args:
         space: The Space instance to inspect.
         start_time: Start of the interval being checked.
         end_time: End of the interval being checked.
-        exclude_pk: Primary key of a maintenance block to ignore.
 
     Returns:
         QuerySet: Overlapping maintenance blocks.
     """
-    queryset = space.maintenance_blocks.filter(
+    return space.maintenance_blocks.filter(
         start_time__lt=end_time,
         end_time__gt=start_time,
     )
-    if exclude_pk is not None:
-        queryset = queryset.exclude(pk=exclude_pk)
-    return queryset
 
 
 def validate_time_range(start_time, end_time):
