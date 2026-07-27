@@ -1,4 +1,423 @@
-# Sistema de Reserva de Espaços
+# Assistente de Consulta a Normas de Uso de Espaços
+
+**Relatório Técnico — Trabalho Prático Final (Opção 2)**
+Engenharia de Software para Modelos de IA
+Especialização em Sistemas e Agentes Inteligentes — Universidade Federal de Goiás
+
+**Equipe:** Thiago Marques Meneses e André Pereira Teles
+
+**Repositório:** https://github.com/thiagommeneses/posufg-reserva-sala-mp
+
+---
+
+## Sumário
+
+1. [Descrição do contexto dos documentos](#1-descrição-do-contexto-dos-documentos)
+2. [Processo de preparação dos dados](#2-processo-de-preparação-dos-dados)
+3. [Embeddings utilizados](#3-embeddings-utilizados)
+4. [LLM utilizado](#4-llm-utilizado)
+5. [Arquitetura da solução](#5-arquitetura-da-solução)
+6. [Resultados](#6-resultados)
+7. [Funcionalidades complementares](#7-funcionalidades-complementares)
+8. [Limitações e trabalhos futuros](#8-limitações-e-trabalhos-futuros)
+
+---
+
+## 1. Descrição do contexto dos documentos
+
+### 1.1 O problema
+
+Este trabalho evolui o **Sistema de Reserva de Espaços**, projeto contínuo do curso,
+desenvolvido a partir de um cenário real do Ministério Público de Goiás, onde a reserva
+de salas é controlada manualmente em planilha.
+
+Ao levantar a base documental, encontramos um dado que redirecionou o trabalho: **não
+existe norma pública do MP-GO regulamentando o uso e a reserva de espaços físicos.** O
+portal institucional publica Atos PGJ e resoluções do CSMP sobre outras matérias, mas
+nada sobre salas e auditórios. A mesma busca no TJGO retornou apenas o Regimento
+Interno, sem portaria específica.
+
+A ausência é coerente com a prática observada: onde o controle é uma planilha, não há
+norma a documentar. Mas ela cria uma lacuna concreta — sem regra escrita, decisões sobre
+quem pode reservar, com que antecedência e em que condições ficam a critério de quem
+opera a planilha.
+
+### 1.2 Por que um corpus multi-institucional
+
+Diante disso, o corpus foi montado com regulamentos de instituições públicas que **já
+normatizaram** o uso de seus espaços. A base serve a dois propósitos concretos:
+
+1. **Apoiar a redação de uma norma própria**, permitindo comparar como diferentes órgãos
+   resolveram as mesmas questões.
+2. **Responder dúvidas operacionais recorrentes** — quem pode reservar, prazos, uso por
+   terceiros, cobrança, vedações e penalidades.
+
+Para a tarefa de RAG, a heterogeneidade é uma vantagem metodológica, não um defeito. Um
+corpus de uma só instituição responderia por consulta simples ao documento. Um corpus
+multi-institucional exige que o sistema **recupere e confronte trechos de fontes
+distintas**, que é onde a recuperação semântica precisa demonstrar valor.
+
+### 1.3 Composição do corpus
+
+| Métrica | Valor |
+|---|---|
+| Fontes catalogadas | 28 |
+| Documentos indexados | 26 |
+| Instituições distintas | 24 |
+| Palavras totais | 76.491 |
+| Trechos indexados | 734 |
+| Média de palavras por documento | 2.941 |
+| Menor / maior documento | 150 / 28.653 palavras |
+| Formatos | 23 PDF, 3 HTML |
+
+**Distribuição por categoria:**
+
+| Categoria | Documentos | Exemplos |
+|---|---|---|
+| Regulamento de auditório | 11 | UFPA/IFCH, UFS/BICEN, IFAL, IFBA, USP/IFSC, UFBA/IMS |
+| Resolução institucional | 6 | UFFS 177/2025, UFPI CAD 192/2026, IFC 16/2017 |
+| Procedimento de reserva | 3 | UFU/PREFE, UFG/Letras |
+| Contexto jurídico | 3 | TCU, CNMP, TJGO |
+| Complementar internacional | 3 | UNL, INFARMED, U. Lisboa/FMD |
+
+O bloco de **contexto jurídico** merece nota. O Regimento Interno do TJGO tem baixa
+densidade temática — 28.653 palavras com poucas menções diretas ao assunto —, mas contém
+regras reais e específicas: o art. 55 atribui ao desembargador titular a competência de
+definir escalas de uso do próprio gabinete, e há previsão de cedência das instalações da
+EJUG para eventos externos. Em um índice segmentado isso não é problema: os trechos
+relevantes são recuperáveis e os demais simplesmente nunca correspondem a consulta
+alguma.
+
+A procedência de cada documento está registrada em
+[`data/normas/fontes.json`](data/normas/fontes.json) — instituição, título, categoria e
+URL de origem —, o que torna toda afirmação do sistema rastreável até a fonte primária.
+
+---
+
+## 2. Processo de preparação dos dados
+
+O pipeline tem quatro etapas, todas automatizadas em comandos de gerenciamento do Django.
+
+### 2.1 Coleta
+
+Comando: `python manage.py baixar_normas`
+
+Lê o manifesto `fontes.json` e baixa cada documento, nomeando no padrão `NN-slug.ext` com
+a extensão definida pelo `Content-Type` da resposta. É idempotente.
+
+**Resultado da coleta e o que ela ensinou:**
+
+| Desfecho | Quantidade |
+|---|---|
+| Baixados automaticamente | 21 |
+| Falharam no download | 4 |
+| Baixaram com HTTP 200 mas sem conteúdo útil | 3 |
+
+As 4 falhas foram de infraestrutura: três por cadeia de certificados SSL incompleta
+(servidores que omitem o certificado intermediário, algo que navegadores contornam via
+*AIA fetching* mas o `urllib` não) e uma por HTTP 503.
+
+A terceira linha é a mais relevante metodologicamente. Três arquivos foram baixados com
+**status 200 e tamanho plausível**, mas continham uma página de captcha (Radware) ou
+apenas o esqueleto de navegação de páginas renderizadas por JavaScript. Um pipeline que
+confiasse no código de status os teria indexado como documentos válidos, ocupando espaço
+no índice e nunca correspondendo a consulta alguma.
+
+Esse achado motivou a decisão de projeto descrita a seguir.
+
+### 2.2 Extração
+
+Módulo: [`knowledge/extraction.py`](knowledge/extraction.py)
+
+- **PDF** — `pypdf`
+- **HTML** — `trafilatura`, com fallback
+- **Validação** — arquivos que produzem menos de **150 palavras** são **recusados**, não
+  indexados
+
+O limiar de 150 palavras é a resposta direta ao problema da coleta: em vez de confiar no
+transporte, o pipeline valida o **conteúdo**. A mensagem de erro é específica por formato
+— em PDF aponta para ausência de camada de texto (documento digitalizado), em HTML para
+captcha ou casca de JavaScript.
+
+**O caso do trafilatura.** A biblioteca é feita para separar conteúdo principal de
+boilerplate e cumpre bem esse papel na maioria das páginas. Em três portais institucionais
+do corpus, porém, o conteúdo está em tabelas e listas aninhadas que seu detector
+classificou como navegação: retornou 68, 60 e 18 palavras em páginas que continham 881,
+607 e 153.
+
+A solução foi tratá-lo como **primeira estratégia, não única**. Quando o resultado fica
+abaixo do limiar, o pipeline recorre à remoção direta de tags, descartando apenas blocos
+que comprovadamente não contêm norma (`script`, `style`, `nav`, `footer`, `header`,
+`form`, `aside`). O texto sai mais ruidoso, mas as regras sobrevivem. Após a correção, os
+26 documentos com arquivo em disco extraem sem falha.
+
+### 2.3 Segmentação
+
+Módulo: [`knowledge/chunking.py`](knowledge/chunking.py)
+
+`RecursiveCharacterTextSplitter` com 1.000 caracteres por trecho e 200 de sobreposição,
+mas com os **separadores ajustados para texto normativo**:
+
+```python
+["\nArt. ", "\nArtigo ", "\nCAPÍTULO ", "\nSeção ", "\n§", "\nParágrafo ",
+ "\n\n", "\n", ". ", " ", ""]
+```
+
+A ordem importa. Os separadores padrão da biblioteca são pensados para prosa e quebram em
+parágrafo e frase. Norma jurídica tem estrutura própria: a unidade de sentido é o artigo.
+Um trecho cortado no meio de um artigo responde pela metade, e um trecho que funde dois
+artigos não relacionados produz um embedding difuso, que não representa bem nenhum dos
+dois.
+
+Os 26 documentos produziram **734 trechos**, média de 28 por documento.
+
+### 2.4 Indexação
+
+Comando: `python manage.py indexar_normas`
+
+Cada trecho é gravado com **dois vetores**:
+
+- `embedding` — vetor denso de 384 dimensões, com índice HNSW (`vector_cosine_ops`)
+- `search_vector` — `tsvector` do PostgreSQL com dicionário português, com índice GIN
+
+A ingestão é **idempotente por SHA-256**: cada documento guarda o hash do arquivo que o
+originou. Uma segunda execução não reprocessa nada; alterar um arquivo reprocessa apenas
+ele. Isso atende ao requisito de reprocessamento incremental e torna barato reindexar após
+ajustes no chunking.
+
+---
+
+## 3. Embeddings utilizados
+
+| Item | Escolha |
+|---|---|
+| Biblioteca | `fastembed` (ONNX Runtime) |
+| Modelo | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` |
+| Dimensionalidade | 384 |
+| Métrica | Distância de cosseno |
+| Índice | HNSW (`m=16`, `ef_construction=64`) |
+| Execução | Local, no container |
+
+**Por que um modelo multilíngue.** O corpus é integralmente em português, incluindo
+terminologia jurídica e administrativa. Modelos treinados só em inglês — como o
+`bge-small-en`, padrão do fastembed — degradam sensivelmente nesse cenário.
+
+**Por que execução local.** O Groq, provedor do LLM usado neste trabalho, **não oferece
+API de embeddings**. As alternativas seriam depender de OpenAI ou Gemini, o que
+adicionaria uma segunda chave de API e um custo por requisição. O `fastembed` executa o
+modelo em ONNX dentro do próprio container, sem chave e sem chamada de rede em tempo de
+consulta. Para um trabalho acadêmico, isso significa que quem for avaliar reproduz o
+ambiente com `make up`, sem precisar de credenciais próprias.
+
+O custo é o primeiro uso: **252 MB** de pesos baixados uma vez, preservados no volume
+`fastembed_cache` entre reconstruções da imagem.
+
+**Uma armadilha documentada no código.** `VectorField(dimensions=384)` fixa a
+dimensionalidade no schema. Trocar por um modelo de 768 ou 1024 dimensões exige nova
+migration. O módulo de embeddings valida a dimensão do vetor antes de gravar e, em caso de
+divergência, emite mensagem explicando exatamente isso — em vez de deixar o erro
+manifestar-se como falha opaca do banco.
+
+---
+
+## 4. LLM utilizado
+
+| Item | Escolha |
+|---|---|
+| Provedor | Groq |
+| Modelo | `llama-3.3-70b-versatile` |
+| Temperatura | 0.1 |
+
+A temperatura baixa é deliberada: a tarefa é reproduzir fielmente o que está nos trechos
+recuperados, não gerar texto criativo.
+
+### 4.1 Projeto do prompt
+
+O prompt de sistema estabelece seis regras, das quais três são específicas deste corpus:
+
+> **Regra 1.** Responder exclusivamente com base nos trechos numerados fornecidos.
+>
+> **Regra 2.** Ao afirmar uma regra, dizer de qual instituição ela é.
+>
+> **Regra 3.** Quando os trechos divergirem, apresentar as diferenças em vez de escolher
+> uma versão.
+>
+> **Regra 4.** Se os trechos não permitirem responder, dizer isso claramente.
+>
+> **Regra 5.** Citar os trechos usados pelo número, no formato `[1]`, `[2]`.
+>
+> **Regra 6.** Responder em português do Brasil.
+
+As regras 2 e 3 existem por causa da natureza multi-institucional da base. Afirmar "é
+necessário solicitar com 30 dias de antecedência" sem dizer de quem é a regra é enganoso,
+porque outra instituição do mesmo corpus exige 7. A regra 3 impede que o modelo resolva a
+divergência escolhendo arbitrariamente uma das versões.
+
+### 4.2 Decisão: não chamar o LLM sem contexto
+
+Quando a recuperação retorna vazia, **o modelo não é invocado**. O sistema devolve uma
+mensagem explícita e o campo `used_context: false`.
+
+Essa decisão é o núcleo da diferença entre um sistema RAG e um chatbot genérico. Um LLM
+consultado sem contexto responde a partir do que memorizou no treinamento — que é
+exatamente o comportamento que esta aplicação existe para evitar. A resposta seria
+plausível, fluente e sem qualquer garantia de correspondência com as normas indexadas.
+
+---
+
+## 5. Arquitetura da solução
+
+A solução evolui um sistema Django existente, preservando suas convenções e fronteiras.
+
+```
+knowledge/                     app da base de conhecimento
+├── models.py                  Document, DocumentChunk (embedding + search_vector)
+├── manifest.py                leitura de fontes.json — fonte única de verdade
+├── extraction.py              PDF (pypdf) e HTML (trafilatura + fallback)
+├── chunking.py                segmentação com separadores normativos
+├── embedding.py               fastembed, modelo carregado uma vez
+├── services.py                pipeline de ingestão, idempotente por hash
+├── retrieval.py               busca híbrida com Reciprocal Rank Fusion
+├── views.py                   página web de consulta
+└── management/commands/
+    └── indexar_normas.py
+
+ai_assistant/                  fronteira com o provedor de LLM
+├── services.py                answer_from_documents + os dois serviços anteriores
+├── serializers.py
+└── views.py                   POST /api/v1/ai/document-qa/
+
+core/management/commands/
+└── baixar_normas.py           coleta a partir do manifesto
+```
+
+**Separação de responsabilidades.** Todo contato com o LLM permanece confinado em
+`ai_assistant`, que era a fronteira já estabelecida no trabalho da disciplina anterior. O
+app `knowledge` cuida do corpus e da recuperação; a página web o consome exatamente como
+`spaces/views.py` já consumia o serviço de busca em linguagem natural. Nenhuma camada nova
+foi criada onde uma existente servia.
+
+**Duas interfaces sobre o mesmo serviço:**
+
+| Interface | Endereço |
+|---|---|
+| Web (HTMX) | `/assistente/` |
+| API REST | `POST /api/v1/ai/document-qa/` |
+
+### 5.1 Recuperação híbrida
+
+Módulo: [`knowledge/retrieval.py`](knowledge/retrieval.py)
+
+Duas estratégias, combinadas:
+
+- **Semântica** — distância de cosseno sobre os embeddings, via índice HNSW. Encontra
+  passagens que significam o mesmo que a pergunta ainda que não compartilhem vocabulário.
+- **Lexical** — busca textual do PostgreSQL sobre `search_vector`, com dicionário
+  português. Ancora em termos exatos que o embedding tende a diluir: número de artigo,
+  nome de instituição, valor monetário.
+
+As duas produzem escores em **escalas incomparáveis** — distância de cosseno varia de 0 a
+2, `SearchRank` é outra grandeza. Normalizá-las exigiria calibração arbitrária. Por isso a
+fusão usa **Reciprocal Rank Fusion**, que descarta os valores e combina apenas as
+posições:
+
+```
+score(d) = Σ  1 / (k + posição(d, ranking))
+```
+
+com `k = 60`, conforme o artigo original de Cormack et al. (2009). Um trecho bem
+posicionado nas duas listas supera um que lidera apenas uma.
+
+---
+
+## 6. Resultados
+
+### 6.1 Consulta comparativa entre instituições
+
+Pergunta submetida a `POST /api/v1/ai/document-qa/`:
+
+> *Quais instituições cobram taxa pelo uso do auditório e quanto?*
+
+Resposta obtida:
+
+> De acordo com os trechos fornecidos, apenas a UFBA — IMS Campus Anísio Teixeira cobra
+> taxa pelo uso do auditório, conforme descrito em [1]. As taxas são:
+>
+> - R$ 1.200,00 por dia de utilização do auditório do pavilhão administrativo;
+> - R$ 500,00 por dia de utilização do auditório do pavilhão de aulas.
+>
+> Já a UFS — BICEN, conforme [5], não cobra taxas para eventos promovidos no auditório.
+> Não há informações sobre taxas de utilização nas outras instituições mencionadas nos
+> trechos [2], [3] e [4].
+
+Esse resultado exercita todas as decisões de projeto descritas acima:
+
+1. **A recuperação híbrida foi necessária.** O trecho da UFBA contém a palavra "taxa"
+   literalmente; o da UFS afirma "não haverá cobranças de taxas". Ambos foram recuperados,
+   de documentos distintos.
+2. **A regra de atribuição funcionou.** Cada valor está associado à instituição de origem.
+3. **A regra de divergência funcionou.** O sistema apresentou o polo que cobra e o que não
+   cobra, sem escolher um.
+4. **A regra de honestidade funcionou.** Declarou explicitamente que os trechos [2], [3] e
+   [4] não continham informação sobre taxas, em vez de preencher a lacuna.
+
+### 6.2 Qualidade da base
+
+| Indicador | Resultado |
+|---|---|
+| Documentos com arquivo em disco | 26 de 28 fontes |
+| Taxa de extração bem-sucedida | 26 de 26 (100%) |
+| Arquivos rejeitados pela validação | 0 após correção da extração |
+
+### 6.3 Qualidade do código
+
+| Indicador | Resultado |
+|---|---|
+| Testes automatizados | 338 |
+| Cobertura | 94,7% (mínimo exigido pelo projeto: 80%) |
+| Linter | `ruff` sem apontamentos |
+
+Do total, 47 testes cobrem especificamente o trabalho desta disciplina: pipeline de
+ingestão, recuperação, serviço RAG, endpoint da API e interface web.
+
+---
+
+## 7. Funcionalidades complementares
+
+| Funcionalidade | Situação |
+|---|---|
+| Busca híbrida (vetorial + lexical) | Implementada — seção 5.1 |
+| Utilização de Docker | Implementada — `docker-compose.yml` |
+| Reprocessamento incremental de documentos | Implementado — idempotência por SHA-256 |
+
+---
+
+## 8. Limitações e trabalhos futuros
+
+**Duas fontes sem arquivo.** As fontes 18 (UFG/Letras) e 19 (UFRGS/FCE) permanecem sem
+documento em disco: a primeira é uma página que apenas orienta o envio de e-mail, sem
+norma; a segunda respondeu HTTP 503 durante a coleta.
+
+**Documentos digitalizados.** Alguns PDFs institucionais são imagens sem camada de texto.
+São corretamente rejeitados pela validação, mas recuperá-los exigiria OCR — decisão
+adiada por custo de dependências frente ao prazo.
+
+**Ausência de avaliação quantitativa.** A qualidade das respostas foi verificada
+qualitativamente. Uma avaliação sistemática exigiria um conjunto de perguntas com respostas
+de referência e uma métrica automática, possivelmente com LLM-as-a-judge.
+
+**Dependência da versão do fastembed.** A biblioteca alterou a estratégia de *pooling* do
+modelo (de CLS para *mean pooling*). Embeddings gerados por versões diferentes não são
+comparáveis entre si, de modo que atualizar a dependência exige reindexar o corpus com
+`indexar_normas --force`.
+
+**Sobreposição no corpus.** As fontes 15 e 16 apontam para o mesmo documento da UFU
+(reserva de auditório), o que faz trechos quase idênticos concorrerem na recuperação.
+
+---
+---
+
+# Documentação do Sistema
 
 Sistema centralizado para descoberta e reserva de salas e espaços físicos. Resolve o problema da fragmentação de canais (planilhas, e-mails, calendários físicos) e reduz o desperdício de espaço com liberação automática de reservas não utilizadas.
 
@@ -261,6 +680,7 @@ make seed-flush
 | `/admin-dashboard/reservations/` | Gestão de reservas |
 | `/admin-dashboard/maintenance/` | Bloqueios de manutenção |
 | `/admin-dashboard/users/` | Gestão de usuários |
+| `/assistente/` | Consulta às normas em linguagem natural, com exibição das fontes |
 
 ### API REST (`/api/v1/`)
 
@@ -280,6 +700,7 @@ Toda a API é versionada sob `/api/v1/`.
 | POST | `/api/v1/admin/maintenance-blocks/` | Criar bloqueio de manutenção (admin) |
 | POST | `/api/v1/ai/room-search/` | Busca de salas a partir de uma descrição em linguagem natural (ex.: "sala para 8 pessoas com projetor perto da recepção"). O LLM extrai os filtros (capacidade, atributos, localização) e a API retorna os espaços correspondentes. |
 | POST | `/api/v1/ai/maintenance-classify/` | Classifica um motivo de manutenção em texto livre em uma categoria fixa (elétrica, hidráulica, limpeza, TI/equipamentos, mobiliário, segurança, outros), com justificativa e nível de confiança. |
+| POST | `/api/v1/ai/document-qa/` | Responde perguntas em linguagem natural sobre o corpus de normas (RAG). Recupera trechos por busca híbrida, gera resposta ancorada neles e devolve as fontes utilizadas. Aceita `top_k` e `hybrid`. |
 
 Os endpoints de IA exigem autenticação (`IsAuthenticated`), validam a entrada (tamanho mínimo/máximo do texto) e retornam `502` se o provedor de IA falhar. Documentação interativa (Swagger/Redoc) disponível em `/swagger/` e `/redoc/`.
 
@@ -287,8 +708,11 @@ Os endpoints de IA exigem autenticação (`IsAuthenticated`), validam a entrada 
 
 ## Tecnologias
 
-- **Backend:** Django 5.2, Django REST Framework, PostgreSQL
-- **IA:** Groq (LLM) para busca em linguagem natural e classificação de texto
+- **Backend:** Django 5.2, Django REST Framework, PostgreSQL 16
+- **Banco vetorial:** pgvector (índice HNSW, distância de cosseno)
+- **LLM:** Groq (`llama-3.3-70b-versatile`) para busca em linguagem natural, classificação de texto e consulta documental (RAG)
+- **Embeddings:** fastembed (ONNX) com `paraphrase-multilingual-MiniLM-L12-v2`, executado localmente
+- **Processamento de documentos:** pypdf, trafilatura, langchain-text-splitters
 - **Frontend:** Django Templates, HTMX, DaisyUI (sobre Tailwind CSS)
 - **Infra:** Docker, Docker Compose
 - **Qualidade:** pytest (com cobertura mínima de 80%), ruff, pre-commit, commitizen
