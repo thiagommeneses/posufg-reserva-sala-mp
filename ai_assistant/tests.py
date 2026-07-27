@@ -7,7 +7,11 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from ai_assistant.exceptions import AIServiceError
-from ai_assistant.services import classify_maintenance_reason, extract_room_search_filters
+from ai_assistant.services import (
+    classify_maintenance_reason,
+    extract_room_search_filters,
+    normalize_room_search_attributes,
+)
 from spaces.models import Attribute, Space, SpaceAttribute
 
 User = get_user_model()
@@ -58,8 +62,38 @@ class TestExtractRoomSearchFilters:
         result = extract_room_search_filters("sala para 8 pessoas com projetor")
 
         assert result["min_capacity"] == 8
-        assert result["attributes"] == ["projetor"]
+        assert result["attributes"] == ["Projetor"]
         assert result["summary"] == "Sala para 8 pessoas com projetor."
+
+    @patch("ai_assistant.services._run_json_completion")
+    def test_normalizes_internet_synonym_to_wifi(self, mock_completion):
+        """Popular synonyms like 'internet' should map to the Wi-Fi catalog attribute."""
+        mock_completion.return_value = {
+            "min_capacity": None,
+            "attributes": ["internet"],
+            "location": None,
+            "summary": "Sala com internet.",
+        }
+
+        result = extract_room_search_filters("sala com internet")
+
+        assert result["attributes"] == ["Wi-Fi"]
+
+    @patch("ai_assistant.services._run_json_completion")
+    def test_drops_unknown_attributes_from_llm_response(self, mock_completion):
+        """Invented equipment labels should not remain in the extracted filters."""
+        mock_completion.return_value = {
+            "min_capacity": 12,
+            "attributes": ["internet", "sistema de som"],
+            "location": "Bloco A",
+            "summary": "Sala grande com internet no Bloco A.",
+        }
+
+        result = extract_room_search_filters("sala grande com internet no bloco A")
+
+        assert result["attributes"] == ["Wi-Fi"]
+        assert result["min_capacity"] == 12
+        assert result["location"] == "Bloco A"
 
     @patch("ai_assistant.services._get_client")
     def test_raises_ai_service_error_when_client_unavailable(self, mock_get_client):
@@ -68,6 +102,27 @@ class TestExtractRoomSearchFilters:
 
         with pytest.raises(AIServiceError):
             extract_room_search_filters("sala para 8 pessoas")
+
+
+class TestNormalizeRoomSearchAttributes:
+    """Unit tests for services.normalize_room_search_attributes."""
+
+    def test_maps_common_wifi_synonyms(self):
+        """Internet-related wording should resolve to Wi-Fi."""
+        assert normalize_room_search_attributes(["internet", "wifi", "Wi-Fi"]) == ["Wi-Fi"]
+
+    def test_maps_expanded_equipment_synonyms(self):
+        """Popular equipment wording should resolve to catalog attributes."""
+        assert normalize_room_search_attributes(["meet"]) == ["Videoconferência"]
+        assert normalize_room_search_attributes(["slides"]) == ["Projetor"]
+        assert normalize_room_search_attributes(["monitor"]) == ["TV"]
+        assert normalize_room_search_attributes(["ac"]) == ["Ar-condicionado"]
+        assert normalize_room_search_attributes(["pizarra"]) == ["Quadro branco"]
+        assert normalize_room_search_attributes(["cam"]) == ["Webcam"]
+
+    def test_drops_unknown_attributes(self):
+        """Labels outside the catalog should be discarded, not used as filters."""
+        assert normalize_room_search_attributes(["som surround", "internet"]) == ["Wi-Fi"]
 
 
 class TestClassifyMaintenanceReason:

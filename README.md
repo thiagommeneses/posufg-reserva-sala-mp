@@ -23,6 +23,8 @@ Sistema centralizado para descoberta e reserva de salas e espaços físicos. Res
 | `admin_dashboard` | Interface administrativa customizada (ocupação, gestão de espaços, reservas, manutenção e usuários) |
 | `ai_assistant` | Serviços de IA (LLM via Groq): busca de salas em linguagem natural e classificação de motivos de manutenção |
 
+Para ajustar o comportamento conversacional da IA (prompts do sistema, mapeamento de sinônimos como “internet” → “Wi-Fi”, categorias de manutenção e parsing da resposta do LLM), edite `ai_assistant/services.py`. As views (`ai_assistant/views.py` e a busca em `spaces/views.py`) apenas consomem esses serviços.
+
 ### API vs Interface Web
 
 - **API REST** (`/api/v1/...`): serve integrações futuras e o QR Code de check-in.
