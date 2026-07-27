@@ -127,7 +127,10 @@ make migrate
 # 4. Popule o banco com dados de demonstração
 make seed
 
-# 5. Acesse a aplicação em http://localhost:8000
+# 5. Indexe a base de normas para o assistente documental
+docker compose exec web python manage.py indexar_normas
+
+# 6. Acesse a aplicação em http://localhost:8000
 ```
 
 ### Variáveis de ambiente
@@ -152,6 +155,60 @@ Copie `.env.example` para `.env` e preencha. Para usar os endpoints de IA (`/api
 | `make lint` | Executa o linter (ruff) |
 | `make format` | Formata o código (ruff) |
 | `make shell` | Abre terminal bash dentro do container web |
+
+---
+
+## Base de normas e indexação
+
+O assistente documental responde perguntas sobre um corpus de regulamentos públicos de
+uso de espaços físicos — auditórios, salas de reunião e cessão a terceiros — reunidos de
+universidades, institutos federais e órgãos do sistema de Justiça.
+
+Os documentos ficam versionados em `data/normas/`, junto de `fontes.json`, que registra a
+procedência de cada um: instituição, título, categoria e URL de origem. Versionar os
+arquivos garante que o projeto rode logo após o clone, sem depender de portais externos
+que saem do ar — durante a coleta, 4 das 29 fontes falharam e 3 responderam com página de
+captcha ou casca de JavaScript. São atos normativos públicos, de livre redistribuição.
+
+### Indexar o corpus
+
+```bash
+docker compose exec web python manage.py indexar_normas
+```
+
+O comando executa o pipeline em quatro etapas:
+
+1. **Extração** — `pypdf` para PDF, `trafilatura` para HTML. Arquivos que produzem menos
+   de 150 palavras são recusados, e não indexados como se fossem válidos.
+2. **Segmentação** — divisão em trechos com separadores ajustados para texto normativo
+   (`Art.`, `§`, `CAPÍTULO`), de modo que um artigo não seja cortado ao meio.
+3. **Embeddings** — vetores gerados localmente pelo `fastembed`, sem chave de API.
+4. **Persistência** — trechos gravados com índice HNSW (busca semântica) e `tsvector`
+   em português (busca lexical).
+
+É **idempotente**: cada documento guarda o SHA-256 do arquivo que o originou, então rodar
+de novo não reprocessa nada. Alterar um arquivo reprocessa apenas ele.
+
+| Opção | Efeito |
+|-------|--------|
+| `--force` | Reindexa mesmo o que não mudou |
+| `--somente 3 5 9` | Indexa apenas os ids informados |
+
+Ao final, o comando relata quantos documentos foram indexados, quais fontes não têm
+arquivo em disco e quais falharam, com o motivo.
+
+> **Primeira execução:** o modelo de embedding (~250 MB) é baixado uma vez e guardado no
+> volume `fastembed_cache`, preservado entre builds.
+
+### Baixar o corpus novamente
+
+Os arquivos já estão no repositório. Para recoletá-los das fontes originais:
+
+```bash
+docker compose exec web python manage.py baixar_normas
+```
+
+Aceita as mesmas opções `--force` e `--somente`.
 
 ---
 

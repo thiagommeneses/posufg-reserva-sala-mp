@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "spaces",
     "reservations",
     "ai_assistant",
+    "knowledge",
 ]
 
 MIDDLEWARE = [
@@ -182,6 +183,26 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 # https://console.groq.com/docs/overview
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+# Base de conhecimento e RAG
+# Corpus documental em data/normas/, indexado com pgvector.
+KNOWLEDGE_DOCUMENTS_DIR = BASE_DIR / "data" / "normas"
+
+# Modelo de embedding executado localmente via fastembed (ONNX, sem chave de API).
+# ATENÇÃO: trocar por um modelo com dimensionalidade diferente exige nova migration,
+# porque VectorField fixa as dimensões no schema.
+EMBEDDING_MODEL = os.environ.get(
+    "EMBEDDING_MODEL",
+    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+)
+EMBEDDING_DIMENSIONS = int(os.environ.get("EMBEDDING_DIMENSIONS", "384"))
+
+# Segmentação dos documentos, em caracteres.
+CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "1000"))
+CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", "200"))
+
+# Quantidade de trechos recuperados por consulta.
+RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "5"))
 
 # Tailwind CSS (django-tailwind-cli) — no Node.js needed, downloads its own
 # standalone binary. DaisyUI is enabled via TAILWIND_CLI_USE_DAISY_UI and the

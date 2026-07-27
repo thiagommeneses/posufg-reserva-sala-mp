@@ -4,7 +4,6 @@ Primeira etapa do pipeline de RAG: coleta e preparação dos documentos. O coman
 idempotente — arquivos já baixados são ignorados, salvo uso de ``--force``.
 """
 
-import json
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -12,8 +11,9 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-DESTINO = Path(settings.BASE_DIR) / "data" / "normas"
-FONTES = DESTINO / "fontes.json"
+from knowledge.manifest import ManifestError, load_sources
+
+DESTINO = Path(settings.KNOWLEDGE_DOCUMENTS_DIR)
 
 MINIMO_EXIGIDO = 20
 TIMEOUT_SEGUNDOS = 60
@@ -84,23 +84,15 @@ class Command(BaseCommand):
         self._resumir(baixados, ignorados, falhas)
 
     def _carregar_fontes(self) -> list[dict]:
-        """Lê e valida o manifesto de fontes.
+        """Lê o manifesto compartilhado com o pipeline de indexação.
 
         Raises:
             CommandError: se o manifesto não existir ou estiver malformado.
         """
-        if not FONTES.exists():
-            raise CommandError(f"Manifesto não encontrado: {FONTES}")
-
         try:
-            dados = json.loads(FONTES.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise CommandError(f"Manifesto inválido: {exc}") from exc
-
-        fontes = dados.get("fontes", [])
-        if not fontes:
-            raise CommandError("Manifesto não contém nenhuma fonte.")
-        return fontes
+            return load_sources()
+        except ManifestError as exc:
+            raise CommandError(str(exc)) from exc
 
     def _arquivo_existente(self, indice: int, slug: str) -> Path | None:
         """Retorna o arquivo já baixado para esta fonte, se houver."""
