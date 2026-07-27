@@ -1,31 +1,38 @@
 {% extends "base_admin.html" %}
 
 {% block admin_content %}
-<div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold">Bloqueios de Manutenção</h1>
-    <a href="{% url 'admin_dashboard:maintenance_create' %}" class="btn btn-primary">Novo Bloqueio</a>
-</div>
+<div class="space-y-6">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <h1 class="text-3xl font-bold">Bloqueios de Manutenção</h1>
+            <p class="mt-1 text-sm text-base-content/60">Bloqueie espaços e remova bloqueios quando necessário.</p>
+        </div>
+        <a href="{% url 'admin_dashboard:maintenance_create' %}" class="btn btn-primary shrink-0">Novo Bloqueio</a>
+    </header>
 
-<div class="overflow-x-auto">
-    <table class="table table-zebra w-full">
-        <thead>
-            <tr>
-                <th>Espaço</th>
-                <th>Início</th>
-                <th>Término</th>
-                <th>Motivo</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for block in maintenance_blocks %}
-            {% include "admin_dashboard/_maintenance_row.html" %}
-            {% empty %}
-            <tr>
-                <td colspan="5" class="text-center py-4">Nenhum bloqueio de manutenção encontrado.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="card bg-base-100 shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="table table-zebra">
+                <thead>
+                    <tr>
+                        <th>Espaço</th>
+                        <th>Início</th>
+                        <th>Término</th>
+                        <th>Motivo</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for block in maintenance_blocks %}
+                    {% include "admin_dashboard/_maintenance_row.html" %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="py-10 text-center text-base-content/60">Nenhum bloqueio de manutenção encontrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}

@@ -1,15 +1,15 @@
 <tr id="reservation-row-{{ reservation.pk }}">
-    <td>{{ reservation.user.username }}</td>
+    <td class="font-medium">{{ reservation.user.username }}</td>
     <td>{{ reservation.space.name }}</td>
     <td>{{ reservation.start_time|date:"d/m/Y H:i" }}</td>
     <td>{{ reservation.end_time|date:"d/m/Y H:i" }}</td>
     <td>
         {% include "components/_reservation_status_badge.html" with reservation=reservation %}
     </td>
-    <td>
+    <td class="text-right">
         {% if reservation.status == "confirmed" or reservation.status == "checked_in" %}
         <button
-            class="btn btn-error btn-xs"
+            class="btn btn-ghost btn-sm text-error"
             hx-post="{% url 'admin_dashboard:reservation_cancel' reservation.pk %}"
             hx-target="#reservation-row-{{ reservation.pk }}"
             hx-swap="outerHTML"
@@ -18,7 +18,7 @@
             Cancelar
         </button>
         {% else %}
-        <span class="text-gray-400 text-sm">—</span>
+        <span class="text-sm text-base-content/40">—</span>
         {% endif %}
     </td>
 </tr>

@@ -5,9 +5,9 @@
 <div class="drawer lg:drawer-open">
     <input id="admin-drawer" type="checkbox" class="drawer-toggle" />
     <div class="drawer-content flex flex-col">
-        <div class="navbar bg-base-100 border-b border-base-300 lg:hidden">
+        <div class="navbar bg-base-100 shadow-sm lg:hidden">
             <div class="flex-none">
-                <label for="admin-drawer" class="btn btn-square btn-ghost">
+                <label for="admin-drawer" class="btn btn-square btn-ghost" aria-label="Abrir menu">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block h-6 w-6 stroke-current">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>
@@ -15,7 +15,7 @@
             </div>
             <div class="flex-1">
                 <a href="/admin-dashboard/" class="btn btn-ghost text-xl gap-2">
-                    <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-8 w-8">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo" class="shrink-0 object-contain" style="width: 40px; height: 40px;">
                     Admin Dashboard
                 </a>
             </div>
@@ -25,14 +25,14 @@
         </main>
     </div>
     <div class="drawer-side">
-        <label for="admin-drawer" class="drawer-overlay lg:hidden"></label>
-        <ul class="menu bg-base-200 min-h-full w-80 p-4">
-            <li class="menu-title mb-2">
-                <div class="flex items-center gap-2 normal-case">
-                    <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-8 w-8">
+        <label for="admin-drawer" class="drawer-overlay lg:hidden" aria-label="Fechar menu"></label>
+        <ul class="menu bg-base-200 min-h-full w-80 p-4 gap-0.5">
+            <li class="menu-title mb-3">
+                <div class="flex items-center gap-3 normal-case">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo" class="shrink-0 object-contain" style="width: 60px; height: 60px;">
                     <div class="flex flex-col">
                         <span class="text-base font-bold text-base-content">Admin</span>
-                        <span class="text-xs opacity-70">Olá, {{ request.user.username }}</span>
+                        <span class="text-xs font-normal opacity-70">Olá, {{ request.user.username }}</span>
                     </div>
                 </div>
             </li>
@@ -41,7 +41,7 @@
             <li><a href="/admin-dashboard/reservations/" class="{% if "/admin-dashboard/reservations/" in request.path %}menu-active{% endif %}">Reservas</a></li>
             <li><a href="/admin-dashboard/maintenance/" class="{% if "/admin-dashboard/maintenance/" in request.path %}menu-active{% endif %}">Manutenção</a></li>
             <li><a href="/admin-dashboard/users/" class="{% if "/admin-dashboard/users/" in request.path %}menu-active{% endif %}">Usuários</a></li>
-            <li class="mt-auto">
+            <li class="mt-auto pt-4">
                 <a href="/">Voltar ao Site</a>
             </li>
         </ul>

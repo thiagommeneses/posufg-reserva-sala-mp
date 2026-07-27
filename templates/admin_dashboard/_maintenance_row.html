@@ -1,11 +1,11 @@
 <tr id="maintenance-row-{{ block.pk }}">
-    <td>{{ block.space.name }}</td>
+    <td class="font-medium">{{ block.space.name }}</td>
     <td>{{ block.start_time|date:"d/m/Y H:i" }}</td>
     <td>{{ block.end_time|date:"d/m/Y H:i" }}</td>
-    <td>{{ block.reason }}</td>
-    <td>
+    <td class="max-w-xs truncate" title="{{ block.reason }}">{{ block.reason }}</td>
+    <td class="text-right">
         <button
-            class="btn btn-error btn-xs"
+            class="btn btn-ghost btn-sm text-error"
             hx-delete="{% url 'admin_dashboard:maintenance_delete' block.pk %}"
             hx-target="#maintenance-row-{{ block.pk }}"
             hx-swap="outerHTML"

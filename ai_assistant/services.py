@@ -7,11 +7,13 @@ function (:func:`_run_json_completion`).
 
 import json
 import logging
+import unicodedata
 
 from django.conf import settings
 from groq import Groq, GroqError
 
 from ai_assistant.exceptions import AIServiceError
+from core.seeds.attributes import DEFAULT_ATTRIBUTES
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,43 @@ MAINTENANCE_CATEGORIES = [
     "outros",
 ]
 
+# Popular synonyms (normalized, without accents) → canonical Attribute.name values.
+ATTRIBUTE_SYNONYMS: dict[str, str] = {
+    "internet": "Wi-Fi",
+    "wifi": "Wi-Fi",
+    "wi fi": "Wi-Fi",
+    "wireless": "Wi-Fi",
+    "rede": "Wi-Fi",
+    "rede sem fio": "Wi-Fi",
+    "acesso a internet": "Wi-Fi",
+    "acesso a rede": "Wi-Fi",
+    "ar": "Ar-condicionado",
+    "ar condicionado": "Ar-condicionado",
+    "refrigeracao": "Ar-condicionado",
+    "climatizacao": "Ar-condicionado",
+    "projetor": "Projetor",
+    "projector": "Projetor",
+    "data show": "Projetor",
+    "datashow": "Projetor",
+    "tv": "TV",
+    "televisao": "TV",
+    "tela": "TV",
+    "webcam": "Webcam",
+    "camera": "Webcam",
+    "camera web": "Webcam",
+    "quadro": "Quadro branco",
+    "quadro branco": "Quadro branco",
+    "whiteboard": "Quadro branco",
+    "lousa": "Quadro branco",
+    "videoconferencia": "Videoconferência",
+    "video conferencia": "Videoconferência",
+    "videochamada": "Videoconferência",
+    "zoom": "Videoconferência",
+    "teams": "Videoconferência",
+}
+
+_KNOWN_ATTRIBUTES_LIST = ", ".join(DEFAULT_ATTRIBUTES)
+
 _ROOM_SEARCH_SYSTEM_PROMPT = (
     "Você é um assistente que converte pedidos em linguagem natural sobre reserva de "
     "salas em filtros estruturados. Responda SOMENTE com um JSON válido, sem texto "
@@ -32,9 +71,11 @@ _ROOM_SEARCH_SYSTEM_PROMPT = (
     '{"min_capacity": <int ou null>, "attributes": [<string>, ...], '
     '"location": <string ou null>, "summary": <string curta explicando o que foi '
     'entendido, em português>}. '
-    "Os itens de 'attributes' devem ser nomes genéricos de equipamentos citados "
-    "(ex.: projetor, tv, videoconferência, quadro branco). Se algo não for "
-    "mencionado, use null ou lista vazia."
+    f"Os itens de 'attributes' DEVEM ser escolhidos preferencialmente deste catálogo: "
+    f"{_KNOWN_ATTRIBUTES_LIST}. "
+    "Mapeie sinônimos populares para o catálogo (ex.: 'internet', 'wifi', 'rede sem "
+    "fio' → 'Wi-Fi'; 'datashow' → 'Projetor'; 'lousa' → 'Quadro branco'). "
+    "Se algo não for mencionado, use null ou lista vazia."
 )
 
 _MAINTENANCE_SYSTEM_PROMPT = (

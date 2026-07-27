@@ -1,59 +1,62 @@
 {% extends "base_admin.html" %}
 
 {% block admin_content %}
-<div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold">Gestão de Reservas</h1>
-</div>
+<div class="space-y-6">
+    <header>
+        <h1 class="text-3xl font-bold">Gestão de Reservas</h1>
+        <p class="mt-1 text-sm text-base-content/60">Filtre e gerencie reservas do sistema.</p>
+    </header>
 
-<!-- Filter Bar -->
-<form
-    class="card bg-base-100 shadow mb-6 p-4"
-    hx-get="{% url 'admin_dashboard:reservation_list' %}"
-    hx-target="#reservation-table-container"
-    hx-push-url="true"
-    hx-indicator="#filter-indicator"
->
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-5">
-        <div class="form-control">
-            <label class="label"><span class="label-text">Status</span></label>
-            <select name="status" class="select select-bordered w-full">
-                <option value="" {% if not current_filters.status %}selected{% endif %}>Todos</option>
-                {% for value, label in status_choices %}
-                <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
+    <form
+        class="card bg-base-100 shadow-sm"
+        hx-get="{% url 'admin_dashboard:reservation_list' %}"
+        hx-target="#reservation-table-container"
+        hx-push-url="true"
+        hx-indicator="#filter-indicator"
+    >
+        <div class="card-body gap-4">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text">Status</span></label>
+                    <select name="status" class="select select-bordered w-full">
+                        <option value="" {% if not current_filters.status %}selected{% endif %}>Todos</option>
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text">Espaço</span></label>
+                    <select name="space" class="select select-bordered w-full">
+                        <option value="" {% if not current_filters.space %}selected{% endif %}>Todos</option>
+                        {% for space in spaces %}
+                        <option value="{{ space.pk }}" {% if current_filters.space == space.pk|stringformat:"s" %}selected{% endif %}>{{ space.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text">De</span></label>
+                    <input type="date" name="start_date" value="{{ current_filters.start_date }}" class="input input-bordered w-full" />
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text">Até</span></label>
+                    <input type="date" name="end_date" value="{{ current_filters.end_date }}" class="input input-bordered w-full" />
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text">Usuário</span></label>
+                    <input type="text" name="user_search" value="{{ current_filters.user_search }}" placeholder="Buscar username..." class="input input-bordered w-full" />
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+                <a href="{% url 'admin_dashboard:reservation_list' %}" class="btn btn-ghost btn-sm">Limpar</a>
+                <span id="filter-indicator" class="htmx-indicator loading loading-spinner loading-sm"></span>
+            </div>
         </div>
-        <div class="form-control">
-            <label class="label"><span class="label-text">Espaço</span></label>
-            <select name="space" class="select select-bordered w-full">
-                <option value="" {% if not current_filters.space %}selected{% endif %}>Todos</option>
-                {% for space in spaces %}
-                <option value="{{ space.pk }}" {% if current_filters.space == space.pk|stringformat:"s" %}selected{% endif %}>{{ space.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-control">
-            <label class="label"><span class="label-text">De</span></label>
-            <input type="date" name="start_date" value="{{ current_filters.start_date }}" class="input input-bordered w-full" />
-        </div>
-        <div class="form-control">
-            <label class="label"><span class="label-text">Até</span></label>
-            <input type="date" name="end_date" value="{{ current_filters.end_date }}" class="input input-bordered w-full" />
-        </div>
-        <div class="form-control">
-            <label class="label"><span class="label-text">Usuário</span></label>
-            <input type="text" name="user_search" value="{{ current_filters.user_search }}" placeholder="Buscar username..." class="input input-bordered w-full" />
-        </div>
-    </div>
-    <div class="mt-4 flex items-center gap-2">
-        <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
-        <a href="{% url 'admin_dashboard:reservation_list' %}" class="btn btn-ghost btn-sm">Limpar</a>
-        <span id="filter-indicator" class="htmx-indicator loading loading-spinner loading-sm ml-2"></span>
-    </div>
-</form>
+    </form>
 
-<!-- Reservation Table -->
-<div id="reservation-table-container">
-    {% include "admin_dashboard/_reservation_table.html" %}
+    <div id="reservation-table-container">
+        {% include "admin_dashboard/_reservation_table.html" %}
+    </div>
 </div>
 {% endblock %}

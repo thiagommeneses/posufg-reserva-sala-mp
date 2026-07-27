@@ -1,49 +1,58 @@
 {% extends "base_admin.html" %}
 
 {% block admin_content %}
-<div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold">Gestão de Espaços</h1>
-    <a href="{% url 'admin_dashboard:space_create' %}" class="btn btn-primary">Novo Espaço</a>
-</div>
+<div class="space-y-6">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <h1 class="text-3xl font-bold">Gestão de Espaços</h1>
+            <p class="mt-1 text-sm text-base-content/60">Cadastre, edite e ative ou desative espaços.</p>
+        </div>
+        <a href="{% url 'admin_dashboard:space_create' %}" class="btn btn-primary shrink-0">Novo Espaço</a>
+    </header>
 
-<div class="overflow-x-auto">
-    <table class="table table-zebra w-full">
-        <thead>
-            <tr>
-                <th>Nome</th>
-                <th>Capacidade</th>
-                <th>Localização</th>
-                <th>Atributos</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for space in spaces %}
-            <tr>
-                <td>{{ space.name }}</td>
-                <td>{{ space.capacity }}</td>
-                <td>{{ space.location }}</td>
-                <td>
-                    {% for sa in space.space_attributes.all %}
-                    <span class="badge badge-outline badge-sm mr-1">{{ sa.attribute.name }}</span>
+    <div class="card bg-base-100 shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="table table-zebra">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Capacidade</th>
+                        <th>Localização</th>
+                        <th>Atributos</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for space in spaces %}
+                    <tr>
+                        <td class="font-medium">{{ space.name }}</td>
+                        <td>{{ space.capacity }}</td>
+                        <td>{{ space.location }}</td>
+                        <td>
+                            <div class="flex flex-wrap gap-1">
+                                {% for sa in space.space_attributes.all %}
+                                <span class="badge badge-outline badge-sm">{{ sa.attribute.name }}</span>
+                                {% empty %}
+                                <span class="text-sm text-base-content/50">Nenhum</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td>
+                            {% include "admin_dashboard/_space_status_badge.html" with space=space %}
+                        </td>
+                        <td class="text-right">
+                            <a href="{% url 'admin_dashboard:space_update' space.pk %}" class="btn btn-sm btn-ghost">Editar</a>
+                        </td>
+                    </tr>
                     {% empty %}
-                    <span class="text-gray-500 text-sm">Nenhum</span>
+                    <tr>
+                        <td colspan="6" class="py-10 text-center text-base-content/60">Nenhum espaço encontrado.</td>
+                    </tr>
                     {% endfor %}
-                </td>
-                <td>
-                    {% include "admin_dashboard/_space_status_badge.html" with space=space %}
-                </td>
-                <td>
-                    <a href="{% url 'admin_dashboard:space_update' space.pk %}" class="btn btn-sm btn-outline">Editar</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" class="text-center py-4">Nenhum espaço encontrado.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}

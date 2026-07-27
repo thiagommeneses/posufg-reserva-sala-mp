@@ -1,14 +1,14 @@
 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {% for card in space_cards %}
-    <div class="card bg-base-100 shadow-sm">
-        <div class="card-body">
-            <div class="flex items-start justify-between">
-                <h3 class="card-title">{{ card.name }}</h3>
-                <span class="badge {{ card.status_class }}">{{ card.status_label }}</span>
+    <div class="card bg-base-100 shadow-sm transition-shadow hover:shadow-md">
+        <div class="card-body gap-3">
+            <div class="flex items-start justify-between gap-3">
+                <h3 class="card-title text-lg">{{ card.name }}</h3>
+                <span class="badge {{ card.status_class }} shrink-0">{{ card.status_label }}</span>
             </div>
             <p class="text-sm text-base-content/70">{{ card.location }}</p>
-            <div class="card-actions mt-2 justify-end">
-                <span class="badge badge-outline">Capacidade: {{ card.capacity }}</span>
+            <div class="card-actions mt-auto justify-start">
+                <span class="badge badge-ghost">Capacidade: {{ card.capacity }}</span>
                 {% if not card.is_active %}
                 <span class="badge badge-ghost">Inativo</span>
                 {% endif %}
