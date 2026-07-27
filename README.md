@@ -387,8 +387,62 @@ ingestão, recuperação, serviço RAG, endpoint da API e interface web.
 | Funcionalidade | Situação |
 |---|---|
 | Busca híbrida (vetorial + lexical) | Implementada — seção 5.1 |
+| Histórico de conversas | Implementado — seção 7.1 |
+| Avaliação automática de respostas | Implementada — seção 7.2 |
 | Utilização de Docker | Implementada — `docker-compose.yml` |
 | Reprocessamento incremental de documentos | Implementado — idempotência por SHA-256 |
+
+### 7.1 Histórico de conversas
+
+Model `ConversationTurn`, com persistência por usuário e exibição na página de consulta.
+
+Além de registrar, os **três turnos mais recentes voltam ao prompt** como preâmbulo. Sem
+isso, uma pergunta de acompanhamento como *"e na UFBA?"* é literalmente irrespondível: o
+sujeito da pergunta está no turno anterior. O preâmbulo é explicitamente marcado como
+destinado apenas a resolver referências implícitas, para não competir com os trechos
+recuperados como fonte de conteúdo.
+
+**Decisão de modelagem:** as fontes são gravadas **desnormalizadas**, em um campo JSON,
+em vez de chave estrangeira para `DocumentChunk`. Os trechos são apagados e reconstruídos
+a cada reindexação — uma FK obrigaria a escolher entre bloquear a reindexação ou apagar
+silenciosamente a procedência das respostas passadas. Copiar o trecho preserva o registro
+histórico do que foi efetivamente mostrado ao usuário naquele momento.
+
+### 7.2 Avaliação automática de respostas
+
+Comando: `python manage.py avaliar_respostas`
+
+Módulo: [`ai_assistant/evaluation.py`](ai_assistant/evaluation.py)
+
+Um segundo modelo (LLM-as-a-judge) pontua cada resposta de 0 a 5 em três critérios:
+
+| Critério | O que mede |
+|---|---|
+| **Fundamentação** | Toda afirmação é sustentada pelos trechos recuperados? |
+| **Completude** | A resposta aproveita a informação relevante disponível? |
+| **Citação** | Os trechos são citados por número e atribuídos à instituição correta? |
+
+**A escolha do referencial importa.** O juiz avalia a resposta contra **os trechos que
+foram recuperados**, não contra o mundo. Essa é a propriedade que interessa aqui: o
+sistema deve reportar o que o corpus diz, então uma resposta é correta quando é fiel ao
+corpus — mesmo que o corpus esteja incompleto. O prompt do juiz é explícito: uma
+afirmação verdadeira no mundo real, mas não sustentada pelos trechos, é falha de
+fundamentação.
+
+O conjunto de referência está em
+[`data/avaliacao/perguntas.json`](data/avaliacao/perguntas.json): nove perguntas sobre o
+domínio, sendo três comparativas entre instituições, mais **uma de controle negativo**
+sobre assunto ausente do corpus. Para essa última, a resposta correta é declarar que não
+há informação — e o prompt do juiz instrui a premiar esse comportamento, não a puni-lo.
+
+```bash
+docker compose exec web python manage.py avaliar_respostas
+docker compose exec web python manage.py avaliar_respostas --salvar relatorio.json
+```
+
+As notas do juiz são normalizadas para a escala 0–5 antes de entrar na média. O juiz é
+ele próprio um LLM e pode devolver um valor fora da escala ou em formato inesperado; sem
+essa proteção, um veredito malformado contaminaria o agregado.
 
 ---
 

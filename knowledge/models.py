@@ -12,6 +12,9 @@ from django.contrib.postgres.search import SearchVectorField
 from django.db import models
 from pgvector.django import HnswIndex, VectorField
 
+#: Quantos turnos anteriores são reaproveitados como contexto de acompanhamento.
+CONVERSATION_CONTEXT_TURNS = 3
+
 
 class DocumentCategory(models.TextChoices):
     """Thematic grouping of a document, mirroring data/normas/fontes.json."""
@@ -123,3 +126,50 @@ class DocumentChunk(models.Model):
     def __str__(self):
         """Return a short identification of the chunk."""
         return f"{self.document.slug} #{self.position}"
+
+
+class ConversationTurn(models.Model):
+    """One question and its answer, kept so a conversation can continue.
+
+    Beyond showing history, the last turns are fed back into the prompt: without them
+    a follow-up like "e na UFBA?" is unanswerable, because the subject lives in the
+    previous question.
+
+    The sources are stored denormalised on purpose. Chunks are deleted and rebuilt on
+    every reindex, so a foreign key would either block reindexing or silently erase the
+    provenance of past answers.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="conversation_turns",
+    )
+    question = models.TextField()
+    answer = models.TextField()
+    sources = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Cópia dos trechos citados, preservada mesmo após reindexação.",
+    )
+    used_context = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        """Meta options for ConversationTurn."""
+
+        ordering = ["-created_at"]
+        verbose_name = "Turno de conversa"
+        verbose_name_plural = "Turnos de conversa"
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="turn_user_recent_idx"),
+        ]
+
+    def __str__(self):
+        """Return the user and a truncated question."""
+        return f"{self.user}: {self.question[:60]}"
+
+    @property
+    def source_count(self) -> int:
+        """Return how many passages grounded this answer."""
+        return len(self.sources)

@@ -69,5 +69,36 @@
     </form>
 
     <div id="answer"></div>
+
+    {% if history %}
+    <div class="divider mt-8">Histórico</div>
+
+    <p class="text-sm text-base-content/60 mb-3">
+        Suas consultas anteriores. As três mais recentes são usadas como contexto, para
+        que perguntas de acompanhamento — como <em>"e na UFBA?"</em> — façam sentido.
+    </p>
+
+    <div class="join join-vertical w-full">
+        {% for turno in history %}
+        <div class="collapse collapse-arrow join-item border border-base-300">
+            <input type="checkbox" id="turno-{{ turno.id }}">
+            <div class="collapse-title text-sm">
+                <span class="font-medium">{{ turno.question }}</span>
+                <span class="block text-xs text-base-content/50 mt-1">
+                    {{ turno.created_at|date:"d/m/Y H:i" }}
+                    {% if turno.used_context %}
+                    · {{ turno.source_count }} fonte{{ turno.source_count|pluralize }}
+                    {% else %}
+                    · sem contexto recuperado
+                    {% endif %}
+                </span>
+            </div>
+            <div class="collapse-content">
+                <p class="text-sm whitespace-pre-line">{{ turno.answer }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

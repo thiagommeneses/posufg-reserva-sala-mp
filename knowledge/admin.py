@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from .models import Document, DocumentChunk
+from .models import ConversationTurn, Document, DocumentChunk
 
 
 @admin.register(Document)
@@ -32,3 +32,13 @@ class DocumentChunkAdmin(admin.ModelAdmin):
     search_fields = ["text"]
     # O embedding tem centenas de dimensões e não é legível no admin.
     exclude = ["embedding", "search_vector"]
+
+
+@admin.register(ConversationTurn)
+class ConversationTurnAdmin(admin.ModelAdmin):
+    """Admin configuration for ConversationTurn."""
+
+    list_display = ["user", "question", "used_context", "source_count", "created_at"]
+    list_filter = ["used_context", "created_at"]
+    search_fields = ["question", "answer", "user__username"]
+    readonly_fields = ["created_at"]

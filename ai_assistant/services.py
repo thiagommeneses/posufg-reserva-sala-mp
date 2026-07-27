@@ -363,7 +363,36 @@ def _build_context(chunks: list) -> str:
     )
 
 
-def answer_from_documents(question: str, top_k: int | None = None, *, hybrid: bool = True) -> dict:
+def _build_history(history: list | None) -> str:
+    """Format previous turns as a conversation preamble.
+
+    Args:
+        history: Previous turns, most recent first, each with ``question`` and
+            ``answer``.
+
+    Returns:
+        str: The preamble, or an empty string when there is no history.
+    """
+    if not history:
+        return ""
+
+    trocas = "\n\n".join(
+        f"Pergunta anterior: {turn.question}\nResposta anterior: {turn.answer}"
+        for turn in reversed(history)
+    )
+    return (
+        "Contexto da conversa até aqui (use apenas para entender referências "
+        f"implícitas na pergunta atual, como 'e na UFBA?'):\n\n{trocas}\n\n---\n\n"
+    )
+
+
+def answer_from_documents(
+    question: str,
+    top_k: int | None = None,
+    *,
+    hybrid: bool = True,
+    history: list | None = None,
+) -> dict:
     """Answer a question about the normative corpus, citing the passages used.
 
     Retrieval-augmented generation: the corpus is searched first, and only the
@@ -375,6 +404,7 @@ def answer_from_documents(question: str, top_k: int | None = None, *, hybrid: bo
         question: Natural-language question.
         top_k: How many passages to retrieve. Defaults to ``RAG_TOP_K``.
         hybrid: Whether to combine semantic and lexical search.
+        history: Previous turns of the conversation, most recent first.
 
     Returns:
         dict: With keys ``answer``, ``sources`` and ``used_context``.
@@ -393,7 +423,10 @@ def answer_from_documents(question: str, top_k: int | None = None, *, hybrid: bo
     if not chunks:
         return {"answer": NO_CONTEXT_ANSWER, "sources": [], "used_context": False}
 
-    prompt = f"Pergunta: {question}\n\nTrechos disponíveis:\n\n{_build_context(chunks)}"
+    prompt = (
+        f"{_build_history(history)}"
+        f"Pergunta: {question}\n\nTrechos disponíveis:\n\n{_build_context(chunks)}"
+    )
     answer = _run_text_completion(_DOCUMENT_QA_SYSTEM_PROMPT, prompt)
 
     return {
