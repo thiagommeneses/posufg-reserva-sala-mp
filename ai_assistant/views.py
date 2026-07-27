@@ -57,8 +57,10 @@ class RoomSearchAssistantView(APIView):
         queryset = Space.objects.filter(is_active=True).prefetch_related(
             "space_attributes__attribute",
         )
-        if filters["min_capacity"]:
+        if filters.get("min_capacity"):
             queryset = queryset.filter(capacity__gte=filters["min_capacity"])
+        if filters.get("max_capacity"):
+            queryset = queryset.filter(capacity__lte=filters["max_capacity"])
         if filters["location"]:
             queryset = queryset.filter(location__icontains=filters["location"])
         for attribute_name in filters["attributes"]:

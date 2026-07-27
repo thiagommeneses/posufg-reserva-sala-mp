@@ -54,6 +54,7 @@ class TestExtractRoomSearchFilters:
         """It should return the filters parsed from the LLM JSON response."""
         mock_completion.return_value = {
             "min_capacity": 8,
+            "max_capacity": None,
             "attributes": ["projetor"],
             "location": None,
             "summary": "Sala para 8 pessoas com projetor.",
@@ -62,14 +63,33 @@ class TestExtractRoomSearchFilters:
         result = extract_room_search_filters("sala para 8 pessoas com projetor")
 
         assert result["min_capacity"] == 8
+        assert result["max_capacity"] is None
         assert result["attributes"] == ["Projetor"]
         assert result["summary"] == "Sala para 8 pessoas com projetor."
+
+    @patch("ai_assistant.services._run_json_completion")
+    def test_extracts_max_capacity_for_upper_bound(self, mock_completion):
+        """'Até N pessoas' should populate max_capacity, not min_capacity."""
+        mock_completion.return_value = {
+            "min_capacity": None,
+            "max_capacity": 4,
+            "attributes": [],
+            "location": None,
+            "summary": "Sala para até 4 pessoas.",
+        }
+
+        result = extract_room_search_filters("preciso de uma sala com capacidade de até 4 pessoas")
+
+        assert result["min_capacity"] is None
+        assert result["max_capacity"] == 4
+        assert "até 4" in result["summary"]
 
     @patch("ai_assistant.services._run_json_completion")
     def test_normalizes_internet_synonym_to_wifi(self, mock_completion):
         """Popular synonyms like 'internet' should map to the Wi-Fi catalog attribute."""
         mock_completion.return_value = {
             "min_capacity": None,
+            "max_capacity": None,
             "attributes": ["internet"],
             "location": None,
             "summary": "Sala com internet.",
@@ -84,6 +104,7 @@ class TestExtractRoomSearchFilters:
         """Invented equipment labels should not remain in the extracted filters."""
         mock_completion.return_value = {
             "min_capacity": 12,
+            "max_capacity": None,
             "attributes": ["internet", "sistema de som"],
             "location": "Bloco A",
             "summary": "Sala grande com internet no Bloco A.",
@@ -93,6 +114,7 @@ class TestExtractRoomSearchFilters:
 
         assert result["attributes"] == ["Wi-Fi"]
         assert result["min_capacity"] == 12
+        assert result["max_capacity"] is None
         assert result["location"] == "Bloco A"
 
     @patch("ai_assistant.services._get_client")
@@ -170,6 +192,7 @@ class TestRoomSearchAssistantView:
         """It should return only spaces matching the extracted filters."""
         mock_extract.return_value = {
             "min_capacity": 8,
+            "max_capacity": None,
             "attributes": ["projetor"],
             "location": None,
             "summary": "Sala para 8 pessoas com projetor.",
@@ -183,6 +206,33 @@ class TestRoomSearchAssistantView:
         assert response.status_code == 200
         result_ids = [item["id"] for item in response.data["results"]]
         assert result_ids == [projector_space.id]
+
+    @patch("ai_assistant.views.extract_room_search_filters")
+    def test_filters_by_max_capacity(
+        self,
+        mock_extract,
+        api_client,
+        projector_space,
+        small_space,
+    ):
+        """An upper bound should exclude rooms larger than max_capacity."""
+        mock_extract.return_value = {
+            "min_capacity": None,
+            "max_capacity": 4,
+            "attributes": [],
+            "location": None,
+            "summary": "Sala para até 4 pessoas.",
+        }
+
+        response = api_client.post(
+            "/api/v1/ai/room-search/",
+            {"query": "sala com capacidade de até 4 pessoas"},
+        )
+
+        assert response.status_code == 200
+        result_ids = [item["id"] for item in response.data["results"]]
+        assert small_space.id in result_ids
+        assert projector_space.id not in result_ids
 
     def test_rejects_short_query(self, api_client):
         """It should return 400 for a query below the minimum length."""

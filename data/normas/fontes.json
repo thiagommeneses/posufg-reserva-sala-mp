@@ -129,15 +129,6 @@
       "verificado": false
     },
     {
-      "id": 15,
-      "slug": "ufu-prefe-reserva-espaco-fisico",
-      "instituicao": "UFU - PREFE",
-      "documento": "Reserva de Espaco Fisico",
-      "categoria": "procedimento-reserva",
-      "url": "https://prefe.ufu.br/assunto/reserva-de-espaco-fisico",
-      "verificado": false
-    },
-    {
       "id": 16,
       "slug": "ufu-prefe-reserva-auditorio",
       "instituicao": "UFU - PREFE",

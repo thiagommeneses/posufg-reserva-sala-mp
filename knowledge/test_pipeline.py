@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 from django.conf import settings
+from django.utils import timezone
 
 from knowledge import chunking, extraction, services
 from knowledge.embedding import EmbeddingError
@@ -337,3 +338,100 @@ class TestIngestion:
         caminho.write_text("conteúdo", encoding="utf-8")
 
         assert services.file_hash(caminho) == services.file_hash(caminho)
+
+    def test_partial_run_does_not_prune(self, corpus_dir, fonte):
+        """--somente never removes anything: absence from the filter means nothing."""
+        import json
+
+        (corpus_dir / "fontes.json").write_text(json.dumps({"fontes": [fonte]}), encoding="utf-8")
+        _documento_indexado(source_id=99)
+
+        report = services.ingest_corpus([99])
+
+        assert report.pruned == []
+        assert Document.objects.filter(source_id=99).exists()
+
+
+def _documento_indexado(source_id: int = 1) -> Document:
+    """Create an already-indexed document with one chunk."""
+    documento = Document.objects.create(
+        source_id=source_id,
+        slug=f"doc-{source_id}",
+        institution="Instituição",
+        title="Documento",
+        source_url="https://example.org/doc.pdf",
+        file_name=f"{source_id:02d}-norma.txt",
+        file_format="txt",
+        # zfill e não repetição: o campo tem exatamente 64 caracteres, e "99" * 64
+        # estouraria o limite — algo que só o PostgreSQL rejeita.
+        content_hash=str(source_id).zfill(64),
+        indexed_at=timezone.now(),
+    )
+    DocumentChunk.objects.create(
+        document=documento,
+        position=0,
+        text="trecho",
+        embedding=[0.1] * settings.EMBEDDING_DIMENSIONS,
+    )
+    return documento
+
+
+@pytest.mark.django_db
+class TestPruning:
+    """Tests for removing documents that left the manifest.
+
+    Exercitam ``_prune_orphans`` diretamente porque a ingestão completa depende de
+    recursos exclusivos do PostgreSQL. A lógica de poda é ORM puro e vale por si.
+    """
+
+    def _manifesto(self, corpus_dir, ids: list[int]) -> None:
+        """Write a manifest containing only the given ids."""
+        import json
+
+        fontes = [
+            {
+                "id": identificador,
+                "slug": f"fonte-{identificador}",
+                "instituicao": "Instituição",
+                "documento": "Documento",
+                "categoria": "regulamento-auditorio",
+                "url": "https://example.org/doc.pdf",
+            }
+            for identificador in ids
+        ]
+        (corpus_dir / "fontes.json").write_text(json.dumps({"fontes": fontes}), encoding="utf-8")
+
+    def test_document_outside_manifest_is_removed(self, corpus_dir):
+        """A document whose source left the manifest is deleted."""
+        _documento_indexado(source_id=1)
+        self._manifesto(corpus_dir, [2])
+
+        removidos = services._prune_orphans()
+
+        assert removidos == [(1, "01-norma.txt")]
+        assert Document.objects.filter(source_id=1).exists() is False
+
+    def test_chunks_go_with_the_document(self, corpus_dir):
+        """Pruning takes the passages out of the index too."""
+        _documento_indexado(source_id=1)
+        self._manifesto(corpus_dir, [2])
+
+        services._prune_orphans()
+
+        assert DocumentChunk.objects.count() == 0
+
+    def test_document_still_in_manifest_survives(self, corpus_dir):
+        """A document whose source remains is untouched."""
+        _documento_indexado(source_id=1)
+        self._manifesto(corpus_dir, [1, 2])
+
+        removidos = services._prune_orphans()
+
+        assert removidos == []
+        assert Document.objects.filter(source_id=1).exists()
+
+    def test_nothing_to_prune_returns_empty(self, corpus_dir):
+        """An index already in sync reports no removals."""
+        self._manifesto(corpus_dir, [1])
+
+        assert services._prune_orphans() == []

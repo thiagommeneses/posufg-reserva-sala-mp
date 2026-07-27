@@ -16,14 +16,15 @@
         <div class="card-body">
             <h2 class="card-title text-lg">Busca com IA</h2>
             <p class="text-sm text-base-content/70 mb-2">
-                Descreva o que você precisa em linguagem natural, ex.: "sala para 8 pessoas com projetor".
+                Descreva o que você precisa em linguagem natural, ex.: "sala para até 4 pessoas"
+                ou "sala para 8 pessoas com projetor".
             </p>
             <div class="flex flex-col sm:flex-row gap-2">
                 <input
                     type="text"
                     name="ai_query"
                     value="{{ ai_query }}"
-                    placeholder="Ex: preciso de uma sala para 10 pessoas com projetor"
+                    placeholder="Ex: preciso de uma sala com capacidade de até 4 pessoas"
                     class="input input-bordered w-full"
                 >
                 <button type="submit" class="btn btn-secondary whitespace-nowrap">
@@ -41,7 +42,7 @@
         hx-indicator="#loading-indicator"
         class="bg-base-200 p-6 rounded-box mb-6"
     >
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <!-- Min Capacity -->
             <div class="form-control">
                 <label class="label">
@@ -53,6 +54,21 @@
                     value="{{ min_capacity }}"
                     min="1"
                     placeholder="Ex: 5"
+                    class="input input-bordered w-full"
+                >
+            </div>
+
+            <!-- Max Capacity -->
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Capacidade máxima</span>
+                </label>
+                <input
+                    type="number"
+                    name="max_capacity"
+                    value="{{ max_capacity }}"
+                    min="1"
+                    placeholder="Ex: 4"
                     class="input input-bordered w-full"
                 >
             </div>

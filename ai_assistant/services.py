@@ -108,16 +108,25 @@ _ROOM_SEARCH_SYSTEM_PROMPT = (
     "Você é um assistente que converte pedidos em linguagem natural sobre reserva de "
     "salas em filtros estruturados. Responda SOMENTE com um JSON válido, sem texto "
     "adicional, no formato exato: "
-    '{"min_capacity": <int ou null>, "attributes": [<string>, ...], '
-    '"location": <string ou null>, "summary": <string curta explicando o que foi '
-    "entendido, em português>}. "
+    '{"min_capacity": <int ou null>, "max_capacity": <int ou null>, '
+    '"attributes": [<string>, ...], "location": <string ou null>, '
+    '"summary": <string curta explicando o que foi entendido, em português>}. '
     f"Os itens de 'attributes' DEVEM sair EXCLUSIVAMENTE deste catálogo: "
     f"{_KNOWN_ATTRIBUTES_LIST}. Não invente equipamentos fora da lista. "
     "Mapeie sinônimos populares para o catálogo (ex.: 'internet'/'wifi'/'rede' → "
     "'Wi-Fi'; 'datashow'/'slides' → 'Projetor'; 'meet'/'zoom'/'call' → "
     "'Videoconferência'; 'lousa' → 'Quadro branco'; 'ac' → 'Ar-condicionado'). "
-    "Para tamanho aproximado, use min_capacity assim quando o usuário não informar "
-    "número: 'pequena'≈4, 'média'≈6, 'grande'≈12, 'auditório'≈30. "
+    "Capacidade — escolha o campo certo conforme a intenção:\n"
+    "- Piso (min_capacity): 'para N pessoas', 'pelo menos N', 'a partir de N', "
+    "'com capacidade de N' quando o sentido é caber no mínimo N.\n"
+    "- Teto (max_capacity): 'até N', 'no máximo N', 'capacidade máxima de N', "
+    "'para no máximo N pessoas'. NÃO coloque o teto em min_capacity.\n"
+    "- Ambos: 'entre A e B', 'de A a B'.\n"
+    "- Exato: 'exatamente N lugares', 'com N lugares' → min_capacity=N e "
+    "max_capacity=N.\n"
+    "Tamanho aproximado sem número: 'pequena'→max_capacity=6; 'média'→"
+    "min_capacity=6 e max_capacity=15; 'grande'→min_capacity=12; "
+    "'auditório'→min_capacity=30.\n"
     "Para location, prefira fragmentos do cadastro real: 'Bloco A', 'Bloco B', "
     "'Bloco C', 'Térreo', ou o andar em formato numérico curto (ex.: '2º', '3º'). "
     "Se algo não for mencionado, use null ou lista vazia."
@@ -241,6 +250,19 @@ def normalize_room_search_attributes(attributes: list) -> list[str]:
     return normalized_attributes
 
 
+def _coerce_capacity(value) -> int | None:
+    """Convert an LLM capacity value to a positive int, or ``None`` if invalid."""
+    if value is None or value == "":
+        return None
+    try:
+        capacity = int(value)
+    except (TypeError, ValueError):
+        return None
+    if capacity < 1:
+        return None
+    return capacity
+
+
 def extract_room_search_filters(query: str) -> dict:
     """Use an LLM to turn a natural-language room request into structured search filters.
 
@@ -249,14 +271,15 @@ def extract_room_search_filters(query: str) -> dict:
             pessoas com projetor amanhã de manhã".
 
     Returns:
-        A dict with keys ``min_capacity``, ``attributes``, ``location`` and
-        ``summary``. Attribute labels are normalized to catalog names when
-        possible (e.g. ``internet`` → ``Wi-Fi``).
+        A dict with keys ``min_capacity``, ``max_capacity``, ``attributes``,
+        ``location`` and ``summary``. Attribute labels are normalized to catalog
+        names when possible (e.g. ``internet`` → ``Wi-Fi``).
     """
     logger.info("Extraindo filtros de busca de sala a partir de linguagem natural.")
     data = _run_json_completion(_ROOM_SEARCH_SYSTEM_PROMPT, query)
     return {
-        "min_capacity": data.get("min_capacity"),
+        "min_capacity": _coerce_capacity(data.get("min_capacity")),
+        "max_capacity": _coerce_capacity(data.get("max_capacity")),
         "attributes": normalize_room_search_attributes(data.get("attributes") or []),
         "location": data.get("location"),
         "summary": data.get("summary", ""),
@@ -300,7 +323,20 @@ _DOCUMENT_QA_SYSTEM_PROMPT = (
     "escolher uma versão.\n"
     "4. Se os trechos não permitirem responder, diga isso claramente. Não invente.\n"
     "5. Cite os trechos usados pelo número, no formato [1], [2].\n"
-    "6. Responda em português do Brasil, de forma direta e objetiva."
+    "6. Responda em português do Brasil, de forma direta e objetiva.\n"
+    "7. Se houver histórico da conversa, interprete a pergunta atual como "
+    "continuação: resolva pronomes e elipses (ex.: 'e na UFBA?', 'e a taxa?', "
+    "'comparando com a anterior') usando o assunto das perguntas anteriores, "
+    "mas continue respondendo só com os trechos numerados desta rodada."
+)
+
+_FOLLOWUP_REWRITE_SYSTEM_PROMPT = (
+    "Você reescreve perguntas de acompanhamento sobre normas de uso de espaços "
+    "públicos. Dado o histórico e a pergunta atual (que pode ser elíptica, como "
+    "'e na UFBA?' ou 'e a taxa?'), produza UMA pergunta completa e autônoma, "
+    "adequada para busca documental, sem depender do histórico para ser "
+    "entendida. Preserve a intenção e a instituição/tema implícitos. "
+    "Responda SOMENTE com a pergunta reescrita, sem aspas, prefixo nem explicação."
 )
 
 #: Resposta padrão quando o corpus não tem nada relacionado à pergunta. Evita
@@ -310,6 +346,9 @@ NO_CONTEXT_ANSWER = (
     "O corpus cobre regulamentos de uso de auditórios, salas e cessão de espaços "
     "em instituições públicas."
 )
+
+#: Minimum length accepted for an LLM-rewritten follow-up before falling back.
+MIN_FOLLOWUP_REWRITE_LENGTH = 8
 
 
 def _run_text_completion(system_prompt: str, user_content: str) -> str:
@@ -386,6 +425,50 @@ def _build_history(history: list | None) -> str:
     )
 
 
+def _fallback_search_query(question: str, history: list) -> str:
+    """Build a retrieval query by concatenating the latest turn with the follow-up."""
+    anterior = history[0]
+    return f"{anterior.question} {question}".strip()
+
+
+def rewrite_followup_question(question: str, history: list | None) -> str:
+    """Turn an elliptical follow-up into a standalone search query.
+
+    Without this step, retrieval for questions like ``e na UFS?`` returns nothing
+    useful, and the answer path refuses to call the LLM — correctly, to avoid
+    hallucination, but the conversation then feels broken.
+
+    Args:
+        question: The user's current question.
+        history: Previous turns, most recent first.
+
+    Returns:
+        str: A self-contained query for retrieval. Falls back to concatenating
+        the previous question when the rewrite call fails.
+    """
+    if not history:
+        return question
+
+    trocas = "\n".join(
+        f"- {turn.question}" for turn in reversed(history)
+    )
+    user_content = (
+        f"Histórico recente:\n{trocas}\n\nPergunta atual: {question}"
+    )
+    try:
+        reescrita = _run_text_completion(_FOLLOWUP_REWRITE_SYSTEM_PROMPT, user_content)
+    except AIServiceError:
+        logger.warning(
+            "Falha ao reescrever follow-up; usando concatenação com o turno anterior.",
+        )
+        return _fallback_search_query(question, history)
+
+    reescrita = reescrita.strip().strip('"').strip("'")
+    if len(reescrita) < MIN_FOLLOWUP_REWRITE_LENGTH:
+        return _fallback_search_query(question, history)
+    return reescrita
+
+
 def answer_from_documents(
     question: str,
     top_k: int | None = None,
@@ -399,6 +482,9 @@ def answer_from_documents(
     retrieved passages are given to the model. When retrieval comes back empty the
     model is not called at all — without context it would answer from memory, which is
     exactly what this feature exists to avoid.
+
+    When ``history`` is provided, follow-ups are rewritten into a standalone query
+    before retrieval so elliptical questions still find relevant passages.
 
     Args:
         question: Natural-language question.
@@ -414,8 +500,10 @@ def answer_from_documents(
     """
     logger.info("Respondendo pergunta sobre a base de normas.")
 
+    search_query = rewrite_followup_question(question, history)
+
     try:
-        chunks = retrieval.search(question, top_k, hybrid=hybrid)
+        chunks = retrieval.search(search_query, top_k, hybrid=hybrid)
     except EmbeddingError as exc:
         logger.warning("Falha ao gerar embedding da pergunta: %s", exc)
         raise AIServiceError(str(exc)) from exc

@@ -206,6 +206,15 @@ class TestSpaceApiList:
         assert "Room with TV" in names
         assert "Small Room" not in names
 
+    def test_filter_by_max_capacity(self, api_client, regular_user, space_with_tv, small_space):
+        """Filtering by max_capacity should exclude larger spaces."""
+        api_client.force_authenticate(user=regular_user)
+        response = api_client.get("/api/v1/spaces/?max_capacity=4")
+        assert response.status_code == 200
+        names = {s["name"] for s in response.data}
+        assert "Small Room" in names
+        assert "Room with TV" not in names
+
     def test_filter_by_attributes(self, api_client, regular_user, space_with_tv, small_space):
         """Filtering by attributes should return only matching spaces."""
         api_client.force_authenticate(user=regular_user)
@@ -463,6 +472,16 @@ class TestSpaceListView:
         assert space_with_tv in spaces
         assert small_space not in spaces
 
+    def test_filter_by_max_capacity(self, client, regular_user, space_with_tv, small_space):
+        """Filtering by max_capacity should exclude larger spaces."""
+        client.force_login(regular_user)
+        response = client.get("/spaces/?max_capacity=4")
+        assert response.status_code == 200
+        spaces = response.context["spaces"]
+        assert small_space in spaces
+        assert space_with_tv not in spaces
+        assert response.context["max_capacity"] == "4"
+
     def test_filter_by_location(self, client, regular_user, space_with_tv, small_space):
         """Filtering by location should return only matching spaces."""
         client.force_login(regular_user)
@@ -579,6 +598,7 @@ class TestSpaceListViewAISearch:
         """A successful AI query should filter spaces using the extracted filters."""
         mock_extract.return_value = {
             "min_capacity": 6,
+            "max_capacity": None,
             "attributes": [],
             "location": None,
             "summary": "Sala para 6 ou mais pessoas.",
@@ -591,6 +611,26 @@ class TestSpaceListViewAISearch:
         assert space_with_tv in spaces
         assert small_space not in spaces
         assert response.context["ai_summary"] == "Sala para 6 ou mais pessoas."
+
+    @patch("spaces.views.extract_room_search_filters")
+    def test_ai_query_filters_by_max_capacity(
+        self, mock_extract, client, regular_user, space_with_tv, small_space
+    ):
+        """An AI upper-bound query should keep only rooms within max_capacity."""
+        mock_extract.return_value = {
+            "min_capacity": None,
+            "max_capacity": 4,
+            "attributes": [],
+            "location": None,
+            "summary": "Sala para até 4 pessoas.",
+        }
+        client.force_login(regular_user)
+        response = client.get("/spaces/?ai_query=sala+para+ate+4+pessoas")
+        assert response.status_code == 200
+        spaces = list(response.context["spaces"])
+        assert small_space in spaces
+        assert space_with_tv not in spaces
+        assert response.context["ai_summary"] == "Sala para até 4 pessoas."
 
     @patch("spaces.views.extract_room_search_filters")
     def test_ai_query_service_error_shows_message(self, mock_extract, client, regular_user):

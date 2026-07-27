@@ -44,6 +44,10 @@ class Command(BaseCommand):
             )
         for identifier, nome in report.skipped:
             self.stdout.write(f"  sem mudança {identifier:02d} {nome}")
+        for identifier, nome in report.pruned:
+            self.stdout.write(
+                self.style.WARNING(f"  removido  {identifier:02d} {nome} (fora do manifesto)")
+            )
 
         self._resumir(report)
 
@@ -54,6 +58,8 @@ class Command(BaseCommand):
         self.stdout.write(f"Sem mudança: {len(report.skipped)}")
         self.stdout.write(f"Sem arquivo: {len(report.missing)}")
         self.stdout.write(f"Falhas: {len(report.failed)}")
+        if report.pruned:
+            self.stdout.write(f"Removidos do índice: {len(report.pruned)}")
 
         if report.missing:
             self.stdout.write("")

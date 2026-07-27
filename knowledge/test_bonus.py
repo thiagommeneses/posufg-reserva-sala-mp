@@ -150,20 +150,61 @@ class TestConversationHistory:
         assert _build_history(None) == ""
 
     def test_history_reaches_the_prompt(self, db, usuario):
-        """The preamble is prepended to the prompt sent to the model."""
+        """Follow-ups are rewritten for retrieval, then the answer uses history."""
+        anterior = ConversationTurn(
+            user=usuario, question="Quanto custa na UFBA?", answer="R$ 1.200,00."
+        )
+        recuperados = [object()]
+
+        with (
+            patch(
+                "ai_assistant.services.rewrite_followup_question",
+                return_value="Quanto custa o auditório na UFS?",
+            ) as rewrite,
+            patch(
+                "ai_assistant.services.retrieval.search",
+                return_value=recuperados,
+            ) as search,
+            patch(
+                "ai_assistant.services._run_text_completion",
+                return_value="Na UFS a taxa é R$ 800,00 [1].",
+            ) as completion,
+            patch(
+                "ai_assistant.services._build_context",
+                return_value="[1] UFS — Regimento\nTaxa de R$ 800,00.",
+            ),
+        ):
+            resultado = answer_from_documents("E na UFS?", history=[anterior])
+
+        rewrite.assert_called_once_with("E na UFS?", [anterior])
+        search.assert_called_once_with("Quanto custa o auditório na UFS?", None, hybrid=True)
+        prompt = completion.call_args[0][1]
+        assert "E na UFS?" in prompt
+        assert "Quanto custa na UFBA?" in prompt
+        assert resultado["used_context"] is True
+
+    def test_followup_rewrite_falls_back_on_llm_failure(self, usuario):
+        """If rewrite fails, retrieval uses the previous question plus the follow-up."""
+        from ai_assistant.services import rewrite_followup_question
+
         anterior = ConversationTurn(
             user=usuario, question="Quanto custa na UFBA?", answer="R$ 1.200,00."
         )
 
-        with (
-            patch("ai_assistant.services.retrieval.search", return_value=[]),
-            patch("ai_assistant.services._run_text_completion") as completion,
+        with patch(
+            "ai_assistant.services._run_text_completion",
+            side_effect=AIServiceError("indisponível"),
         ):
-            answer_from_documents("E na UFS?", history=[anterior])
+            reescrita = rewrite_followup_question("E na UFS?", [anterior])
 
-        # Sem contexto recuperado o modelo não é chamado, então o histórico sozinho
-        # não dispara a geração — comportamento desejado.
-        completion.assert_not_called()
+        assert reescrita == "Quanto custa na UFBA? E na UFS?"
+
+    def test_followup_without_history_keeps_original_question(self):
+        """A first question is searched as-is."""
+        from ai_assistant.services import rewrite_followup_question
+
+        assert rewrite_followup_question("Qual a antecedência?", None) == "Qual a antecedência?"
+        assert rewrite_followup_question("Qual a antecedência?", []) == "Qual a antecedência?"
 
 
 class TestAutomaticEvaluation:

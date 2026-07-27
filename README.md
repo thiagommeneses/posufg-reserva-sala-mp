@@ -74,14 +74,14 @@ distintas**, que é onde a recuperação semântica precisa demonstrar valor.
 
 | Métrica | Valor |
 |---|---|
-| Fontes catalogadas | 28 |
-| Documentos indexados | 26 |
+| Fontes catalogadas | 27 |
+| Documentos indexados | 25 |
 | Instituições distintas | 24 |
-| Palavras totais | 76.491 |
-| Trechos indexados | 734 |
-| Média de palavras por documento | 2.941 |
+| Palavras totais | 75.474 |
+| Trechos indexados | 722 |
+| Média de palavras por documento | 3.018 |
 | Menor / maior documento | 150 / 28.653 palavras |
-| Formatos | 23 PDF, 3 HTML |
+| Formatos | 22 PDF, 3 HTML |
 
 **Distribuição por categoria:**
 
@@ -89,7 +89,7 @@ distintas**, que é onde a recuperação semântica precisa demonstrar valor.
 |---|---|---|
 | Regulamento de auditório | 11 | UFPA/IFCH, UFS/BICEN, IFAL, IFBA, USP/IFSC, UFBA/IMS |
 | Resolução institucional | 6 | UFFS 177/2025, UFPI CAD 192/2026, IFC 16/2017 |
-| Procedimento de reserva | 3 | UFU/PREFE, UFG/Letras |
+| Procedimento de reserva | 2 | UFU/PREFE |
 | Contexto jurídico | 3 | TCU, CNMP, TJGO |
 | Complementar internacional | 3 | UNL, INFARMED, U. Lisboa/FMD |
 
@@ -378,20 +378,83 @@ Esse resultado exercita todas as decisões de projeto descritas acima:
 
 | Indicador | Resultado |
 |---|---|
-| Documentos com arquivo em disco | 26 de 28 fontes |
-| Taxa de extração bem-sucedida | 26 de 26 (100%) |
+| Documentos com arquivo em disco | 25 de 27 fontes |
+| Taxa de extração bem-sucedida | 25 de 25 (100%) |
 | Arquivos rejeitados pela validação | 0 após correção da extração |
 
-### 6.3 Qualidade do código
+### 6.3 Avaliação automática e os limites do instrumento
+
+A execução de `avaliar_respostas` sobre as 14 perguntas do conjunto — 13 avaliadas, uma
+perdida por falha transitória de rede — produziu:
+
+| Critério | Média |
+|---|---|
+| Fundamentação | 5,0 |
+| Completude | 5,0 |
+| Citação | 5,0 |
+| **Média geral** | **5,0** |
+
+Nota máxima em tudo é um resultado que exige investigação, não comemoração. A primeira
+hipótese foi de que o conjunto era fácil demais, e por isso ele foi ampliado com **quatro
+perguntas adversariais**. As notas não se moveram. A inspeção manual das respostas
+mostrou por quê.
+
+**As respostas adversariais estão de fato corretas.** Dois exemplos:
+
+À pergunta capciosa *"Todas as instituições exigem 30 dias de antecedência, correto?"*, o
+sistema **recusou a premissa** e enumerou as divergências: dois dias úteis no IFBA Paulo
+Afonso, 48 horas a uma semana no IFMG, 7 a 60 dias no IFAL para público interno, 30 a 60
+para externo. Concordar teria sido o comportamento fácil e errado.
+
+Na pergunta de precisão numérica, o sistema reproduziu os dois números exatos (172
+lugares, mínimo de 30%) e **detectou uma inconsistência interna da própria fonte**: "30%
+de 172 é aproximadamente 51,6, mas o trecho especifica 50 participantes como o mínimo".
+Preferiu o texto literal ao seu próprio cálculo — que é o comportamento correto para um
+sistema que deve reportar a norma, não interpretá-la.
+
+Ou seja: parte da nota máxima reflete desempenho real. Ainda assim, o instrumento tem
+**duas limitações que a nota esconde**.
+
+**Primeira: falta de resolução.** Uma métrica que atribui 5,0 a tudo não distingue um
+sistema excelente de um apenas bom, nem detecta degradação. Se o `chunk_size` fosse
+alterado ou o prompt piorado, a nota provavelmente continuaria em 5,0 — e uma métrica que
+não detecta regressão não cumpre a função para a qual existe.
+
+**Segunda, e mais séria: a avaliação é cega a falhas de recuperação.** O juiz pontua a
+resposta contra os trechos recuperados. Se a recuperação trouxer os trechos errados, uma
+resposta perfeitamente fiel a esses trechos errados recebe nota máxima.
+
+A pergunta 11 demonstra isso concretamente. Perguntada sobre multa por cancelamento na
+UFPA, a recuperação devolveu trechos da UNL, da FATEC, da Universidade de Lisboa, do IFC
+e da UFBA — **nenhum da UFPA**. O sistema respondeu, com fidelidade ao que recebeu, que
+"não há informações sobre a UFPA". O juiz deu 5,0, corretamente segundo seu próprio
+critério.
+
+Mas **a UFPA está no corpus**: é a fonte 01, um regulamento de auditório com 1.209
+palavras. A afirmação da resposta é verdadeira sobre o contexto recuperado e falsa sobre
+a base. A conclusão final acabou correta por acidente — verificamos que o documento da
+UFPA realmente não menciona cancelamento nem multa —, mas o caminho até ela passou por
+uma falha de recuperação que a métrica não tem como enxergar.
+
+Isso não é defeito de implementação: é consequência do **desenho** da avaliação. Medir
+recuperação exigiria anotar, para cada pergunta, quais trechos do corpus são relevantes —
+e comparar com os efetivamente devolvidos, por métricas como *recall@k*. Com 722 trechos
+e sem anotação disponível, essa medição ficou fora do escopo.
+
+Registramos a análise porque apresentar "média 5,0" como evidência de qualidade seria uma
+leitura ingênua do próprio instrumento de medida.
+
+### 6.4 Qualidade do código
 
 | Indicador | Resultado |
 |---|---|
-| Testes automatizados | 338 |
-| Cobertura | 94,7% (mínimo exigido pelo projeto: 80%) |
+| Testes automatizados | 359 |
+| Cobertura | 93,6% (mínimo exigido pelo projeto: 80%) |
 | Linter | `ruff` sem apontamentos |
 
-Do total, 47 testes cobrem especificamente o trabalho desta disciplina: pipeline de
-ingestão, recuperação, serviço RAG, endpoint da API e interface web.
+Do total, 88 testes cobrem especificamente o trabalho desta disciplina: pipeline de
+ingestão, poda do índice, recuperação, serviço RAG, endpoint da API, interface web,
+histórico de conversas e avaliação automática.
 
 ---
 
@@ -403,7 +466,7 @@ ingestão, recuperação, serviço RAG, endpoint da API e interface web.
 | Histórico de conversas | Implementado — seção 7.1 |
 | Avaliação automática de respostas | Implementada — seção 7.2 |
 | Utilização de Docker | Implementada — `docker-compose.yml` |
-| Reprocessamento incremental de documentos | Implementado — idempotência por SHA-256 |
+| Reprocessamento incremental de documentos | Implementado — seção 7.3 |
 
 ### 7.1 Histórico de conversas
 
@@ -444,18 +507,39 @@ fundamentação.
 
 O conjunto de referência está em
 [`data/avaliacao/perguntas.json`](data/avaliacao/perguntas.json): nove perguntas sobre o
-domínio, sendo três comparativas entre instituições, mais **uma de controle negativo**
-sobre assunto ausente do corpus. Para essa última, a resposta correta é declarar que não
-há informação — e o prompt do juiz instrui a premiar esse comportamento, não a puni-lo.
+domínio, sendo três comparativas entre instituições, uma de **controle negativo** sobre
+assunto ausente do corpus, e quatro **adversariais** acrescentadas depois de a primeira
+execução revelar saturação do indicador — ver seção 6.3. Para o controle negativo, a
+resposta correta é declarar que não há informação, e o prompt do juiz instrui a premiar
+esse comportamento em vez de puni-lo.
 
 ```bash
 docker compose exec web python manage.py avaliar_respostas
 docker compose exec web python manage.py avaliar_respostas --salvar relatorio.json
 ```
 
+A execução usada na seção 6.3 está versionada em
+[`data/avaliacao/resultado-2026-07-27.json`](data/avaliacao/resultado-2026-07-27.json),
+com as respostas geradas, os trechos recuperados e a justificativa do juiz para cada
+pergunta.
+
 As notas do juiz são normalizadas para a escala 0–5 antes de entrar na média. O juiz é
 ele próprio um LLM e pode devolver um valor fora da escala ou em formato inesperado; sem
 essa proteção, um veredito malformado contaminaria o agregado.
+
+### 7.3 Reprocessamento incremental
+
+Cada documento guarda o SHA-256 do arquivo que o originou. Uma nova execução de
+`indexar_normas` compara os hashes e só reprocessa o que mudou — reindexar 25 documentos
+por causa de um único arquivo alterado seria desperdício de tempo e de chamadas ao modelo
+de embedding.
+
+O caminho inverso também é tratado: documentos cuja fonte **saiu do manifesto** são
+removidos do índice. Sem essa poda, aposentar uma fonte deixaria seus trechos no índice
+para sempre, ainda concorrendo na recuperação — uma divergência silenciosa entre o que o
+manifesto declara e o que o assistente de fato pesquisa. A poda só ocorre em execução
+completa: durante uma execução parcial (`--somente`), a ausência de uma fonte no filtro é
+esperada e não significa nada sobre o corpus.
 
 ---
 
@@ -469,19 +553,30 @@ norma; a segunda respondeu HTTP 503 durante a coleta.
 São corretamente rejeitados pela validação, mas recuperá-los exigiria OCR — decisão
 adiada por custo de dependências frente ao prazo.
 
-**Ausência de avaliação quantitativa.** A qualidade das respostas foi verificada
-qualitativamente. Uma avaliação sistemática exigiria um conjunto de perguntas com respostas
-de referência e uma métrica automática, possivelmente com LLM-as-a-judge.
+**A avaliação não mede recuperação.** Como detalhado na seção 6.3, o juiz pontua a
+resposta contra os trechos recuperados, de modo que uma falha de recuperação é invisível
+para a métrica. Corrigir isso exige anotar quais trechos do corpus são relevantes para
+cada pergunta e medir *recall@k* — trabalho de anotação que não coube no prazo. É a
+limitação mais importante deste trabalho.
+
+**O juiz e o gerador são o mesmo modelo.** A avaliação usa o mesmo
+`llama-3.3-70b-versatile` que produz as respostas. A literatura documenta viés de
+autopreferência nesse arranjo: modelos avaliam melhor textos com seu próprio estilo. Uma
+avaliação mais rigorosa usaria um juiz de outra família, ou anotação humana em uma amostra
+para calibrar as notas automáticas.
+
+**Prompt do juiz não calibrado.** Os critérios são descritos em linguagem natural, sem
+âncoras que definam o que separa uma nota 3 de uma nota 5. Rubricas com exemplos por
+faixa de nota provavelmente produziriam maior dispersão e, portanto, mais poder
+discriminativo.
 
 **Dependência da versão do fastembed.** A biblioteca alterou a estratégia de *pooling* do
 modelo (de CLS para *mean pooling*). Embeddings gerados por versões diferentes não são
 comparáveis entre si, de modo que atualizar a dependência exige reindexar o corpus com
 `indexar_normas --force`.
 
-**Sobreposição no corpus.** As fontes 15 e 16 apontam para o mesmo documento da UFU
-(reserva de auditório), o que faz trechos quase idênticos concorrerem na recuperação.
-
 ---
+-----------------------
 ---
 
 # Documentação do Sistema

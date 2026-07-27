@@ -42,6 +42,7 @@ class IngestionReport:
     skipped: list[tuple[int, str]] = field(default_factory=list)
     missing: list[tuple[int, str]] = field(default_factory=list)
     failed: list[tuple[int, str, str]] = field(default_factory=list)
+    pruned: list[tuple[int, str]] = field(default_factory=list)
 
     @property
     def total_chunks(self) -> int:
@@ -76,6 +77,9 @@ def ingest_corpus(source_ids: list[int] | None = None, *, force: bool = False):
         IngestionReport: What was indexed, skipped, missing or failed.
     """
     report = IngestionReport()
+
+    if not source_ids:
+        report.pruned = _prune_orphans()
 
     for source in load_sources(source_ids):
         identifier, label = source["id"], source["instituicao"]
@@ -149,6 +153,30 @@ def ingest_document(source: dict, path: Path, *, force: bool = False):
     document.indexed_at = timezone.now()
     document.save(update_fields=["indexed_at", "updated_at"])
     return document, len(texts), False
+
+
+def _prune_orphans() -> list[tuple[int, str]]:
+    """Remove indexed documents that no longer appear in the manifest.
+
+    The manifest is the single source of truth for what the corpus contains. Without
+    this step, retiring a source would leave its passages in the index forever, still
+    competing at retrieval time — a silent divergence between what the manifest declares
+    and what the assistant actually searches.
+
+    Only runs on full ingestion. During a partial run (``--somente``) the absence of a
+    source from the filter is expected and means nothing about the corpus.
+
+    Returns:
+        list[tuple[int, str]]: The source id and file name of each removed document.
+    """
+    current_ids = {source["id"] for source in load_sources()}
+    orphans = Document.objects.exclude(source_id__in=current_ids)
+
+    removed = [(document.source_id, document.file_name) for document in orphans]
+    if removed:
+        logger.info("Removendo %d documento(s) fora do manifesto.", len(removed))
+        orphans.delete()
+    return removed
 
 
 def _upsert_document(source: dict, path: Path, digest: str, extracted) -> Document:
