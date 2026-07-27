@@ -32,15 +32,26 @@ desenvolvido a partir de um cenário real do Ministério Público de Goiás, ond
 de salas é controlada manualmente em planilha.
 
 Ao levantar a base documental, encontramos um dado que redirecionou o trabalho: **não
-existe norma pública do MP-GO regulamentando o uso e a reserva de espaços físicos.** O
-portal institucional publica Atos PGJ e resoluções do CSMP sobre outras matérias, mas
-nada sobre salas e auditórios. A mesma busca no TJGO retornou apenas o Regimento
-Interno, sem portaria específica.
+existe norma do MP-GO regulamentando o uso e a reserva de espaços físicos.** O portal
+institucional publica Atos PGJ e resoluções do CSMP sobre outras matérias, mas nada sobre
+salas e auditórios. A mesma busca no TJGO retornou apenas o Regimento Interno, sem
+portaria específica.
 
-A ausência é coerente com a prática observada: onde o controle é uma planilha, não há
-norma a documentar. Mas ela cria uma lacuna concreta — sem regra escrita, decisões sobre
-quem pode reservar, com que antecedência e em que condições ficam a critério de quem
-opera a planilha.
+A busca pública, sozinha, sustentaria apenas a afirmação mais fraca de que a norma não
+está publicada. Para diferenciar ausência de evidência de evidência de ausência,
+consultamos uma servidora do MP-GO com atuação na área. A resposta confirmou o quadro:
+
+> As reservas são gerenciadas por vários departamentos distintos e cada um tem uma regra.
+> Geralmente são instruções informais, repassadas pelo telefone sobre o que tem que fazer
+> quando terminar de usar a sala. Mas nenhum documento formal consolidando isso.
+
+O achado é mais forte do que a ausência de um documento. O que existe é **regulação
+informal e fragmentada**: cada departamento opera sua própria regra, transmitida
+oralmente, sem registro. Isso significa que não há critério verificável para decidir quem
+pode reservar, com que antecedência ou sob quais condições — e que o conhecimento
+operacional depende de quem atende o telefone.
+
+É exatamente a lacuna que motiva este trabalho.
 
 ### 1.2 Por que um corpus multi-institucional
 
@@ -48,7 +59,9 @@ Diante disso, o corpus foi montado com regulamentos de instituições públicas 
 normatizaram** o uso de seus espaços. A base serve a dois propósitos concretos:
 
 1. **Apoiar a redação de uma norma própria**, permitindo comparar como diferentes órgãos
-   resolveram as mesmas questões.
+   resolveram as mesmas questões. Onde hoje há instrução informal por telefone, um
+   regulamento escrito precisa decidir prazos, responsabilidades e vedações — e outras
+   instituições públicas já enfrentaram essas mesmas decisões.
 2. **Responder dúvidas operacionais recorrentes** — quem pode reservar, prazos, uso por
    terceiros, cobrança, vedações e penalidades.
 
