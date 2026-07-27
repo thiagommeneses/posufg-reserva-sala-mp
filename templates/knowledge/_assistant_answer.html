@@ -1,0 +1,57 @@
+{% if error %}
+<div class="alert alert-error">
+    <span>{{ error }}</span>
+</div>
+
+{% elif result %}
+<div class="card bg-base-100 shadow-sm mb-4">
+    <div class="card-body">
+        <h2 class="card-title text-lg">Resposta</h2>
+        <p class="whitespace-pre-line">{{ result.answer }}</p>
+
+        {% if not result.used_context %}
+        <div class="alert alert-warning alert-sm mt-3">
+            <span>
+                Nenhum trecho da base foi usado nesta resposta — a pergunta não encontrou
+                correspondência nas normas indexadas.
+            </span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if result.sources %}
+<div class="card bg-base-200 shadow-sm">
+    <div class="card-body">
+        <h3 class="card-title text-base">
+            Fontes utilizadas
+            <span class="badge badge-neutral badge-sm">{{ result.sources|length }}</span>
+        </h3>
+        <p class="text-sm text-base-content/60 mb-2">
+            Os números correspondem às citações da resposta.
+        </p>
+
+        <div class="join join-vertical w-full">
+            {% for fonte in result.sources %}
+            <div class="collapse collapse-arrow join-item border border-base-300">
+                <input type="checkbox" id="fonte-{{ fonte.position }}">
+                <div class="collapse-title text-sm font-medium">
+                    <span class="badge badge-primary badge-sm mr-2">{{ fonte.position }}</span>
+                    {{ fonte.institution }} — {{ fonte.document }}
+                </div>
+                <div class="collapse-content">
+                    <p class="text-sm whitespace-pre-line bg-base-100 p-3 rounded">{{ fonte.excerpt }}</p>
+                    <a
+                        href="{{ fonte.url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="link link-primary text-xs mt-2 inline-block"
+                    >Abrir documento original</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}

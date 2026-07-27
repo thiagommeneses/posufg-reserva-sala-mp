@@ -17,6 +17,7 @@
                 <ul class="menu menu-horizontal px-1">
                     <li><a href="/spaces/" class="{% if "/spaces/" in request.path %}menu-active{% endif %}">Espaços</a></li>
                     <li><a href="/reservations/" class="{% if "/reservations/" in request.path %}menu-active{% endif %}">Minhas Reservas</a></li>
+                    <li><a href="/assistente/" class="{% if "/assistente/" in request.path %}menu-active{% endif %}">Consultar Normas</a></li>
                     {% if request.user.is_staff %}
                     <li><a href="/admin-dashboard/" class="{% if "/admin-dashboard/" in request.path %}menu-active{% endif %}">Painel Admin</a></li>
                     {% endif %}
@@ -46,6 +47,7 @@
             <li class="menu-title">Olá, {{ request.user.username }}</li>
             <li><a href="/spaces/" class="{% if "/spaces/" in request.path %}menu-active{% endif %}">Espaços</a></li>
             <li><a href="/reservations/" class="{% if "/reservations/" in request.path %}menu-active{% endif %}">Minhas Reservas</a></li>
+            <li><a href="/assistente/" class="{% if "/assistente/" in request.path %}menu-active{% endif %}">Consultar Normas</a></li>
             {% if request.user.is_staff %}
             <li><a href="/admin-dashboard/" class="{% if "/admin-dashboard/" in request.path %}menu-active{% endif %}">Painel Admin</a></li>
             {% endif %}

@@ -1,0 +1,73 @@
+{% extends "base_user.html" %}
+
+{% block title %}Consultar Normas - Reserva de Espaços{% endblock %}
+
+{% block user_content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold mb-2">Consultar Normas</h1>
+    <p class="text-base-content/70 mb-6">
+        Pergunte em linguagem natural sobre regras de uso de auditórios, salas de reunião
+        e cessão de espaços. As respostas são baseadas apenas nos documentos indexados, e
+        as fontes usadas são sempre exibidas.
+    </p>
+
+    <div class="stats stats-vertical sm:stats-horizontal shadow-sm bg-base-100 mb-6">
+        <div class="stat">
+            <div class="stat-title">Documentos</div>
+            <div class="stat-value text-primary">{{ document_count }}</div>
+            <div class="stat-desc">normas indexadas</div>
+        </div>
+        <div class="stat">
+            <div class="stat-title">Instituições</div>
+            <div class="stat-value text-secondary">{{ institution_count }}</div>
+            <div class="stat-desc">órgãos públicos</div>
+        </div>
+        <div class="stat">
+            <div class="stat-title">Trechos</div>
+            <div class="stat-value">{{ chunk_count }}</div>
+            <div class="stat-desc">passagens pesquisáveis</div>
+        </div>
+    </div>
+
+    <form
+        hx-post="{% url 'document_assistant' %}"
+        hx-target="#answer"
+        hx-indicator="#qa-loading"
+        class="card bg-base-100 shadow-sm mb-6"
+    >
+        {% csrf_token %}
+        <div class="card-body">
+            <label for="question" class="card-title text-lg">Sua pergunta</label>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input
+                    type="text"
+                    id="question"
+                    name="question"
+                    placeholder="Ex.: com quanta antecedência preciso reservar o auditório?"
+                    class="input input-bordered w-full"
+                    required
+                >
+                <button type="submit" class="btn btn-primary whitespace-nowrap">
+                    Perguntar
+                    <span id="qa-loading" class="htmx-indicator loading loading-spinner loading-sm ml-2"></span>
+                </button>
+            </div>
+
+            <div class="mt-3">
+                <p class="text-sm text-base-content/60 mb-2">Sugestões:</p>
+                <div class="flex flex-wrap gap-2">
+                    {% for pergunta in suggested_questions %}
+                    <button
+                        type="button"
+                        class="btn btn-xs btn-outline"
+                        onclick="document.getElementById('question').value = this.textContent.trim(); htmx.trigger(this.closest('form'), 'submit');"
+                    >{{ pergunta }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div id="answer"></div>
+</div>
+{% endblock %}
