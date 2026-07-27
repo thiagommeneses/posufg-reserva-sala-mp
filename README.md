@@ -38,18 +38,18 @@ salas e auditórios. A mesma busca no TJGO retornou apenas o Regimento Interno, 
 portaria específica.
 
 A busca pública, sozinha, sustentaria apenas a afirmação mais fraca de que a norma não
-está publicada. Para diferenciar ausência de evidência de evidência de ausência,
+está publicada. Para diferenciar ausência de evidência e evidência de ausência,
 consultamos uma servidora do MP-GO com atuação na área. A resposta confirmou o quadro:
 
-> As reservas são gerenciadas por vários departamentos distintos e cada um tem uma regra.
+> "As reservas são gerenciadas por vários departamentos distintos e cada um tem uma regra.
 > Geralmente são instruções informais, repassadas pelo telefone sobre o que tem que fazer
-> quando terminar de usar a sala. Mas nenhum documento formal consolidando isso.
+> quando terminar de usar a sala. Mas nenhum documento formal consolidando isso."
 
 O achado é mais forte do que a ausência de um documento. O que existe é **regulação
 informal e fragmentada**: cada departamento opera sua própria regra, transmitida
 oralmente, sem registro. Isso significa que não há critério verificável para decidir quem
 pode reservar, com que antecedência ou sob quais condições — e que o conhecimento
-operacional depende de quem atende o telefone.
+operacional depende de quem atende o telefone e controla a planilha de reservas.
 
 É exatamente a lacuna que motiva este trabalho.
 
