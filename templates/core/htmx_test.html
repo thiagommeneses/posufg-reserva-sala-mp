@@ -3,13 +3,13 @@
 {% block title %}HTMX Test{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-4">HTMX Test Page</h1>
-    <div id="htmx-test-target" class="p-4">
+<div class="max-w-xl mx-auto px-4 py-8 space-y-4">
+    <h1 class="text-2xl font-semibold tracking-tight">HTMX Test Page</h1>
+    <div id="htmx-test-target" class="surface p-4 text-sm text-base-content/70">
         <p>Click the button below to test HTMX partial swap.</p>
     </div>
     <button
-        class="btn btn-primary mt-4"
+        class="btn btn-primary btn-sm"
         hx-get="/htmx-test/"
         hx-target="#htmx-test-target"
         hx-swap="innerHTML">

@@ -1,14 +1,14 @@
 {# Usage: {% include "components/_reservation_status_badge.html" with reservation=reservation %} #}
 {% if reservation.status == "confirmed" %}
-<span class="badge badge-success">Confirmada</span>
+<span class="badge badge-outline badge-sm border-success/40 text-success font-normal">Confirmada</span>
 {% elif reservation.status == "checked_in" %}
-<span class="badge badge-info">Check-in</span>
+<span class="badge badge-outline badge-sm font-normal">Check-in</span>
 {% elif reservation.status == "completed" %}
-<span class="badge badge-ghost">Concluída</span>
+<span class="badge badge-ghost badge-sm font-normal text-base-content/50">Concluída</span>
 {% elif reservation.status == "no_show" %}
-<span class="badge badge-error">No-show</span>
+<span class="badge badge-outline badge-sm border-error/40 text-error font-normal">No-show</span>
 {% elif reservation.status == "cancelled" %}
-<span class="badge badge-ghost">Cancelada</span>
+<span class="badge badge-ghost badge-sm font-normal text-base-content/50">Cancelada</span>
 {% else %}
-<span class="badge badge-neutral">{{ reservation.get_status_display }}</span>
+<span class="badge badge-outline badge-sm font-normal">{{ reservation.get_status_display }}</span>
 {% endif %}

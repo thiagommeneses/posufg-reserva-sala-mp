@@ -1,56 +1,50 @@
 {% if error %}
-<div class="alert alert-error">
+<div class="notice notice-error">
     <span>{{ error }}</span>
 </div>
 
 {% elif result %}
-<div class="card bg-base-100 shadow-sm mb-4">
-    <div class="card-body">
-        <h2 class="card-title text-lg">Resposta</h2>
-        <p class="whitespace-pre-line">{{ result.answer }}</p>
+<div class="surface p-5 sm:p-6 mb-4">
+    <h2 class="text-sm font-semibold mb-3">Resposta</h2>
+    <p class="text-sm leading-relaxed whitespace-pre-line">{{ result.answer }}</p>
 
-        {% if not result.used_context %}
-        <div class="alert alert-warning alert-sm mt-3">
-            <span>
-                Nenhum trecho da base foi usado nesta resposta — a pergunta não encontrou
-                correspondência nas normas indexadas.
-            </span>
-        </div>
-        {% endif %}
+    {% if not result.used_context %}
+    <div class="notice notice-warning mt-4">
+        <span>
+            Nenhum trecho da base foi usado — a pergunta não encontrou correspondência nas normas indexadas.
+        </span>
     </div>
+    {% endif %}
 </div>
 
 {% if result.sources %}
-<div class="card bg-base-200 shadow-sm">
-    <div class="card-body">
-        <h3 class="card-title text-base">
-            Fontes utilizadas
-            <span class="badge badge-neutral badge-sm">{{ result.sources|length }}</span>
-        </h3>
-        <p class="text-sm text-base-content/60 mb-2">
-            Os números correspondem às citações da resposta.
-        </p>
-
-        <div class="join join-vertical w-full">
-            {% for fonte in result.sources %}
-            <div class="collapse collapse-arrow join-item border border-base-300">
-                <input type="checkbox" id="fonte-{{ fonte.position }}">
-                <div class="collapse-title text-sm font-medium">
-                    <span class="badge badge-primary badge-sm mr-2">{{ fonte.position }}</span>
-                    {{ fonte.institution }} — {{ fonte.document }}
-                </div>
-                <div class="collapse-content">
-                    <p class="text-sm whitespace-pre-line bg-base-100 p-3 rounded">{{ fonte.excerpt }}</p>
-                    <a
-                        href="{{ fonte.url }}"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="link link-primary text-xs mt-2 inline-block"
-                    >Abrir documento original</a>
-                </div>
+<div class="surface overflow-hidden">
+    <div class="px-5 py-4 border-b border-base-300 flex items-center gap-2">
+        <h3 class="text-sm font-semibold">Fontes utilizadas</h3>
+        <span class="badge badge-ghost badge-sm font-normal">{{ result.sources|length }}</span>
+    </div>
+    <p class="px-5 pt-3 text-xs text-base-content/50">
+        Os números correspondem às citações da resposta.
+    </p>
+    <div class="divide-y divide-base-300 mt-2">
+        {% for fonte in result.sources %}
+        <details class="group">
+            <summary class="cursor-pointer list-none px-5 py-3 hover:bg-base-200/60 transition-colors text-sm">
+                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full border border-base-300 text-xs mr-2 tabular-nums">{{ fonte.position }}</span>
+                <span class="font-medium">{{ fonte.institution }}</span>
+                <span class="text-base-content/50"> — {{ fonte.document }}</span>
+            </summary>
+            <div class="px-5 pb-4">
+                <p class="text-sm whitespace-pre-line bg-base-200 border border-base-300 rounded-lg p-3">{{ fonte.excerpt }}</p>
+                <a
+                    href="{{ fonte.url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-xs font-medium text-base-content/70 hover:text-base-content underline underline-offset-4 mt-2 inline-block"
+                >Abrir documento original</a>
             </div>
-            {% endfor %}
-        </div>
+        </details>
+        {% endfor %}
     </div>
 </div>
 {% endif %}

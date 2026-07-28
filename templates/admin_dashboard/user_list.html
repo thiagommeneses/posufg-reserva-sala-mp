@@ -4,22 +4,22 @@
 <div class="space-y-6">
     <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <h1 class="text-3xl font-bold">Gestão de Usuários</h1>
-            <p class="mt-1 text-sm text-base-content/60">Crie contas e gerencie perfis de acesso.</p>
+            <h1 class="text-2xl font-semibold tracking-tight">Usuários</h1>
+            <p class="mt-1 text-sm text-base-content/55">Crie contas e gerencie perfis de acesso.</p>
         </div>
-        <a href="{% url 'admin_dashboard:user_create' %}" class="btn btn-primary shrink-0">Novo Usuário</a>
+        <a href="{% url 'admin_dashboard:user_create' %}" class="btn btn-primary btn-sm shrink-0">Novo usuário</a>
     </header>
 
-    <div class="card bg-base-100 shadow-sm">
+    <div class="surface overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="table table-zebra">
+            <table class="table">
                 <thead>
-                    <tr>
-                        <th>Usuário</th>
-                        <th>E-mail</th>
-                        <th>Perfil</th>
-                        <th>Status</th>
-                        <th></th>
+                    <tr class="border-b border-base-300 text-xs text-base-content/50">
+                        <th class="bg-base-100 font-medium">Usuário</th>
+                        <th class="bg-base-100 font-medium">E-mail</th>
+                        <th class="bg-base-100 font-medium">Perfil</th>
+                        <th class="bg-base-100 font-medium">Status</th>
+                        <th class="bg-base-100 font-medium"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -27,7 +27,7 @@
                     {% include "admin_dashboard/_user_row.html" %}
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="py-10 text-center text-base-content/60">Nenhum usuário encontrado.</td>
+                        <td colspan="5" class="py-10 text-center text-sm text-base-content/50">Nenhum usuário encontrado.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

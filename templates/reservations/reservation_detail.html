@@ -3,77 +3,87 @@
 {% block title %}Detalhes da Reserva — Reserva de Espaços{% endblock %}
 
 {% block user_content %}
-<div class="max-w-2xl mx-auto">
-    <h1 class="text-3xl font-bold mb-6">Detalhes da Reserva</h1>
+<div class="max-w-xl space-y-6">
+    <header class="flex items-start justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight">Detalhes da reserva</h1>
+            <p class="mt-1 text-sm text-base-content/55">{{ reservation.space.name }}</p>
+        </div>
+        {% include "components/_reservation_status_badge.html" with reservation=reservation %}
+    </header>
 
-    <div class="card bg-base-100 border border-base-300 shadow-sm">
-        <div class="card-body">
-            <div class="flex justify-between items-start mb-4">
-                <h2 class="card-title text-2xl">{{ reservation.space.name }}</h2>
-                {% include "components/_reservation_status_badge.html" with reservation=reservation %}
+    <div class="surface p-5 sm:p-6 space-y-3 text-sm" id="reservation-actions">
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+            <div>
+                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Espaço</dt>
+                <dd class="font-medium mt-0.5">{{ reservation.space.name }}</dd>
             </div>
-
-            <div class="space-y-2 mb-6">
-                <p><strong>Espaço:</strong> {{ reservation.space.name }}</p>
-                <p><strong>Capacidade:</strong> {{ reservation.space.capacity }} pessoas</p>
-                <p><strong>Localização:</strong> {{ reservation.space.location }}</p>
-                <p><strong>Início:</strong> {{ reservation.start_time|date:"d/m/Y H:i" }}</p>
-                <p><strong>Término:</strong> {{ reservation.end_time|date:"d/m/Y H:i" }}</p>
-                <p><strong>Status:</strong> {{ reservation.get_status_display }}</p>
-                {% if reservation.checked_in_at %}
-                <p><strong>Check-in realizado:</strong> {{ reservation.checked_in_at|date:"d/m/Y H:i" }}</p>
-                {% endif %}
+            <div>
+                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Localização</dt>
+                <dd class="font-medium mt-0.5">{{ reservation.space.location }}</dd>
             </div>
-
-            <div class="divider"></div>
-
-            <div class="card-actions justify-between">
-                <a href="{% url 'reservation_list' %}" class="btn btn-ghost">← Voltar</a>
-
-                <div class="flex gap-2">
-                    {% if can_check_in %}
-                    <form method="post" action="{% url 'reservation_checkin' reservation.id %}" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-success"
-                                hx-confirm="Confirmar check-in nesta reserva?"
-                                hx-post="{% url 'reservation_checkin' reservation.id %}"
-                                hx-swap="outerHTML"
-                                hx-target="#reservation-actions">
-                            Fazer Check-in
-                        </button>
-                    </form>
-                    {% endif %}
-
-                    {% if can_reschedule %}
-                    <a href="{% url 'reservation_reschedule' reservation.id %}" class="btn btn-warning">
-                        Reagendar
-                    </a>
-                    {% endif %}
-
-                    {% if can_cancel %}
-                    <form method="post" action="{% url 'reservation_cancel' reservation.id %}" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-error"
-                                hx-confirm="Tem certeza que deseja cancelar esta reserva?"
-                                hx-post="{% url 'reservation_cancel' reservation.id %}"
-                                hx-swap="outerHTML"
-                                hx-target="#reservation-actions">
-                            Cancelar
-                        </button>
-                    </form>
-                    {% endif %}
-                </div>
+            <div>
+                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Capacidade</dt>
+                <dd class="font-medium mt-0.5">{{ reservation.space.capacity }} pessoas</dd>
             </div>
-
-            {% if error %}
-            <div class="alert alert-error mt-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>{{ error }}</span>
+            <div>
+                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Status</dt>
+                <dd class="font-medium mt-0.5">{{ reservation.get_status_display }}</dd>
+            </div>
+            <div>
+                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Início</dt>
+                <dd class="font-medium mt-0.5">{{ reservation.start_time|date:"d/m/Y H:i" }}</dd>
+            </div>
+            <div>
+                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Término</dt>
+                <dd class="font-medium mt-0.5">{{ reservation.end_time|date:"d/m/Y H:i" }}</dd>
+            </div>
+            {% if reservation.checked_in_at %}
+            <div class="sm:col-span-2">
+                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Check-in</dt>
+                <dd class="font-medium mt-0.5">{{ reservation.checked_in_at|date:"d/m/Y H:i" }}</dd>
             </div>
             {% endif %}
+        </dl>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-base-300">
+            <a href="{% url 'reservation_list' %}" class="btn btn-ghost btn-sm text-base-content/60">← Voltar</a>
+            <div class="flex flex-wrap gap-2">
+                {% if can_check_in %}
+                <form method="post" action="{% url 'reservation_checkin' reservation.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline btn-sm border-success/40 text-success"
+                            hx-confirm="Confirmar check-in nesta reserva?"
+                            hx-post="{% url 'reservation_checkin' reservation.id %}"
+                            hx-swap="outerHTML"
+                            hx-target="#reservation-actions">
+                        Fazer check-in
+                    </button>
+                </form>
+                {% endif %}
+                {% if can_reschedule %}
+                <a href="{% url 'reservation_reschedule' reservation.id %}" class="btn btn-outline btn-sm">Reagendar</a>
+                {% endif %}
+                {% if can_cancel %}
+                <form method="post" action="{% url 'reservation_cancel' reservation.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline btn-sm border-error/40 text-error"
+                            hx-confirm="Tem certeza que deseja cancelar esta reserva?"
+                            hx-post="{% url 'reservation_cancel' reservation.id %}"
+                            hx-swap="outerHTML"
+                            hx-target="#reservation-actions">
+                        Cancelar
+                    </button>
+                </form>
+                {% endif %}
+            </div>
         </div>
+
+        {% if error %}
+        <div class="notice notice-error mt-2">
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

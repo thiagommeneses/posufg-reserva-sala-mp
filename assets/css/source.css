@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
 
 @plugin "daisyui";
 
@@ -9,27 +9,25 @@
   prefersdark: false;
   color-scheme: light;
 
-  /* Cores institucionais do Ministério Público do Estado de Goiás, conforme
-     Manual de Identidade Visual: Preto (CMYK K100 / Pantone Process Black CV)
-     e Vermelho (CMYK C20 M95 Y100 K12 / Pantone 1797C). */
+  /* MPGO: vermelho #cd2340 e preto #231f20 — vermelho só em CTAs/ativo/crítico. */
   --color-base-100: #ffffff;
-  --color-base-200: #f5f5f4;
-  --color-base-300: #e7e5e4;
-  --color-base-content: #1a1a1a;
+  --color-base-200: #fafafa;
+  --color-base-300: #e8e8e8;
+  --color-base-content: #231f20;
 
   --color-primary: #cd2340;
   --color-primary-content: #ffffff;
 
-  --color-secondary: #4b4b4b;
+  --color-secondary: #525252;
   --color-secondary-content: #ffffff;
 
-  --color-accent: #7a1810;
+  --color-accent: #5c5c5c;
   --color-accent-content: #ffffff;
 
-  --color-neutral: #000000;
+  --color-neutral: #231f20;
   --color-neutral-content: #ffffff;
 
-  --color-info: #3d4557;
+  --color-info: #52525b;
   --color-info-content: #ffffff;
 
   --color-success: #15803d;
@@ -38,11 +36,11 @@
   --color-warning: #b45309;
   --color-warning-content: #ffffff;
 
-  --color-error: #dc2626;
+  --color-error: #cd2340;
   --color-error-content: #ffffff;
 
   --radius-selector: 0.5rem;
-  --radius-field: 0.25rem;
+  --radius-field: 0.5rem;
   --radius-box: 0.5rem;
   --size-selector: 0.25rem;
   --size-field: 0.25rem;
@@ -52,21 +50,143 @@
 @source "../../templates";
 
 /*
- * Tipografia institucional: a fonte do manual de marca (Swis721 BlkCn BT) é
- * proprietária e não está disponível como webfont livre. Usamos "Barlow
- * Condensed" (Google Fonts) como substituta gratuita de peso/estilo
- * semelhante nos títulos e elementos de marca; o corpo do texto segue a
- * fonte padrão do Tailwind para manter a legibilidade. Se o MPGO tiver a
- * licença/arquivo da Swis721, basta trocar o import e o font-family abaixo.
+ * Tipografia: Barlow Condensed só na marca (.brand-font).
+ * DM Sans no restante da UI (estilo Shadcn / institucional limpo).
+ * Swis721 BlkCn BT do manual é proprietária; Barlow é a substituta gratuita.
  */
+body {
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 h1,
 h2,
 h3,
-.card-title,
-.hero-content h1 {
+h4,
+.card-title {
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.brand-font {
   font-family: "Barlow Condensed", ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+}
+
+/* Logo institucional: preserva proporção; altura controlada via utilitários Tailwind. */
+.brand-logo {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: center;
+  flex-shrink: 0;
+}
+
+/* Superfície estilo Shadcn: borda fina, sem sombra pesada. */
+.surface {
+  background-color: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+}
+
+.surface-muted {
+  background-color: var(--color-base-200);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-box);
+  border: 1px solid var(--color-base-300);
+  background-color: var(--color-base-200);
+  color: var(--color-base-content);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.notice-error {
+  border-color: color-mix(in oklab, var(--color-error) 35%, var(--color-base-300));
+  background-color: color-mix(in oklab, var(--color-error) 6%, white);
+}
+
+.notice-success {
+  border-color: color-mix(in oklab, var(--color-success) 35%, var(--color-base-300));
+  background-color: color-mix(in oklab, var(--color-success) 6%, white);
+}
+
+.notice-warning {
+  border-color: color-mix(in oklab, var(--color-warning) 35%, var(--color-base-300));
+  background-color: color-mix(in oklab, var(--color-warning) 6%, white);
+}
+
+/* Nav ativo discreto (texto primary + underline), sem bloco sólido Daisy. */
+.nav-link {
+  color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.375rem;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.nav-link:hover {
+  color: var(--color-base-content);
+  background-color: var(--color-base-200);
+}
+
+.nav-link-active {
+  color: var(--color-primary);
+  background-color: color-mix(in oklab, var(--color-primary) 6%, white);
+}
+
+.nav-link-active:hover {
+  color: var(--color-primary);
+  background-color: color-mix(in oklab, var(--color-primary) 10%, white);
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
+  border-left: 2px solid transparent;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  line-height: 1.25;
+}
+
+.sidebar-link svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.sidebar-link:hover {
+  color: var(--color-base-content);
+  background-color: var(--color-base-200);
+}
+
+.sidebar-link-active {
+  color: var(--color-primary);
+  background-color: color-mix(in oklab, var(--color-primary) 6%, white);
+  border-left-color: var(--color-primary);
+}
+
+.sidebar-link-active:hover {
+  color: var(--color-primary);
 }
 
 /*

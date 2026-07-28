@@ -12,8 +12,8 @@ from spaces.models import Attribute, Space, SpaceAttribute
 USER_FIELD_WIDGETS = {
     "username": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
     "email": forms.EmailInput(attrs={"class": "input input-bordered w-full"}),
-    "is_staff": forms.CheckboxInput(attrs={"class": "checkbox checkbox-primary"}),
-    "is_active": forms.CheckboxInput(attrs={"class": "checkbox checkbox-primary"}),
+    "is_staff": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
+    "is_active": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
 }
 
 
@@ -121,7 +121,7 @@ class SpaceForm(forms.ModelForm):
             ),
             "capacity": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
             "location": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
-            "is_active": forms.CheckboxInput(attrs={"class": "checkbox checkbox-primary"}),
+            "is_active": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
         }
 
     def __init__(self, *args, **kwargs):

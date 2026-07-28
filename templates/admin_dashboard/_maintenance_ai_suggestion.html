@@ -1,14 +1,14 @@
 {% if ai_error %}
-<div class="alert alert-error alert-sm mt-2">
+<div class="notice notice-error mt-2">
     <span>{{ ai_error }}</span>
 </div>
 {% elif classification %}
-<div class="alert alert-info alert-sm mt-2">
+<div class="notice mt-2">
     <span>
-        <strong>Categoria sugerida:</strong> {{ classification.category }}
-        <span class="badge badge-ghost badge-sm ml-1">confiança: {{ classification.confidence }}</span>
+        <span class="font-medium">Categoria sugerida:</span> {{ classification.category }}
+        <span class="badge badge-ghost badge-sm ml-1 font-normal">confiança: {{ classification.confidence }}</span>
         <br>
-        {{ classification.justification }}
+        <span class="text-base-content/70">{{ classification.justification }}</span>
     </span>
 </div>
 {% endif %}

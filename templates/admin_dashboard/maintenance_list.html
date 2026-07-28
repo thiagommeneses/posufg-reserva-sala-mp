@@ -4,22 +4,22 @@
 <div class="space-y-6">
     <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <h1 class="text-3xl font-bold">Bloqueios de Manutenção</h1>
-            <p class="mt-1 text-sm text-base-content/60">Bloqueie espaços e remova bloqueios quando necessário.</p>
+            <h1 class="text-2xl font-semibold tracking-tight">Manutenção</h1>
+            <p class="mt-1 text-sm text-base-content/55">Bloqueie espaços e remova bloqueios quando necessário.</p>
         </div>
-        <a href="{% url 'admin_dashboard:maintenance_create' %}" class="btn btn-primary shrink-0">Novo Bloqueio</a>
+        <a href="{% url 'admin_dashboard:maintenance_create' %}" class="btn btn-primary btn-sm shrink-0">Novo bloqueio</a>
     </header>
 
-    <div class="card bg-base-100 shadow-sm">
+    <div class="surface overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="table table-zebra">
+            <table class="table">
                 <thead>
-                    <tr>
-                        <th>Espaço</th>
-                        <th>Início</th>
-                        <th>Término</th>
-                        <th>Motivo</th>
-                        <th></th>
+                    <tr class="border-b border-base-300 text-xs text-base-content/50">
+                        <th class="bg-base-100 font-medium">Espaço</th>
+                        <th class="bg-base-100 font-medium">Início</th>
+                        <th class="bg-base-100 font-medium">Término</th>
+                        <th class="bg-base-100 font-medium">Motivo</th>
+                        <th class="bg-base-100 font-medium"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -27,7 +27,7 @@
                     {% include "admin_dashboard/_maintenance_row.html" %}
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="py-10 text-center text-base-content/60">Nenhum bloqueio de manutenção encontrado.</td>
+                        <td colspan="5" class="py-10 text-center text-sm text-base-content/50">Nenhum bloqueio encontrado.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

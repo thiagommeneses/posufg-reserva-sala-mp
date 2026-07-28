@@ -19,7 +19,7 @@ class HtmxTestView(View):
         """Return full page or partial depending on HTMX request."""
         if request.headers.get("HX-Request"):
             return HttpResponse(
-                '<div id="htmx-test-target" class="alert alert-success">'
+                '<div id="htmx-test-target" class="notice notice-success">'
                 "HTMX partial swap works!"
                 "</div>"
             )

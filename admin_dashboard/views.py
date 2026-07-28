@@ -78,15 +78,15 @@ class AdminDashboardView(StaffRequiredMixin, View):
             if space.id in maintenance_space_ids:
                 status = "maintenance"
                 status_label = "Manutenção"
-                status_class = "badge-warning"
+                status_class = "border-warning/40 text-warning"
             elif space.id in occupied_reservation_space_ids:
                 status = "occupied"
                 status_label = "Ocupado"
-                status_class = "badge-error"
+                status_class = "border-error/40 text-error"
             else:
                 status = "free"
                 status_label = "Livre"
-                status_class = "badge-success"
+                status_class = "border-success/40 text-success"
 
             space_cards.append(
                 {

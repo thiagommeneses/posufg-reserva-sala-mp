@@ -1,11 +1,11 @@
-<tr id="maintenance-row-{{ block.pk }}">
-    <td class="font-medium">{{ block.space.name }}</td>
-    <td>{{ block.start_time|date:"d/m/Y H:i" }}</td>
-    <td>{{ block.end_time|date:"d/m/Y H:i" }}</td>
-    <td class="max-w-xs truncate" title="{{ block.reason }}">{{ block.reason }}</td>
+<tr id="maintenance-row-{{ block.pk }}" class="border-b border-base-300 hover:bg-base-200/50">
+    <td class="font-medium text-sm">{{ block.space.name }}</td>
+    <td class="text-sm tabular-nums">{{ block.start_time|date:"d/m/Y H:i" }}</td>
+    <td class="text-sm tabular-nums">{{ block.end_time|date:"d/m/Y H:i" }}</td>
+    <td class="max-w-xs truncate text-sm text-base-content/70" title="{{ block.reason }}">{{ block.reason }}</td>
     <td class="text-right">
         <button
-            class="btn btn-ghost btn-sm text-error"
+            class="btn btn-ghost btn-xs text-error"
             hx-delete="{% url 'admin_dashboard:maintenance_delete' block.pk %}"
             hx-target="#maintenance-row-{{ block.pk }}"
             hx-swap="outerHTML"

@@ -2,62 +2,87 @@
 {% load static %}
 
 {% block content %}
-<div class="drawer drawer-end">
+<div class="drawer lg:drawer-open">
     <input id="user-drawer" type="checkbox" class="drawer-toggle" />
-    <div class="drawer-content flex flex-col">
-        <div class="navbar bg-base-100 border-b border-base-300">
-            <div class="flex-1">
-                <a href="/" class="btn btn-ghost text-xl gap-2">
-                    <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-8 w-8">
-                    Reserva de Espaços
-                </a>
-            </div>
-            <div class="flex-none hidden md:flex items-center gap-2">
-                <span class="text-sm opacity-70">Olá, {{ request.user.username }}</span>
-                <ul class="menu menu-horizontal px-1">
-                    <li><a href="/spaces/" class="{% if "/spaces/" in request.path %}menu-active{% endif %}">Espaços</a></li>
-                    <li><a href="/reservations/" class="{% if "/reservations/" in request.path %}menu-active{% endif %}">Minhas Reservas</a></li>
-                    <li><a href="/assistente/" class="{% if "/assistente/" in request.path %}menu-active{% endif %}">Consultar Normas</a></li>
-                    {% if request.user.is_staff %}
-                    <li><a href="/admin-dashboard/" class="{% if "/admin-dashboard/" in request.path %}menu-active{% endif %}">Painel Admin</a></li>
-                    {% endif %}
-                    <li>
-                        <form method="post" action="/accounts/logout/" class="inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-ghost btn-sm">Sair</button>
-                        </form>
-                    </li>
-                </ul>
-            </div>
-            <div class="flex-none md:hidden">
-                <label for="user-drawer" class="btn btn-square btn-ghost">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block h-6 w-6 stroke-current">
+    <div class="drawer-content flex flex-col min-h-screen bg-base-200">
+        <header class="navbar min-h-14 bg-base-100 border-b border-base-300 px-3 sm:px-4 lg:hidden gap-2 sticky top-0 z-30">
+            <div class="flex-none">
+                <label for="user-drawer" class="btn btn-square btn-ghost btn-sm" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" width="20" height="20" class="stroke-current" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>
                 </label>
             </div>
-        </div>
-        <main class="container mx-auto px-4 py-8">
+            <div class="flex-1 min-w-0">
+                <a href="/" class="inline-flex items-center gap-2 min-w-0">
+                    <img
+                        src="{% static 'img/logo.png' %}"
+                        alt="Logo do Ministério Público do Estado de Goiás"
+                        class="brand-logo h-8"
+                        width="32"
+                        height="32"
+                        decoding="async"
+                    >
+                    <span class="brand-font text-lg truncate">Reservas</span>
+                </a>
+            </div>
+        </header>
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 w-full max-w-6xl mx-auto">
             {% block user_content %}{% endblock %}
         </main>
     </div>
-    <div class="drawer-side md:hidden">
-        <label for="user-drawer" class="drawer-overlay"></label>
-        <ul class="menu bg-base-200 min-h-full w-80 p-4">
-            <li class="menu-title">Olá, {{ request.user.username }}</li>
-            <li><a href="/spaces/" class="{% if "/spaces/" in request.path %}menu-active{% endif %}">Espaços</a></li>
-            <li><a href="/reservations/" class="{% if "/reservations/" in request.path %}menu-active{% endif %}">Minhas Reservas</a></li>
-            <li><a href="/assistente/" class="{% if "/assistente/" in request.path %}menu-active{% endif %}">Consultar Normas</a></li>
-            {% if request.user.is_staff %}
-            <li><a href="/admin-dashboard/" class="{% if "/admin-dashboard/" in request.path %}menu-active{% endif %}">Painel Admin</a></li>
-            {% endif %}
-            <li>
+
+    <div class="drawer-side z-40">
+        <label for="user-drawer" class="drawer-overlay lg:hidden" aria-label="Fechar menu"></label>
+        <aside class="bg-base-100 min-h-full w-60 border-r border-base-300 flex flex-col p-4">
+            <div class="flex items-center gap-3 px-2 mb-6 min-w-0">
+                <img
+                    src="{% static 'img/logo.png' %}"
+                    alt=""
+                    class="brand-logo h-9"
+                    width="36"
+                    height="36"
+                    decoding="async"
+                >
+                <div class="min-w-0">
+                    <p class="brand-font text-base leading-tight truncate">Reserva de Espaços</p>
+                    <p class="text-xs text-base-content/50 truncate">Olá, {{ request.user.username }}</p>
+                </div>
+            </div>
+
+            <nav class="flex flex-col gap-0.5 flex-1" aria-label="Menu principal">
+                <p class="px-3 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-base-content/40">Atalhos</p>
+                <a href="/spaces/" class="sidebar-link {% if "/spaces/" in request.path %}sidebar-link-active{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                    <span>Espaços</span>
+                </a>
+                <a href="/reservations/" class="sidebar-link {% if "/reservations/" in request.path %}sidebar-link-active{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span>Minhas Reservas</span>
+                </a>
+                <a href="/assistente/" class="sidebar-link {% if "/assistente/" in request.path %}sidebar-link-active{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>Consultar Normas</span>
+                </a>
+                {% if request.user.is_staff %}
+                <p class="px-3 pt-5 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-base-content/40">Administração</p>
+                <a href="/admin-dashboard/" class="sidebar-link {% if "/admin-dashboard/" in request.path %}sidebar-link-active{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13h2v8H3v-8zm6-6h2v14H9V7zm6-4h2v18h-2V3zm6 10h2v8h-2v-8z"/></svg>
+                    <span>Painel Admin</span>
+                </a>
+                {% endif %}
+            </nav>
+
+            <div class="pt-4 mt-4 border-t border-base-300">
                 <form method="post" action="/accounts/logout/">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-ghost">Sair</button>
+                    <button type="submit" class="sidebar-link w-full text-base-content/60">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        <span>Sair</span>
+                    </button>
                 </form>
-            </li>
-        </ul>
+            </div>
+        </aside>
     </div>
 </div>
 {% endblock %}

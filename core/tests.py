@@ -66,32 +66,35 @@ class TemplateInfrastructureTestCase(TestCase):
         assert 'id="htmx-test-target"' in response.content.decode()
 
     def test_base_user_template_renders_navbar(self):
-        """Verify base_user.html contains expected navbar elements."""
+        """Verify base_user.html contains expected shell and sidebar shortcuts."""
         from django.template.loader import render_to_string
 
         html = render_to_string("base_user.html", {})
         assert "Reserva de Espaços" in html
         assert "Espaços" in html
         assert "Minhas Reservas" in html
+        assert "Consultar Normas" in html
         assert "Sair" in html
         assert "navbar" in html
         assert "drawer" in html
+        assert "sidebar-link" in html
+        assert "Atalhos" in html
 
     def test_base_admin_template_renders_sidebar(self):
         """Verify base_admin.html contains expected sidebar elements."""
         from django.template.loader import render_to_string
 
         html = render_to_string("base_admin.html", {})
-        assert "Admin Dashboard" in html
+        assert "Admin" in html
         assert "Dashboard" in html
         assert "Espaços" in html
         assert "Reservas" in html
         assert "Manutenção" in html
         assert "drawer" in html
-        assert "menu-title" in html
+        assert "sidebar-link" in html
 
     def test_messages_partial_renders_alerts(self):
-        """Verify messages partial renders DaisyUI alerts."""
+        """Verify messages partial renders muted notice toasts."""
         from django.contrib.messages import constants
         from django.contrib.messages.storage.base import Message
         from django.template.loader import render_to_string
@@ -101,8 +104,8 @@ class TemplateInfrastructureTestCase(TestCase):
             Message(constants.ERROR, "Something went wrong"),
         ]
         html = render_to_string("partials/_messages.html", {"messages": messages})
-        assert "alert-success" in html
-        assert "alert-error" in html
+        assert "notice-success" in html
+        assert "notice-error" in html
         assert "Operation successful" in html
         assert "Something went wrong" in html
 

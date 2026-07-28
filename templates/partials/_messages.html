@@ -1,12 +1,13 @@
 {% if messages %}
-<div class="fixed top-4 right-4 z-50 flex flex-col gap-2" id="message-container">
+<div class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0" id="message-container">
     {% for message in messages %}
-    <div class="alert
-        {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% elif message.tags == 'info' %}alert-info{% else %}alert-info{% endif %}
-        shadow-lg"
-        role="alert">
-        <span>{{ message }}</span>
-        <button type="button" class="btn btn-ghost btn-xs" onclick="this.parentElement.remove()">×</button>
+    <div
+        class="notice shadow-sm
+        {% if message.tags == 'error' %}notice-error{% elif message.tags == 'success' %}notice-success{% elif message.tags == 'warning' %}notice-warning{% endif %}"
+        role="alert"
+    >
+        <span class="flex-1">{{ message }}</span>
+        <button type="button" class="btn btn-ghost btn-xs shrink-0" onclick="this.parentElement.remove()" aria-label="Fechar">×</button>
     </div>
     {% endfor %}
 </div>
@@ -14,7 +15,7 @@
     setTimeout(() => {
         const container = document.getElementById('message-container');
         if (container) {
-            container.querySelectorAll('.alert').forEach((alert, index) => {
+            container.querySelectorAll('.notice').forEach((alert, index) => {
                 setTimeout(() => alert.remove(), index * 200);
             });
         }

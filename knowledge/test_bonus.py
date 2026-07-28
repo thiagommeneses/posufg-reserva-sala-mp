@@ -151,10 +151,20 @@ class TestConversationHistory:
 
     def test_history_reaches_the_prompt(self, db, usuario):
         """Follow-ups are rewritten for retrieval, then the answer uses history."""
+        from types import SimpleNamespace
+
         anterior = ConversationTurn(
             user=usuario, question="Quanto custa na UFBA?", answer="R$ 1.200,00."
         )
-        recuperados = [object()]
+        recuperados = [
+            SimpleNamespace(
+                institution="UFS",
+                document_title="Regimento",
+                source_url="https://example.org/ufs.pdf",
+                text="Taxa de R$ 800,00.",
+                score=0.9,
+            )
+        ]
 
         with (
             patch(
@@ -169,10 +179,6 @@ class TestConversationHistory:
                 "ai_assistant.services._run_text_completion",
                 return_value="Na UFS a taxa é R$ 800,00 [1].",
             ) as completion,
-            patch(
-                "ai_assistant.services._build_context",
-                return_value="[1] UFS — Regimento\nTaxa de R$ 800,00.",
-            ),
         ):
             resultado = answer_from_documents("E na UFS?", history=[anterior])
 
