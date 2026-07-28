@@ -448,7 +448,7 @@ leitura ingênua do próprio instrumento de medida.
 
 | Indicador | Resultado |
 |---|---|
-| Testes automatizados | 359 |
+| Testes automatizados | 370 |
 | Cobertura | 93,6% (mínimo exigido pelo projeto: 80%) |
 | Linter | `ruff` sem apontamentos |
 
