@@ -2765,9 +2765,6 @@
   .ml-1 {
     margin-left: calc(var(--spacing) * 1);
   }
-  .ml-2 {
-    margin-left: calc(var(--spacing) * 2);
-  }
   .ml-4 {
     margin-left: calc(var(--spacing) * 4);
   }
@@ -3645,6 +3642,9 @@
   }
   .text-primary {
     color: var(--color-primary);
+  }
+  .text-primary-content {
+    color: var(--color-primary-content);
   }
   .text-success {
     color: var(--color-success);
