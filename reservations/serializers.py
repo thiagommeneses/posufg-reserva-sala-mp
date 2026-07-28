@@ -1,12 +1,42 @@
-"""Serializers for the reservations app."""
+"""Serializers for the reservations app.
+
+Business rules live in :mod:`reservations.validators` and
+:mod:`reservations.services`. The serializers below only translate domain
+errors into the field-level errors expected by the API.
+"""
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import IntegrityError, transaction
-from django.db.models import Q
 from rest_framework import serializers
 
-from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
+from reservations.models import MaintenanceBlock, Reservation
+from reservations.services import create_reservation
+from reservations.validators import (
+    INVALID_TIME_RANGE_CODE,
+    SPACE_INACTIVE_CODE,
+    validate_maintenance_slot,
+    validate_reservation_slot,
+)
 from spaces.models import Space
+
+#: Maps a domain error code to the API field that should carry the message.
+#: Anything not listed here is reported as a non-field error.
+ERROR_CODE_TO_FIELD = {
+    SPACE_INACTIVE_CODE: "space",
+    INVALID_TIME_RANGE_CODE: "end_time",
+}
+
+
+def _as_drf_error(exc: DjangoValidationError) -> serializers.ValidationError:
+    """Convert a domain ValidationError into a DRF one, keyed by field.
+
+    Args:
+        exc: The error raised by the validators or the service layer.
+
+    Returns:
+        serializers.ValidationError: The equivalent DRF error.
+    """
+    field = ERROR_CODE_TO_FIELD.get(getattr(exc, "code", None), "non_field_errors")
+    return serializers.ValidationError({field: exc.messages})
 
 
 class MaintenanceBlockSerializer(serializers.ModelSerializer):
@@ -36,33 +66,10 @@ class MaintenanceBlockSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Validate maintenance block data for conflicts."""
-        space = data["space"]
-        start_time = data["start_time"]
-        end_time = data["end_time"]
-
-        if end_time <= start_time:
-            raise serializers.ValidationError(
-                {"end_time": "End time must be after start time."},
-            )
-
-        overlapping_reservations = Reservation.objects.filter(
-            space=space,
-            status__in=[
-                ReservationStatus.CONFIRMED,
-                ReservationStatus.CHECKED_IN,
-            ],
-        ).filter(
-            Q(start_time__lt=end_time) & Q(end_time__gt=start_time),
-        )
-        if overlapping_reservations.exists():
-            raise serializers.ValidationError(
-                {
-                    "non_field_errors": (
-                        "This maintenance block overlaps with an existing reservation."
-                    ),
-                },
-            )
-
+        try:
+            validate_maintenance_slot(data["space"], data["start_time"], data["end_time"])
+        except DjangoValidationError as exc:
+            raise _as_drf_error(exc) from exc
         return data
 
 
@@ -99,57 +106,24 @@ class ReservationSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Validate reservation data for conflicts."""
-        space = data["space"]
-        start_time = data["start_time"]
-        end_time = data["end_time"]
-
-        if not space.is_active:
-            raise serializers.ValidationError(
-                {"space": "This space is not available for reservations."},
-            )
-
-        if end_time <= start_time:
-            raise serializers.ValidationError(
-                {"end_time": "End time must be after start time."},
-            )
-
-        # Check overlapping confirmed/checked_in reservations
-        overlapping_reservations = Reservation.objects.filter(
-            space=space,
-            status__in=[
-                ReservationStatus.CONFIRMED,
-                ReservationStatus.CHECKED_IN,
-            ],
-        ).filter(
-            Q(start_time__lt=end_time) & Q(end_time__gt=start_time),
-        )
-        if overlapping_reservations.exists():
-            raise serializers.ValidationError(
-                {"non_field_errors": "This time slot overlaps with an existing reservation."},
-            )
-
-        # Check overlapping maintenance blocks
-        overlapping_blocks = MaintenanceBlock.objects.filter(
-            space=space,
-            start_time__lt=end_time,
-            end_time__gt=start_time,
-        )
-        if overlapping_blocks.exists():
-            raise serializers.ValidationError(
-                {"non_field_errors": "This time slot overlaps with a maintenance block."},
-            )
-
+        try:
+            validate_reservation_slot(data["space"], data["start_time"], data["end_time"])
+        except DjangoValidationError as exc:
+            raise _as_drf_error(exc) from exc
         return data
 
     def create(self, validated_data):
-        """Create a reservation with confirmed status."""
-        validated_data["status"] = ReservationStatus.CONFIRMED
+        """Create the reservation through the service layer.
+
+        Keeps a single write path shared with the web interface, including the
+        transaction and the database-level protection against race conditions.
+        """
         try:
-            with transaction.atomic():
-                return super().create(validated_data)
+            return create_reservation(
+                user=validated_data["user"],
+                space=validated_data["space"],
+                start_time=validated_data["start_time"],
+                end_time=validated_data["end_time"],
+            )
         except DjangoValidationError as exc:
-            raise serializers.ValidationError(exc.message_dict) from exc
-        except IntegrityError as exc:
-            raise serializers.ValidationError(
-                {"non_field_errors": "This time slot overlaps with an existing reservation."}
-            ) from exc
+            raise _as_drf_error(exc) from exc

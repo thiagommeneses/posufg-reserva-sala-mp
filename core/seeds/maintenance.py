@@ -24,7 +24,7 @@ DEFAULT_BLOCKS = [
 
 
 def _anchor_now():
-    """Return a stable anchor time rounded to the minute."""
+    """Return the reference time for the sample blocks, rounded to the minute."""
     return timezone.now().replace(second=0, microsecond=0)
 
 
@@ -48,19 +48,26 @@ def seed() -> list[MaintenanceBlock]:
         start_time = now + block_data["start_offset"]
         end_time = now + block_data["end_offset"]
 
+        # Identidade por (espaço, motivo), pelo mesmo motivo dos seeds de reserva: os
+        # horários derivam de timezone.now() e mudam a cada execução. Aqui não existe
+        # exclusion constraint, então usar o horário como chave não quebrava — apenas
+        # duplicava os bloqueios em silêncio a cada nova execução.
         block, created = MaintenanceBlock.objects.get_or_create(
             space=space,
-            start_time=start_time,
-            end_time=end_time,
+            reason=block_data["reason"],
             defaults={
-                "reason": block_data["reason"],
+                "start_time": start_time,
+                "end_time": end_time,
                 "created_by": admin,
             },
         )
         if not created:
-            block.reason = block_data["reason"]
+            block.start_time = start_time
+            block.end_time = end_time
             block.created_by = admin
-            block.save()
+            block.save(
+                update_fields=["start_time", "end_time", "created_by", "updated_at"],
+            )
 
         blocks.append(block)
 
@@ -68,14 +75,10 @@ def seed() -> list[MaintenanceBlock]:
 
 
 def flush() -> None:
-    """Remove seeded maintenance blocks identified by space+start_time+reason."""
-    now = _anchor_now()
+    """Remove seeded maintenance blocks, identified by the same space+reason key."""
     for block_data in DEFAULT_BLOCKS:
         try:
             space = Space.objects.get(name=block_data["space_name"])
-            start_time = now + block_data["start_offset"]
-            MaintenanceBlock.objects.filter(
-                space=space, start_time=start_time, reason=block_data["reason"]
-            ).delete()
         except Space.DoesNotExist:
-            pass
+            continue
+        MaintenanceBlock.objects.filter(space=space, reason=block_data["reason"]).delete()

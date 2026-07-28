@@ -1,0 +1,249 @@
+{
+  "descricao": "Corpus documental do assistente de consulta a normas de uso de espacos.",
+  "atualizado_em": "2026-07-26",
+  "fontes": [
+    {
+      "id": 1,
+      "slug": "ufpa-ifch-regulamento-auditorio",
+      "instituicao": "UFPA - IFCH",
+      "documento": "Regulamento no 1/2025 - Uso do Auditorio do IFCH",
+      "categoria": "regulamento-auditorio",
+      "url": "https://ifch.ufpa.br/images/PDF/2025/Regula_Auditrio.pdf",
+      "verificado": true
+    },
+    {
+      "id": 2,
+      "slug": "ufs-bicen-normas-utilizacao-auditorio",
+      "instituicao": "UFS - BICEN",
+      "documento": "Normas de Utilizacao do Auditorio da Biblioteca Central",
+      "categoria": "regulamento-auditorio",
+      "url": "https://bibliotecas.ufs.br/uploads/page_attach/path/14421/NORMAS_UTILIZACAO_AUDITORIO_BICEN-UFS.pdf",
+      "verificado": true
+    },
+    {
+      "id": 3,
+      "slug": "ifal-regulamento-auditorio-oscar-satyro",
+      "instituicao": "IFAL - Campus Maceio",
+      "documento": "Resolucao no 14/2020 - Regulamento do Auditorio Oscar Satyro",
+      "categoria": "regulamento-auditorio",
+      "url": "https://www2.ifal.edu.br/campus/maceio/concamp-1/anexo-da-resolucao-n-14-2020-regulamento-de-uso-do-auditorio-oscar-satyro.pdf",
+      "verificado": true
+    },
+    {
+      "id": 4,
+      "slug": "ufes-cce-regulamento-auditorio",
+      "instituicao": "UFES - CCE",
+      "documento": "Orientacoes e Regulamento para Utilizacao do Auditorio CCE",
+      "categoria": "regulamento-auditorio",
+      "url": "https://cce.ufes.br/sites/cce.ufes.br/files/field/anexo/regulamento_orientacoes_auditorio_0.pdf",
+      "verificado": true
+    },
+    {
+      "id": 5,
+      "slug": "ifba-paulo-afonso-normas-auditorio",
+      "instituicao": "IFBA - Paulo Afonso",
+      "documento": "Normas para Utilizacao do Auditorio",
+      "categoria": "regulamento-auditorio",
+      "url": "https://portal.ifba.edu.br/paulo-afonso/documentos.paf/institucional/manuais-normas-regulamentos/norma-para-utilizacao-do-auditorio.pdf/view",
+      "verificado": false
+    },
+    {
+      "id": 6,
+      "slug": "ufes-ct-regras-auditorio-ct1-sala-ct4",
+      "instituicao": "UFES - Centro Tecnologico",
+      "documento": "Regras de Utilizacao do Auditorio CT1 e Sala de Reunioes CT4",
+      "categoria": "regulamento-auditorio",
+      "url": "https://ct.ufes.br/regras-de-utiliza%C3%A7%C3%A3o-do-audit%C3%B3rio-ct1-e-sala-de-reuni%C3%B5es-ct4",
+      "verificado": true
+    },
+    {
+      "id": 7,
+      "slug": "usp-ifsc-normas-auditorio-sergio-mascarenhas",
+      "instituicao": "USP - IFSC",
+      "documento": "Normas para Utilizacao do Auditorio Prof. Sergio Mascarenhas",
+      "categoria": "regulamento-auditorio",
+      "url": "https://www2.ifsc.usp.br/portal-ifsc/normas-de-utilizacao-auditorio-professor-sergio-mascarenhas/",
+      "verificado": true
+    },
+    {
+      "id": 8,
+      "slug": "unifap-instrucao-uso-auditorio-multiuso",
+      "instituicao": "UNIFAP",
+      "documento": "Instrucao de Uso - Auditorio Multiuso",
+      "categoria": "regulamento-auditorio",
+      "url": "https://www2.unifap.br/auditoriomultiuso/instrucao-de-uso/",
+      "verificado": false
+    },
+    {
+      "id": 9,
+      "slug": "uffs-resolucao-177-2025-auditorios",
+      "instituicao": "UFFS",
+      "documento": "Resolucao no 177/CONSC RE/2025 - Auditorios e salas de videoconferencia",
+      "categoria": "resolucao-institucional",
+      "url": "http://www.uffs.edu.br/atos-normativos/resolucao/coscre/2025-0177",
+      "verificado": false
+    },
+    {
+      "id": 10,
+      "slug": "ufpi-legislacao-prex-espacos",
+      "instituicao": "UFPI",
+      "documento": "Legislacao PREX - Resolucao CAD no 192/2026 (uso de espacos e taxas)",
+      "categoria": "resolucao-institucional",
+      "url": "https://ufpi.br/legislacao-prex",
+      "verificado": false
+    },
+    {
+      "id": 11,
+      "slug": "ufms-proadi-gestao-espacos-fisicos",
+      "instituicao": "UFMS - PROADI",
+      "documento": "Gestao de Espacos Fisicos - normas de cessao e valores",
+      "categoria": "resolucao-institucional",
+      "url": "https://proadi.ufms.br/proadi/gestaodesespacosfisicos/",
+      "verificado": false
+    },
+    {
+      "id": 12,
+      "slug": "ifc-concordia-resolucao-16-2017-cessao",
+      "instituicao": "IFC - Campus Concordia",
+      "documento": "Resolucao no 16/2017 - Espacos passiveis de autorizacao para cessao",
+      "categoria": "resolucao-institucional",
+      "url": "https://concampus.concordia.ifc.edu.br/espacos-fisicos-e-bens-passiveis-de-autorizacao-para-cessao-de-acordo-com-a-resolucao-n16-2017/",
+      "verificado": false
+    },
+    {
+      "id": 13,
+      "slug": "ifba-santo-antonio-portaria-01-2017-cessao",
+      "instituicao": "IFBA - Santo Antonio",
+      "documento": "Portaria no 01/2017 - Regulamento para cessao de espaco fisico",
+      "categoria": "resolucao-institucional",
+      "url": "https://portal.ifba.edu.br/santoantonio/menu-a-direita/regulamento-para-cessao-de-espaco-fisico",
+      "verificado": false
+    },
+    {
+      "id": 14,
+      "slug": "ifmg-santa-luzia-regulamento-uso-espacos",
+      "instituicao": "IFMG - Santa Luzia",
+      "documento": "Regulamento de Uso dos Espacos",
+      "categoria": "resolucao-institucional",
+      "url": "https://www.ifmg.edu.br/santaluzia/dap/regulamento-de-acesso-ao-campus",
+      "verificado": false
+    },
+    {
+      "id": 16,
+      "slug": "ufu-prefe-reserva-auditorio",
+      "instituicao": "UFU - PREFE",
+      "documento": "Reserva de Auditorio",
+      "categoria": "procedimento-reserva",
+      "url": "https://prefe.ufu.br/servicos/logistica-prefeitura-universitaria/reserva-de-auditorio",
+      "verificado": false
+    },
+    {
+      "id": 17,
+      "slug": "ufu-prefe-espacos-fisicos",
+      "instituicao": "UFU - PREFE",
+      "documento": "Espacos Fisicos - catalogo e condicoes",
+      "categoria": "procedimento-reserva",
+      "url": "https://prefe.ufu.br/espacos-fisicos",
+      "verificado": false
+    },
+    {
+      "id": 18,
+      "slug": "ufg-letras-reserva-salas-espacos",
+      "instituicao": "UFG - Faculdade de Letras",
+      "documento": "Reserva de Salas e Espacos",
+      "categoria": "procedimento-reserva",
+      "url": "https://letras.ufg.br/p/22472-reserva-de-salas-e-espacos",
+      "verificado": false
+    },
+    {
+      "id": 19,
+      "slug": "ufrgs-fce-agendamento-espacos",
+      "instituicao": "UFRGS - FCE",
+      "documento": "Agendamento de Espacos Fisicos",
+      "categoria": "procedimento-reserva",
+      "url": "https://www.ufrgs.br/fce/agendamento/",
+      "verificado": false
+    },
+    {
+      "id": 20,
+      "slug": "tcu-ocupacao-espaco-fisico-bens-imoveis",
+      "instituicao": "TCU - Revista do TCU",
+      "documento": "Ocupacao por terceiros de espaco fisico em bens imoveis de orgaos publicos",
+      "categoria": "contexto-juridico",
+      "url": "https://revista.tcu.gov.br/ojs/index.php/RTCU/article/download/468/519/0",
+      "verificado": false
+    },
+    {
+      "id": 21,
+      "slug": "cnmp-gestao-recursos-fisicos-imoveis",
+      "instituicao": "CNMP",
+      "documento": "Gestao de recursos fisicos - imoveis, manutencao e cessao",
+      "categoria": "contexto-juridico",
+      "url": "https://www.cnmp.mp.br/portal/institucional/731-institucional/comissoes-institucional/comissao-de-controle-administrativo-e-financeiro/ordenador-de-despesas/gestao-de-recursos-fisicos/4049-imoveis-manutencao-alugueis-e-acessibilidade",
+      "verificado": false
+    },
+    {
+      "id": 22,
+      "slug": "tjgo-regimento-interno-2024",
+      "instituicao": "TJGO",
+      "documento": "Regimento Interno (abril/2024)",
+      "categoria": "contexto-juridico",
+      "url": "https://docs.tjgo.jus.br/publicacoes/regimento_Interno/regimentoInterno_042024.pdf",
+      "verificado": false
+    },
+    {
+      "id": 23,
+      "slug": "unl-regulamento-auditorios",
+      "instituicao": "Universidade NOVA de Lisboa",
+      "documento": "Regulamento de Utilizacao dos Auditorios, Sala do Senado e Atrio",
+      "categoria": "complementar-internacional",
+      "url": "https://www.unl.pt/wp-content/uploads/2024/07/regulamento_auditorios_2016_0.pdf",
+      "verificado": false
+    },
+    {
+      "id": 24,
+      "slug": "infarmed-regulamento-auditorio-salas",
+      "instituicao": "INFARMED (Portugal)",
+      "documento": "Regulamento de utilizacao do auditorio e salas de reuniao",
+      "categoria": "complementar-internacional",
+      "url": "https://www.infarmed.pt/documents/15786/1604161/Regulamento.pdf/ea2ef4f2-4b49-4f70-8e88-ba1a36505370?version=1.3",
+      "verificado": false
+    },
+    {
+      "id": 25,
+      "slug": "ulisboa-fmd-regulamento-auditorio",
+      "instituicao": "Universidade de Lisboa - FMD",
+      "documento": "Regulamento do Auditorio Prof. Simoes dos Santos",
+      "categoria": "complementar-internacional",
+      "url": "https://auditorio.fmd.ulisboa.pt/?page_id=68",
+      "verificado": false
+    },
+    {
+      "id": 27,
+      "slug": "ufes-ccje-regulamento-auditorio-manoel-vereza",
+      "instituicao": "UFES - CCJE",
+      "documento": "Orientacoes e Regulamento do Auditorio Manoel Vereza de Oliveira",
+      "categoria": "regulamento-auditorio",
+      "url": "https://ccje.ufes.br/sites/ccje.ufes.br/files/field/anexo/auditorio_manoel_vereza.pdf",
+      "verificado": true
+    },
+    {
+      "id": 28,
+      "slug": "ufba-ims-regulamento-auditorios",
+      "instituicao": "UFBA - IMS Campus Anisio Teixeira",
+      "documento": "Regulamento para Utilizacao dos Auditorios do IMS (inclui taxa de utilizacao)",
+      "categoria": "regulamento-auditorio",
+      "url": "https://ifgoiano.edu.br/home/images/CRIS/Institucional/UsodeEspacos/REGULAMENTO-PARA-UTILIZAO-DOS-AUDITRIOS-DO-IMS.pdf",
+      "verificado": true
+    },
+    {
+      "id": 29,
+      "slug": "fatec-zona-sul-regulamento-auditorio",
+      "instituicao": "FATEC Zona Sul (CPS/SP)",
+      "documento": "Regulamento no 01/2025 para Uso do Auditorio, Laboratorios e Salas de Aula",
+      "categoria": "regulamento-auditorio",
+      "url": "https://fateczonasul.edu.br/wp-content/uploads/2025/02/Regulamento-do-Auditorio_01.2025.pdf",
+      "verificado": true
+    }
+  ]
+}

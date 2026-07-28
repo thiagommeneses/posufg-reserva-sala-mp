@@ -1,75 +1,80 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Criar Conta — Reserva de Espaços{% endblock %}
 
 {% block content %}
-<div class="hero min-h-screen bg-base-200">
-    <div class="hero-content flex-col">
-        <div class="card w-full max-w-sm bg-base-100 border border-base-300 shadow-sm">
-            <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">Criar Conta</h2>
-                <form method="post" action="{% url 'accounts:register' %}">
-                    {% csrf_token %}
-                    <div class="form-control mb-3">
-                        <label class="label" for="id_username">
-                            <span class="label-text">Usuário</span>
-                        </label>
-                        <input type="text" name="username" id="id_username"
-                               class="input input-bordered w-full {% if form.username.errors %}input-error{% endif %}"
-                               value="{{ form.username.value|default:'' }}" required autofocus>
-                        {% if form.username.errors %}
-                            <label class="label">
-                                <span class="label-text-alt text-error">{{ form.username.errors.0 }}</span>
-                            </label>
-                        {% endif %}
-                    </div>
-                    <div class="form-control mb-3">
-                        <label class="label" for="id_email">
-                            <span class="label-text">E-mail</span>
-                        </label>
-                        <input type="email" name="email" id="id_email"
-                               class="input input-bordered w-full {% if form.email.errors %}input-error{% endif %}"
-                               value="{{ form.email.value|default:'' }}" required>
-                        {% if form.email.errors %}
-                            <label class="label">
-                                <span class="label-text-alt text-error">{{ form.email.errors.0 }}</span>
-                            </label>
-                        {% endif %}
-                    </div>
-                    <div class="form-control mb-3">
-                        <label class="label" for="id_password1">
-                            <span class="label-text">Senha</span>
-                        </label>
-                        <input type="password" name="password1" id="id_password1"
-                               class="input input-bordered w-full {% if form.password1.errors %}input-error{% endif %}"
-                               required>
-                        {% if form.password1.errors %}
-                            <label class="label">
-                                <span class="label-text-alt text-error">{{ form.password1.errors.0 }}</span>
-                            </label>
-                        {% endif %}
-                    </div>
-                    <div class="form-control mb-6">
-                        <label class="label" for="id_password2">
-                            <span class="label-text">Confirmar senha</span>
-                        </label>
-                        <input type="password" name="password2" id="id_password2"
-                               class="input input-bordered w-full {% if form.password2.errors %}input-error{% endif %}"
-                               required>
-                        {% if form.password2.errors %}
-                            <label class="label">
-                                <span class="label-text-alt text-error">{{ form.password2.errors.0 }}</span>
-                            </label>
-                        {% endif %}
-                    </div>
-                    <div class="form-control">
-                        <button type="submit" class="btn btn-primary w-full">Criar Conta</button>
-                    </div>
-                </form>
-                <div class="mt-4 text-center">
-                    <a href="{% url 'accounts:login' %}" class="link link-primary">Já tenho conta</a>
+<div class="min-h-screen flex items-center justify-center bg-base-200 px-4 py-12">
+    <div class="w-full max-w-sm">
+        <div class="flex flex-col items-center gap-3 mb-8 text-center">
+            <img
+                src="{% static 'img/logo.png' %}"
+                alt="Logo do Ministério Público do Estado de Goiás"
+                class="brand-logo h-16 sm:h-20"
+                width="80"
+                height="80"
+                decoding="async"
+            >
+            <p class="brand-font text-2xl sm:text-3xl text-base-content leading-none">Reserva de Espaços</p>
+        </div>
+        <div class="surface p-6 sm:p-8">
+            <h1 class="text-xl font-semibold mb-1">Criar conta</h1>
+            <p class="text-sm text-base-content/55 mb-6">Preencha os dados para começar.</p>
+            <form method="post" action="{% url 'accounts:register' %}" class="space-y-4">
+                {% csrf_token %}
+                <div class="form-control">
+                    <label class="label py-1" for="id_username">
+                        <span class="label-text text-sm font-medium">Usuário</span>
+                    </label>
+                    <input type="text" name="username" id="id_username"
+                           class="input input-bordered w-full {% if form.username.errors %}input-error{% endif %}"
+                           value="{{ form.username.value|default:'' }}" required autofocus>
+                    {% if form.username.errors %}
+                    <p class="text-xs text-error mt-1">{{ form.username.errors.0 }}</p>
+                    {% endif %}
                 </div>
-            </div>
+                <div class="form-control">
+                    <label class="label py-1" for="id_email">
+                        <span class="label-text text-sm font-medium">E-mail</span>
+                    </label>
+                    <input type="email" name="email" id="id_email"
+                           class="input input-bordered w-full {% if form.email.errors %}input-error{% endif %}"
+                           value="{{ form.email.value|default:'' }}" required>
+                    {% if form.email.errors %}
+                    <p class="text-xs text-error mt-1">{{ form.email.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div class="form-control">
+                    <label class="label py-1" for="id_password1">
+                        <span class="label-text text-sm font-medium">Senha</span>
+                    </label>
+                    <input type="password" name="password1" id="id_password1"
+                           class="input input-bordered w-full {% if form.password1.errors %}input-error{% endif %}"
+                           required>
+                    {% if form.password1.errors %}
+                    <p class="text-xs text-error mt-1">{{ form.password1.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div class="form-control">
+                    <label class="label py-1" for="id_password2">
+                        <span class="label-text text-sm font-medium">Confirmar senha</span>
+                    </label>
+                    <input type="password" name="password2" id="id_password2"
+                           class="input input-bordered w-full {% if form.password2.errors %}input-error{% endif %}"
+                           required>
+                    {% if form.password2.errors %}
+                    <p class="text-xs text-error mt-1">{{ form.password2.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <button type="submit" class="btn btn-primary w-full mt-2 inline-flex items-center justify-center gap-2">
+                    Criar conta
+                    {% include "partials/_icon.html" with name="user-plus" %}
+                </button>
+            </form>
+            <p class="mt-6 text-center text-sm text-base-content/55">
+                Já tem conta?
+                <a href="{% url 'accounts:login' %}" class="font-medium text-base-content hover:underline underline-offset-4">Entrar</a>
+            </p>
         </div>
     </div>
 </div>

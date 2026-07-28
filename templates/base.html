@@ -1,6 +1,6 @@
 {% load tailwind_cli %}
 <!DOCTYPE html>
-<html lang="en" data-theme="mpgo">
+<html lang="pt-BR" data-theme="mpgo">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,7 +9,7 @@
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     {% block extra_css %}{% endblock %}
 </head>
-<body class="min-h-screen bg-base-200">
+<body class="min-h-screen bg-base-100 text-base-content antialiased">
     {% include "partials/_messages.html" %}
     {% block content %}{% endblock %}
     {% block extra_js %}{% endblock %}

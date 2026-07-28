@@ -3,72 +3,68 @@
 {% block title %}Reagendar Reserva — Reserva de Espaços{% endblock %}
 
 {% block user_content %}
-<div class="max-w-2xl mx-auto">
-    <h1 class="text-3xl font-bold mb-6">Reagendar Reserva</h1>
+<div class="max-w-xl space-y-6">
+    <header>
+        <h1 class="text-2xl font-semibold tracking-tight">Reagendar reserva</h1>
+        <p class="mt-1 text-sm text-base-content/55">Escolha um novo horário para {{ reservation.space.name }}.</p>
+    </header>
 
-    <!-- Space Info Summary -->
-    <div class="card card-compact bg-base-200 mb-6">
-        <div class="card-body">
-            <h2 class="card-title text-lg">{{ reservation.space.name }}</h2>
-            <p class="text-sm text-base-content/70">{{ reservation.space.location }}</p>
-            <div class="flex gap-2 mt-2">
-                <span class="badge badge-outline">Capacidade: {{ reservation.space.capacity }}</span>
-                <span class="badge badge-outline">
-                    Atual: {{ reservation.start_time|date:"d/m/Y H:i" }} — {{ reservation.end_time|date:"H:i" }}
-                </span>
-            </div>
+    <div class="surface-muted p-4 sm:p-5">
+        <h2 class="font-semibold text-sm">{{ reservation.space.name }}</h2>
+        <p class="text-sm text-base-content/55 mt-0.5">{{ reservation.space.location }}</p>
+        <div class="flex flex-wrap gap-1.5 mt-2">
+            <span class="badge badge-outline badge-sm font-normal">{{ reservation.space.capacity }} lugares</span>
+            <span class="badge badge-ghost badge-sm font-normal text-base-content/60">
+                Atual: {{ reservation.start_time|date:"d/m/Y H:i" }} — {{ reservation.end_time|date:"H:i" }}
+            </span>
         </div>
     </div>
 
-    <!-- Reschedule Form -->
-    <div class="card bg-base-100 border border-base-300 shadow-sm">
-        <div class="card-body">
-            <h3 class="card-title text-xl mb-4">Novo Horário</h3>
+    <div class="surface p-5 sm:p-6">
+        <h3 class="text-sm font-semibold mb-4">Novo horário</h3>
 
-            {% if error %}
-            <div class="alert alert-error mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>{{ error }}</span>
-            </div>
-            {% endif %}
-
-            <form method="post" action="{% url 'reservation_reschedule' reservation.id %}">
-                {% csrf_token %}
-
-                <div class="form-control mb-4">
-                    <label class="label" for="date">
-                        <span class="label-text">Data</span>
-                    </label>
-                    <input type="date" id="date" name="date" class="input input-bordered w-full"
-                           value="{{ prefill_date }}" required>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="form-control">
-                        <label class="label" for="start_time">
-                            <span class="label-text">Horário de Início</span>
-                        </label>
-                        <input type="time" id="start_time" name="start_time" class="input input-bordered w-full"
-                               value="{{ prefill_start_time }}" required>
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label" for="end_time">
-                            <span class="label-text">Horário de Término</span>
-                        </label>
-                        <input type="time" id="end_time" name="end_time" class="input input-bordered w-full"
-                               value="{{ prefill_end_time }}" required>
-                    </div>
-                </div>
-
-                <div class="card-actions justify-between">
-                    <a href="{% url 'reservation_detail' reservation.id %}" class="btn btn-ghost">Cancelar</a>
-                    <button type="submit" class="btn btn-primary">Confirmar Reagendamento</button>
-                </div>
-            </form>
+        {% if error %}
+        <div class="notice notice-error mb-4">
+            <span>{{ error }}</span>
         </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'reservation_reschedule' reservation.id %}" class="space-y-4">
+            {% csrf_token %}
+            <div class="form-control">
+                <label class="label py-1" for="date">
+                    <span class="label-text text-sm font-medium">Data</span>
+                </label>
+                <input type="date" id="date" name="date" class="input input-bordered w-full"
+                       value="{{ prefill_date }}" required>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-control">
+                    <label class="label py-1" for="start_time">
+                        <span class="label-text text-sm font-medium">Início</span>
+                    </label>
+                    <input type="time" id="start_time" name="start_time" class="input input-bordered w-full"
+                           value="{{ prefill_start_time }}" required>
+                </div>
+                <div class="form-control">
+                    <label class="label py-1" for="end_time">
+                        <span class="label-text text-sm font-medium">Término</span>
+                    </label>
+                    <input type="time" id="end_time" name="end_time" class="input input-bordered w-full"
+                           value="{{ prefill_end_time }}" required>
+                </div>
+            </div>
+            <div class="flex justify-between gap-3 pt-2">
+                <a href="{% url 'reservation_detail' reservation.id %}" class="btn btn-ghost btn-sm inline-flex items-center gap-1.5">
+                    {% include "partials/_icon.html" with name="arrow-left" %}
+                    Voltar
+                </a>
+                <button type="submit" class="btn btn-primary btn-sm inline-flex items-center gap-1.5">
+                    Confirmar
+                    {% include "partials/_icon.html" with name="check" %}
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

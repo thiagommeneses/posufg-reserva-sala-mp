@@ -116,6 +116,24 @@ Or in one command:
 docker compose exec web uv sync --frozen
 ```
 
+**Adding a new dependency: regenerate the lockfile first**
+
+`uv sync --frozen` refuses to run when `uv.lock` is out of date — that is the whole point of `--frozen`. So editing `pyproject.toml` alone is never enough: both the container sync above and `make build` (which runs `uv sync --frozen` at image build time) will fail until the lockfile catches up.
+
+Run this on the host, before anything else:
+```bash
+uv lock
+```
+
+Full sequence after adding a dependency:
+```bash
+uv lock                    # regenerate uv.lock from pyproject.toml
+make build                 # rebuild the image with the new dependency
+make up
+```
+
+Skipping `uv lock` produces a confusing failure mode: the web container starts, crashes on `ModuleNotFoundError` for the package you just added, and `docker compose exec` then reports `service "web" is not running` — which looks like a Docker problem but is a lockfile problem.
+
 **Container stopped due to missing dependencies**
 
 If the web container fails to start with a `ModuleNotFoundError` (or similar import error), the container is not running and `docker compose exec` will fail. In this case, the virtualenv must be rebuilt inside the image:

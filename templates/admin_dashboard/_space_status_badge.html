@@ -2,9 +2,12 @@
       hx-trigger="click"
       hx-swap="outerHTML"
       hx-indicator="find .spinner"
-      style="cursor: pointer;">
-    <span class="badge {% if space.is_active %}badge-success{% else %}badge-ghost{% endif %}">
-        {% if space.is_active %}Ativo{% else %}Inativo{% endif %}
-    </span>
+      class="inline-flex items-center cursor-pointer"
+      title="Clique para alternar">
+    {% if space.is_active %}
+    <span class="badge badge-outline badge-sm border-success/40 text-success font-normal">Ativo</span>
+    {% else %}
+    <span class="badge badge-ghost badge-sm font-normal text-base-content/45">Inativo</span>
+    {% endif %}
     <span class="spinner htmx-indicator loading loading-spinner loading-xs ml-1"></span>
 </span>

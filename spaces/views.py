@@ -92,11 +92,18 @@ class SpaceListView(LoginRequiredMixin, ListView):
         if ai_query:
             return self._filter_by_ai_query(queryset, ai_query)
 
-        # Filter by minimum capacity
+        # Filter by capacity bounds
         min_capacity = self.request.GET.get("min_capacity")
         if min_capacity:
             try:
                 queryset = queryset.filter(capacity__gte=int(min_capacity))
+            except ValueError:
+                pass
+
+        max_capacity = self.request.GET.get("max_capacity")
+        if max_capacity:
+            try:
+                queryset = queryset.filter(capacity__lte=int(max_capacity))
             except ValueError:
                 pass
 
@@ -123,12 +130,15 @@ class SpaceListView(LoginRequiredMixin, ListView):
         try:
             filters = extract_room_search_filters(ai_query)
         except AIServiceError as exc:
-            self.ai_error = str(exc)
+            self.ai_error = exc.user_message
+            self.ai_error_detail = exc.technical_detail
             return queryset.none()
 
         self.ai_summary = filters["summary"]
-        if filters["min_capacity"]:
+        if filters.get("min_capacity"):
             queryset = queryset.filter(capacity__gte=filters["min_capacity"])
+        if filters.get("max_capacity"):
+            queryset = queryset.filter(capacity__lte=filters["max_capacity"])
         if filters["location"]:
             queryset = queryset.filter(location__icontains=filters["location"])
         for attribute_name in filters["attributes"]:
@@ -142,10 +152,12 @@ class SpaceListView(LoginRequiredMixin, ListView):
         context["attributes"] = Attribute.objects.order_by("name")
         context["selected_attributes"] = self.request.GET.get("attributes", "")
         context["min_capacity"] = self.request.GET.get("min_capacity", "")
+        context["max_capacity"] = self.request.GET.get("max_capacity", "")
         context["location"] = self.request.GET.get("location", "")
         context["ai_query"] = self.request.GET.get("ai_query", "")
         context["ai_summary"] = getattr(self, "ai_summary", "")
         context["ai_error"] = getattr(self, "ai_error", "")
+        context["ai_error_detail"] = getattr(self, "ai_error_detail", "")
         context["is_htmx"] = self.request.headers.get("HX-Request") == "true"
         return context
 

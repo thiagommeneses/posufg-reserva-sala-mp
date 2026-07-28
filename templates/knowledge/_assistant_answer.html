@@ -1,0 +1,66 @@
+{% if error %}
+<div class="notice notice-error" role="alert">
+    <div>
+        <p class="font-medium">Não foi possível concluir a consulta</p>
+        <p class="mt-1 text-sm opacity-90">{{ error }}</p>
+    </div>
+</div>
+{% if error_detail %}
+{{ error_detail|json_script:"assistant-error-detail" }}
+<script>
+(function () {
+    var node = document.getElementById("assistant-error-detail");
+    if (!node) {
+        return;
+    }
+    console.warn("[assistente-normas]", JSON.parse(node.textContent));
+})();
+</script>
+{% endif %}
+
+{% elif result %}
+<div class="surface p-5 sm:p-6 mb-4">
+    <h2 class="text-sm font-semibold mb-3">Resposta</h2>
+    <p class="text-sm leading-relaxed whitespace-pre-line">{{ result.answer }}</p>
+
+    {% if not result.used_context %}
+    <div class="notice notice-warning mt-4">
+        <span>
+            Nenhum trecho da base foi usado — a pergunta não encontrou correspondência nas normas indexadas.
+        </span>
+    </div>
+    {% endif %}
+</div>
+
+{% if result.sources %}
+<div class="surface overflow-hidden">
+    <div class="px-5 py-4 border-b border-base-300 flex items-center gap-2">
+        <h3 class="text-sm font-semibold">Fontes utilizadas</h3>
+        <span class="badge badge-ghost badge-sm font-normal">{{ result.sources|length }}</span>
+    </div>
+    <p class="px-5 pt-3 text-xs text-base-content/50">
+        Os números correspondem às citações da resposta.
+    </p>
+    <div class="divide-y divide-base-300 mt-2">
+    {% for fonte in result.sources %}
+        <details class="group">
+            <summary class="cursor-pointer list-none px-5 py-3 hover:bg-base-200/60 transition-colors text-sm">
+                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full border border-base-300 text-xs mr-2 tabular-nums">{{ fonte.position }}</span>
+                <span class="font-medium">{{ fonte.institution }}</span>
+                <span class="text-base-content/50"> — {{ fonte.document }}</span>
+            </summary>
+            <div class="px-5 pb-4">
+                <p class="text-sm whitespace-pre-line bg-base-200 border border-base-300 rounded-lg p-3">{{ fonte.excerpt }}</p>
+                <a
+                    href="{{ fonte.url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-xs font-medium text-base-content/70 hover:text-base-content underline underline-offset-4 mt-2 inline-block"
+                >Abrir documento original</a>
+            </div>
+        </details>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endif %}

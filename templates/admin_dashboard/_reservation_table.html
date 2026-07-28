@@ -1,35 +1,39 @@
-<div class="overflow-x-auto">
-    <table class="table table-zebra w-full">
-        <thead>
-            <tr>
-                <th>Usuário</th>
-                <th>Espaço</th>
-                <th>Início</th>
-                <th>Término</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for reservation in reservations %}
-            {% include "admin_dashboard/_reservation_row.html" %}
-            {% empty %}
-            <tr>
-                <td colspan="6" class="text-center py-4">Nenhuma reserva encontrada.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="surface overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="table">
+            <thead>
+                <tr class="border-b border-base-300 text-xs text-base-content/50">
+                    <th class="bg-base-100 font-medium">Usuário</th>
+                    <th class="bg-base-100 font-medium">Espaço</th>
+                    <th class="bg-base-100 font-medium">Início</th>
+                    <th class="bg-base-100 font-medium">Término</th>
+                    <th class="bg-base-100 font-medium">Status</th>
+                    <th class="bg-base-100 font-medium"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reservation in reservations %}
+                {% include "admin_dashboard/_reservation_row.html" %}
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="py-10 text-center text-sm text-base-content/50">Nenhuma reserva encontrada.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 {% if is_paginated %}
-<div class="join mt-4 flex justify-center">
-    {% if page_obj.has_previous %}
-    <a href="?page={{ page_obj.previous_page_number }}{% for key, val in current_filters.items %}{% if val and key != 'page' %}&{{ key }}={{ val }}{% endif %}{% endfor %}" class="join-item btn btn-sm">«</a>
-    {% endif %}
-    <span class="join-item btn btn-sm btn-disabled">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}{% for key, val in current_filters.items %}{% if val and key != 'page' %}&{{ key }}={{ val }}{% endif %}{% endfor %}" class="join-item btn btn-sm">»</a>
-    {% endif %}
+<div class="mt-4 flex justify-center">
+    <div class="join">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% for key, val in current_filters.items %}{% if val and key != 'page' %}&{{ key }}={{ val }}{% endif %}{% endfor %}" class="join-item btn btn-sm btn-outline">«</a>
+        {% endif %}
+        <span class="join-item btn btn-sm btn-ghost pointer-events-none">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% for key, val in current_filters.items %}{% if val and key != 'page' %}&{{ key }}={{ val }}{% endif %}{% endfor %}" class="join-item btn btn-sm btn-outline">»</a>
+        {% endif %}
+    </div>
 </div>
 {% endif %}

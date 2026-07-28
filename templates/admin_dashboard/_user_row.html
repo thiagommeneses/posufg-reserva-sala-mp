@@ -1,32 +1,38 @@
-<tr id="user-row-{{ user_obj.pk }}">
-    <td>{{ user_obj.username }}</td>
-    <td>{{ user_obj.email }}</td>
+<tr id="user-row-{{ user_obj.pk }}" class="border-b border-base-300 hover:bg-base-200/50">
+    <td class="font-medium text-sm">{{ user_obj.username }}</td>
+    <td class="text-sm text-base-content/70">{{ user_obj.email }}</td>
     <td>
         {% if user_obj.is_staff %}
-        <span class="badge badge-primary badge-sm">Admin</span>
+        <span class="badge badge-outline badge-sm font-normal">Admin</span>
         {% else %}
-        <span class="badge badge-ghost badge-sm">Usuário</span>
+        <span class="badge badge-ghost badge-sm font-normal text-base-content/50">Usuário</span>
         {% endif %}
     </td>
     <td>
         {% if user_obj.is_active %}
-        <span class="badge badge-success badge-sm">Ativo</span>
+        <span class="badge badge-outline badge-sm border-success/40 text-success font-normal">Ativo</span>
         {% else %}
-        <span class="badge badge-error badge-sm">Inativo</span>
+        <span class="badge badge-outline badge-sm border-error/40 text-error font-normal">Inativo</span>
         {% endif %}
     </td>
-    <td class="flex gap-2">
-        <a href="{% url 'admin_dashboard:user_update' user_obj.pk %}" class="btn btn-sm btn-outline">Editar</a>
-        {% if user_obj.pk != request.user.pk %}
-        <button
-            class="btn btn-error btn-sm"
-            hx-delete="{% url 'admin_dashboard:user_delete' user_obj.pk %}"
-            hx-target="#user-row-{{ user_obj.pk }}"
-            hx-swap="outerHTML"
-            hx-confirm="Tem certeza que deseja remover o usuário {{ user_obj.username }}?"
-        >
-            Remover
-        </button>
-        {% endif %}
+    <td class="text-right">
+        <div class="inline-flex gap-1">
+            <a href="{% url 'admin_dashboard:user_update' user_obj.pk %}" class="btn btn-ghost btn-xs inline-flex items-center gap-1">
+                {% include "partials/_icon.html" with name="pencil" %}
+                Editar
+            </a>
+            {% if user_obj.pk != request.user.pk %}
+            <button
+                class="btn btn-ghost btn-xs text-error inline-flex items-center gap-1"
+                hx-delete="{% url 'admin_dashboard:user_delete' user_obj.pk %}"
+                hx-target="#user-row-{{ user_obj.pk }}"
+                hx-swap="outerHTML"
+                hx-confirm="Tem certeza que deseja remover o usuário {{ user_obj.username }}?"
+            >
+                {% include "partials/_icon.html" with name="trash" %}
+                Remover
+            </button>
+            {% endif %}
+        </div>
     </td>
 </tr>

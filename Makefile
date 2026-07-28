@@ -4,16 +4,16 @@ COMPOSE := docker compose
 WEB_SERVICE := web
 
 install:
-	uv sync --dev
+	$(COMPOSE) exec $(WEB_SERVICE) uv sync --dev
 
 test:
-	uv run pytest
+	$(COMPOSE) exec $(WEB_SERVICE) uv run pytest
 
 lint:
-	uv run ruff check .
+	$(COMPOSE) exec $(WEB_SERVICE) uv run ruff check .
 
 format:
-	uv run ruff format .
+	$(COMPOSE) exec $(WEB_SERVICE) uv run ruff format .
 
 up:
 	$(COMPOSE) up -d
@@ -50,7 +50,7 @@ createsuperuser-auto:
 		python manage.py createsuperuser --noinput
 
 pre-commit-install:
-	uv run pre-commit install --hook-type commit-msg --hook-type pre-commit
+	$(COMPOSE) exec $(WEB_SERVICE) uv run pre-commit install --hook-type commit-msg --hook-type pre-commit
 
 seed:
 	$(COMPOSE) exec $(WEB_SERVICE) python manage.py seed_data

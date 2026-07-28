@@ -21,6 +21,7 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions as drf_permissions
 
+from knowledge.views import DocumentAssistantView
 from reservations.views import (
     ReservationCancelView,
     ReservationCheckInView,
@@ -77,6 +78,7 @@ urlpatterns = [
         ReservationCheckInView.as_view(),
         name="reservation_checkin",
     ),
+    path("assistente/", DocumentAssistantView.as_view(), name="document_assistant"),
     path("admin-dashboard/", include("admin_dashboard.urls")),
     path("", include("core.urls")),
 ]

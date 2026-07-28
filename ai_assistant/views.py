@@ -18,12 +18,18 @@ from rest_framework.views import APIView
 
 from ai_assistant.exceptions import AIServiceError
 from ai_assistant.serializers import (
+    DocumentQARequestSerializer,
+    DocumentQAResponseSerializer,
     MaintenanceClassifyRequestSerializer,
     MaintenanceClassifyResponseSerializer,
     RoomSearchRequestSerializer,
     RoomSearchResponseSerializer,
 )
-from ai_assistant.services import classify_maintenance_reason, extract_room_search_filters
+from ai_assistant.services import (
+    answer_from_documents,
+    classify_maintenance_reason,
+    extract_room_search_filters,
+)
 from spaces.models import Space
 
 logger = logging.getLogger(__name__)
@@ -45,14 +51,19 @@ class RoomSearchAssistantView(APIView):
         try:
             filters = extract_room_search_filters(query)
         except AIServiceError as exc:
-            logger.warning("Falha no serviço de IA de busca de salas: %s", exc)
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            logger.warning("Falha no serviço de IA de busca de salas: %s", exc.technical_detail)
+            return Response(
+                {"detail": exc.user_message, "technical_detail": exc.technical_detail},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         queryset = Space.objects.filter(is_active=True).prefetch_related(
             "space_attributes__attribute",
         )
-        if filters["min_capacity"]:
+        if filters.get("min_capacity"):
             queryset = queryset.filter(capacity__gte=filters["min_capacity"])
+        if filters.get("max_capacity"):
+            queryset = queryset.filter(capacity__lte=filters["max_capacity"])
         if filters["location"]:
             queryset = queryset.filter(location__icontains=filters["location"])
         for attribute_name in filters["attributes"]:
@@ -85,8 +96,42 @@ class MaintenanceReasonClassifierView(APIView):
         try:
             classification = classify_maintenance_reason(reason)
         except AIServiceError as exc:
-            logger.warning("Falha no serviço de IA de classificação de manutenção: %s", exc)
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            logger.warning(
+                "Falha no serviço de IA de classificação de manutenção: %s",
+                exc.technical_detail,
+            )
+            return Response(
+                {"detail": exc.user_message, "technical_detail": exc.technical_detail},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         response_serializer = MaintenanceClassifyResponseSerializer(classification)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+
+class DocumentQAView(APIView):
+    """Answers questions about the normative corpus, citing the passages used (RAG)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        """Answer a natural-language question grounded on the indexed documents."""
+        request_serializer = DocumentQARequestSerializer(data=request.data)
+        request_serializer.is_valid(raise_exception=True)
+        dados = request_serializer.validated_data
+
+        try:
+            resultado = answer_from_documents(
+                dados["question"],
+                dados.get("top_k"),
+                hybrid=dados["hybrid"],
+            )
+        except AIServiceError as exc:
+            logger.warning("Falha no serviço de consulta documental: %s", exc.technical_detail)
+            return Response(
+                {"detail": exc.user_message, "technical_detail": exc.technical_detail},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        response_serializer = DocumentQAResponseSerializer(resultado)
         return Response(response_serializer.data, status=status.HTTP_200_OK)

@@ -1,49 +1,64 @@
 {% extends "base_admin.html" %}
 
 {% block admin_content %}
-<div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold">Gestão de Espaços</h1>
-    <a href="{% url 'admin_dashboard:space_create' %}" class="btn btn-primary">Novo Espaço</a>
-</div>
+<div class="space-y-6">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight">Espaços</h1>
+            <p class="mt-1 text-sm text-base-content/55">Cadastre, edite e ative ou desative espaços.</p>
+        </div>
+        <a href="{% url 'admin_dashboard:space_create' %}" class="btn btn-primary btn-sm shrink-0 inline-flex items-center gap-1.5">
+            {% include "partials/_icon.html" with name="plus" %}
+            Novo espaço
+        </a>
+    </header>
 
-<div class="overflow-x-auto">
-    <table class="table table-zebra w-full">
-        <thead>
-            <tr>
-                <th>Nome</th>
-                <th>Capacidade</th>
-                <th>Localização</th>
-                <th>Atributos</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for space in spaces %}
-            <tr>
-                <td>{{ space.name }}</td>
-                <td>{{ space.capacity }}</td>
-                <td>{{ space.location }}</td>
-                <td>
-                    {% for sa in space.space_attributes.all %}
-                    <span class="badge badge-outline badge-sm mr-1">{{ sa.attribute.name }}</span>
+    <div class="surface overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="table">
+                <thead>
+                    <tr class="border-b border-base-300 text-xs text-base-content/50">
+                        <th class="bg-base-100 font-medium">Nome</th>
+                        <th class="bg-base-100 font-medium">Capacidade</th>
+                        <th class="bg-base-100 font-medium">Localização</th>
+                        <th class="bg-base-100 font-medium">Atributos</th>
+                        <th class="bg-base-100 font-medium">Status</th>
+                        <th class="bg-base-100 font-medium"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for space in spaces %}
+                    <tr class="border-b border-base-300 hover:bg-base-200/50">
+                        <td class="font-medium text-sm">{{ space.name }}</td>
+                        <td class="text-sm tabular-nums">{{ space.capacity }}</td>
+                        <td class="text-sm text-base-content/70">{{ space.location }}</td>
+                        <td>
+                            <div class="flex flex-wrap gap-1">
+                                {% for sa in space.space_attributes.all %}
+                                <span class="badge badge-outline badge-sm font-normal">{{ sa.attribute.name }}</span>
+                                {% empty %}
+                                <span class="text-sm text-base-content/40">—</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td>
+                            {% include "admin_dashboard/_space_status_badge.html" with space=space %}
+                        </td>
+                        <td class="text-right">
+                            <a href="{% url 'admin_dashboard:space_update' space.pk %}" class="btn btn-ghost btn-xs inline-flex items-center gap-1">
+                                {% include "partials/_icon.html" with name="pencil" %}
+                                Editar
+                            </a>
+                        </td>
+                    </tr>
                     {% empty %}
-                    <span class="text-gray-500 text-sm">Nenhum</span>
+                    <tr>
+                        <td colspan="6" class="py-10 text-center text-sm text-base-content/50">Nenhum espaço encontrado.</td>
+                    </tr>
                     {% endfor %}
-                </td>
-                <td>
-                    {% include "admin_dashboard/_space_status_badge.html" with space=space %}
-                </td>
-                <td>
-                    <a href="{% url 'admin_dashboard:space_update' space.pk %}" class="btn btn-sm btn-outline">Editar</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" class="text-center py-4">Nenhum espaço encontrado.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}

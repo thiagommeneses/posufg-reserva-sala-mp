@@ -1,40 +1,36 @@
 {% extends "base_admin.html" %}
 
 {% block admin_content %}
-<div class="space-y-6">
-    <h1 class="text-3xl font-bold">Dashboard</h1>
+<div class="space-y-8">
+    <header>
+        <h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <p class="mt-1 text-sm text-base-content/55">Visão geral da ocupação e indicadores do dia.</p>
+    </header>
 
-    <!-- Stats Row -->
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="stats border border-base-300 shadow-sm bg-base-100 w-full">
-            <div class="stat">
-                <div class="stat-title">Espaços Totais</div>
-                <div class="stat-value">{{ total_spaces }}</div>
-            </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="surface p-4 sm:p-5">
+            <p class="text-xs uppercase tracking-wide text-base-content/50">Espaços totais</p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums">{{ total_spaces }}</p>
         </div>
-        <div class="stats border border-base-300 shadow-sm bg-base-100 w-full">
-            <div class="stat">
-                <div class="stat-title">Ocupados Agora</div>
-                <div class="stat-value text-error">{{ occupied_now }}</div>
-            </div>
+        <div class="surface p-4 sm:p-5">
+            <p class="text-xs uppercase tracking-wide text-base-content/50">Ocupados agora</p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums text-error">{{ occupied_now }}</p>
         </div>
-        <div class="stats border border-base-300 shadow-sm bg-base-100 w-full">
-            <div class="stat">
-                <div class="stat-title">Disponíveis Agora</div>
-                <div class="stat-value text-success">{{ available_now }}</div>
-            </div>
+        <div class="surface p-4 sm:p-5">
+            <p class="text-xs uppercase tracking-wide text-base-content/50">Disponíveis agora</p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums text-success">{{ available_now }}</p>
         </div>
-        <div class="stats border border-base-300 shadow-sm bg-base-100 w-full">
-            <div class="stat">
-                <div class="stat-title">No-shows Hoje</div>
-                <div class="stat-value text-warning">{{ no_shows_today }}</div>
-            </div>
+        <div class="surface p-4 sm:p-5">
+            <p class="text-xs uppercase tracking-wide text-base-content/50">No-shows hoje</p>
+            <p class="mt-1 text-2xl font-semibold tabular-nums text-warning">{{ no_shows_today }}</p>
         </div>
     </div>
 
-    <!-- Occupancy Grid (auto-refreshed via HTMX) -->
-    <div>
-        <h2 class="mb-4 text-xl font-semibold">Ocupação em Tempo Real</h2>
+    <section>
+        <div class="mb-4">
+            <h2 class="text-base font-semibold">Ocupação em tempo real</h2>
+            <p class="mt-1 text-sm text-base-content/50">Atualiza automaticamente a cada 30 segundos.</p>
+        </div>
         <div
             id="occupancy-grid"
             hx-get="/admin-dashboard/"
@@ -44,6 +40,6 @@
         >
             {% include "admin_dashboard/_occupancy_grid.html" %}
         </div>
-    </div>
+    </section>
 </div>
 {% endblock %}

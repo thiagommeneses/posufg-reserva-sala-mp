@@ -4,16 +4,16 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from django.db import models
 
-from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
+from reservations.models import MaintenanceBlock
+from reservations.validators import validate_maintenance_slot
 from spaces.models import Attribute, Space, SpaceAttribute
 
 USER_FIELD_WIDGETS = {
     "username": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
     "email": forms.EmailInput(attrs={"class": "input input-bordered w-full"}),
-    "is_staff": forms.CheckboxInput(attrs={"class": "checkbox checkbox-primary"}),
-    "is_active": forms.CheckboxInput(attrs={"class": "checkbox checkbox-primary"}),
+    "is_staff": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
+    "is_active": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
 }
 
 
@@ -121,7 +121,7 @@ class SpaceForm(forms.ModelForm):
             ),
             "capacity": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
             "location": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
-            "is_active": forms.CheckboxInput(attrs={"class": "checkbox checkbox-primary"}),
+            "is_active": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -187,21 +187,6 @@ class MaintenanceBlockForm(forms.ModelForm):
         end_time = cleaned_data.get("end_time")
 
         if space and start_time and end_time:
-            if end_time <= start_time:
-                raise ValidationError("End time must be after start time.")
-
-            overlapping_reservations = Reservation.objects.filter(
-                space=space,
-                status__in=[
-                    ReservationStatus.CONFIRMED,
-                    ReservationStatus.CHECKED_IN,
-                ],
-            ).filter(
-                models.Q(start_time__lt=end_time) & models.Q(end_time__gt=start_time),
-            )
-            if overlapping_reservations.exists():
-                raise ValidationError(
-                    "This maintenance block overlaps with an existing reservation.",
-                )
+            validate_maintenance_slot(space, start_time, end_time)
 
         return cleaned_data

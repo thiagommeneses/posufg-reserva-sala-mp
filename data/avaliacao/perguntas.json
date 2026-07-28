@@ -1,0 +1,90 @@
+{
+  "descricao": "Conjunto de perguntas de referencia para avaliacao automatica do assistente.",
+  "atualizado_em": "2026-07-27",
+  "perguntas": [
+    {
+      "id": 1,
+      "pergunta": "Quais instituicoes cobram taxa pelo uso do auditorio e quanto?",
+      "tipo": "comparativa",
+      "nota": "Exige cruzar o polo que cobra (UFBA/IMS) com o que isenta (UFS/BICEN)."
+    },
+    {
+      "id": 2,
+      "pergunta": "Com quanta antecedencia devo solicitar a reserva de um auditorio?",
+      "tipo": "comparativa",
+      "nota": "Os prazos variam entre instituicoes; a resposta deve atribuir cada prazo."
+    },
+    {
+      "id": 3,
+      "pergunta": "Uma empresa privada pode usar o auditorio para um evento comercial?",
+      "tipo": "comparativa",
+      "nota": "Regras divergentes sobre uso por terceiros e finalidade lucrativa."
+    },
+    {
+      "id": 4,
+      "pergunta": "E permitido consumir alimentos e bebidas dentro do auditorio?",
+      "tipo": "factual",
+      "nota": "Vedacao explicita em varios regulamentos."
+    },
+    {
+      "id": 5,
+      "pergunta": "Que penalidades se aplicam a quem descumpre o regulamento do auditorio?",
+      "tipo": "factual",
+      "nota": "Inclui suspensao de uso e ressarcimento de danos."
+    },
+    {
+      "id": 6,
+      "pergunta": "Eventos politico-partidarios podem ocorrer nesses espacos?",
+      "tipo": "factual",
+      "nota": "Vedacao expressa em pelo menos um regulamento."
+    },
+    {
+      "id": 7,
+      "pergunta": "Quem decide quando dois setores pedem a mesma data?",
+      "tipo": "factual",
+      "nota": "Criterio de prioridade e autoridade competente."
+    },
+    {
+      "id": 8,
+      "pergunta": "Quem responde por danos ao equipamento durante o evento?",
+      "tipo": "factual",
+      "nota": "Responsabilidade do solicitante, com ressarcimento."
+    },
+    {
+      "id": 9,
+      "pergunta": "Que informacoes o formulario de solicitacao precisa conter?",
+      "tipo": "factual",
+      "nota": "Lista de campos exigidos no pedido de reserva."
+    },
+    {
+      "id": 10,
+      "pergunta": "Qual e a politica de ferias da empresa e o valor do vale-refeicao?",
+      "tipo": "fora-do-dominio",
+      "nota": "Controle negativo: o corpus nao cobre isso. A resposta correta e declarar que nao ha informacao."
+    },
+    {
+      "id": 11,
+      "pergunta": "Qual e o valor da multa por cancelamento tardio da reserva na UFPA?",
+      "tipo": "premissa-falsa",
+      "nota": "Adversarial: a premissa (existencia de multa por cancelamento) nao consta do corpus. A resposta correta e recusar a premissa, nao estimar um valor."
+    },
+    {
+      "id": 12,
+      "pergunta": "Quantos lugares tem o auditorio da FATEC Zona Sul e qual a ocupacao minima exigida para reservar?",
+      "tipo": "precisao-numerica",
+      "nota": "Adversarial: exige reproduzir dois numeros exatos (172 lugares, minimo de 30% da capacidade). Aproximar ou arredondar e erro."
+    },
+    {
+      "id": 13,
+      "pergunta": "Um aluno de graduacao pode reservar o auditorio sozinho, sem intermediacao?",
+      "tipo": "sintese-conflitante",
+      "nota": "Adversarial: as instituicoes divergem. A resposta deve expor a divergencia, nao generalizar a partir de uma delas."
+    },
+    {
+      "id": 14,
+      "pergunta": "Todas as instituicoes exigem 30 dias de antecedencia para reservar, correto?",
+      "tipo": "premissa-falsa",
+      "nota": "Adversarial: pergunta capciosa que convida a concordancia. O corpus tem prazos que vao de 2 a 45 dias; concordar seria erro de fundamentacao."
+    }
+  ]
+}

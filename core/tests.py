@@ -66,32 +66,35 @@ class TemplateInfrastructureTestCase(TestCase):
         assert 'id="htmx-test-target"' in response.content.decode()
 
     def test_base_user_template_renders_navbar(self):
-        """Verify base_user.html contains expected navbar elements."""
+        """Verify base_user.html contains expected shell and sidebar shortcuts."""
         from django.template.loader import render_to_string
 
         html = render_to_string("base_user.html", {})
         assert "Reserva de Espaços" in html
         assert "Espaços" in html
         assert "Minhas Reservas" in html
+        assert "Consultar Normas" in html
         assert "Sair" in html
         assert "navbar" in html
         assert "drawer" in html
+        assert "sidebar-link" in html
+        assert "Atalhos" in html
 
     def test_base_admin_template_renders_sidebar(self):
         """Verify base_admin.html contains expected sidebar elements."""
         from django.template.loader import render_to_string
 
         html = render_to_string("base_admin.html", {})
-        assert "Admin Dashboard" in html
+        assert "Admin" in html
         assert "Dashboard" in html
         assert "Espaços" in html
         assert "Reservas" in html
         assert "Manutenção" in html
         assert "drawer" in html
-        assert "menu-title" in html
+        assert "sidebar-link" in html
 
     def test_messages_partial_renders_alerts(self):
-        """Verify messages partial renders DaisyUI alerts."""
+        """Verify messages partial renders muted notice toasts."""
         from django.contrib.messages import constants
         from django.contrib.messages.storage.base import Message
         from django.template.loader import render_to_string
@@ -101,8 +104,8 @@ class TemplateInfrastructureTestCase(TestCase):
             Message(constants.ERROR, "Something went wrong"),
         ]
         html = render_to_string("partials/_messages.html", {"messages": messages})
-        assert "alert-success" in html
-        assert "alert-error" in html
+        assert "notice-success" in html
+        assert "notice-error" in html
         assert "Operation successful" in html
         assert "Something went wrong" in html
 
@@ -123,15 +126,39 @@ class SeedDataCommandTestCase(TestCase):
         attr_count_first = Attribute.objects.count()
         space_count_first = Space.objects.count()
         user_count_first = User.objects.count()
+        reservation_count_first = Reservation.objects.count()
+        block_count_first = MaintenanceBlock.objects.count()
 
         call_command("seed_data")
-        attr_count_second = Attribute.objects.count()
-        space_count_second = Space.objects.count()
-        user_count_second = User.objects.count()
 
-        assert attr_count_first == attr_count_second
-        assert space_count_first == space_count_second
-        assert user_count_first == user_count_second
+        assert Attribute.objects.count() == attr_count_first
+        assert Space.objects.count() == space_count_first
+        assert User.objects.count() == user_count_first
+        assert Reservation.objects.count() == reservation_count_first
+        assert MaintenanceBlock.objects.count() == block_count_first
+
+    def test_command_is_idempotent_across_time(self):
+        """Seeding twice is idempotent even when the clock moves between runs.
+
+        Os horários das reservas e bloqueios derivam de ``timezone.now()``. Quando as
+        duas execuções caíam em minutos diferentes, a segunda deixava de reconhecer os
+        registros da primeira: reservas colidiam na exclusion constraint e bloqueios de
+        manutenção eram duplicados em silêncio. A identidade passou a ser a chave
+        natural (usuário+espaço, espaço+motivo), independente do relógio.
+        """
+        from datetime import timedelta
+        from unittest.mock import patch
+
+        call_command("seed_data")
+        reservation_count = Reservation.objects.count()
+        block_count = MaintenanceBlock.objects.count()
+
+        agora = timezone.now()
+        with patch("django.utils.timezone.now", return_value=agora + timedelta(minutes=7)):
+            call_command("seed_data")
+
+        assert Reservation.objects.count() == reservation_count
+        assert MaintenanceBlock.objects.count() == block_count
 
     def test_flush_flag_removes_and_recreates(self):
         """Verify --flush removes seed data and recreates it."""

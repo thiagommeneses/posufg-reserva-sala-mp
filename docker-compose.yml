@@ -1,6 +1,12 @@
 services:
   db:
-    image: postgres:16
+    # pgvector/pgvector:pg16 é o postgres:16 com a extensão vector pré-instalada.
+    # ATENÇÃO: a major version é a mesma, mas a imagem base tem glibc diferente da
+    # do postgres:16 oficial. Um volume inicializado pela outra imagem provoca
+    # "collation version mismatch" no template1 e impede criar bancos novos —
+    # inclusive o de testes. Ao trocar de imagem, recrie o volume:
+    #   make down && docker volume rm reserva-sala-mp_postgres_data && make up
+    image: pgvector/pgvector:pg16
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -21,6 +27,9 @@ services:
     volumes:
       - .:/app
       - ./.gitconfig:/root/.gitconfig:ro
+      # O modelo de embedding tem centenas de MB. Sem este volume, todo build
+      # descarta o download e a primeira indexação seguinte baixa tudo de novo.
+      - fastembed_cache:/opt/fastembed_cache
     ports:
       - "8000:8000"
     environment:
@@ -28,9 +37,11 @@ services:
       - SECRET_KEY=django-insecure-docker-dev
       - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
       - ALLOWED_HOSTS=localhost,127.0.0.1
+      - FASTEMBED_CACHE_PATH=/opt/fastembed_cache
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   postgres_data:
+  fastembed_cache:

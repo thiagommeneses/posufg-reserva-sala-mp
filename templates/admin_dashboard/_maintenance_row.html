@@ -1,16 +1,17 @@
-<tr id="maintenance-row-{{ block.pk }}">
-    <td>{{ block.space.name }}</td>
-    <td>{{ block.start_time|date:"d/m/Y H:i" }}</td>
-    <td>{{ block.end_time|date:"d/m/Y H:i" }}</td>
-    <td>{{ block.reason }}</td>
-    <td>
+<tr id="maintenance-row-{{ block.pk }}" class="border-b border-base-300 hover:bg-base-200/50">
+    <td class="font-medium text-sm">{{ block.space.name }}</td>
+    <td class="text-sm tabular-nums">{{ block.start_time|date:"d/m/Y H:i" }}</td>
+    <td class="text-sm tabular-nums">{{ block.end_time|date:"d/m/Y H:i" }}</td>
+    <td class="max-w-xs truncate text-sm text-base-content/70" title="{{ block.reason }}">{{ block.reason }}</td>
+    <td class="text-right">
         <button
-            class="btn btn-error btn-xs"
+            class="btn btn-ghost btn-xs text-error inline-flex items-center gap-1"
             hx-delete="{% url 'admin_dashboard:maintenance_delete' block.pk %}"
             hx-target="#maintenance-row-{{ block.pk }}"
             hx-swap="outerHTML"
             hx-confirm="Tem certeza que deseja remover este bloqueio de manutenção?"
         >
+            {% include "partials/_icon.html" with name="trash" %}
             Remover
         </button>
     </td>
