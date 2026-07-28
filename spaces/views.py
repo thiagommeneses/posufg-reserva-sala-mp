@@ -130,7 +130,8 @@ class SpaceListView(LoginRequiredMixin, ListView):
         try:
             filters = extract_room_search_filters(ai_query)
         except AIServiceError as exc:
-            self.ai_error = str(exc)
+            self.ai_error = exc.user_message
+            self.ai_error_detail = exc.technical_detail
             return queryset.none()
 
         self.ai_summary = filters["summary"]
@@ -156,6 +157,7 @@ class SpaceListView(LoginRequiredMixin, ListView):
         context["ai_query"] = self.request.GET.get("ai_query", "")
         context["ai_summary"] = getattr(self, "ai_summary", "")
         context["ai_error"] = getattr(self, "ai_error", "")
+        context["ai_error_detail"] = getattr(self, "ai_error_detail", "")
         context["is_htmx"] = self.request.headers.get("HX-Request") == "true"
         return context
 

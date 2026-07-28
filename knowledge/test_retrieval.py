@@ -174,8 +174,10 @@ class TestAnswerFromDocuments:
             "ai_assistant.services.retrieval.search",
             side_effect=EmbeddingError("modelo indisponível"),
         ):
-            with pytest.raises(AIServiceError, match="modelo indisponível"):
+            with pytest.raises(AIServiceError, match="analisar sua pergunta") as raised:
                 answer_from_documents("Qualquer pergunta")
+
+        assert "modelo indisponível" in raised.value.technical_detail
 
     def test_hybrid_flag_is_forwarded(self, trechos):
         """Disabling hybrid search reaches the retrieval layer."""

@@ -7,10 +7,17 @@ function (:func:`_run_json_completion`).
 
 import json
 import logging
+import re
 import unicodedata
 
 from django.conf import settings
-from groq import Groq, GroqError
+from groq import (
+    APIConnectionError,
+    AuthenticationError,
+    Groq,
+    GroqError,
+    RateLimitError,
+)
 
 from ai_assistant.exceptions import AIServiceError
 from core.seeds.attributes import DEFAULT_ATTRIBUTES
@@ -18,6 +25,17 @@ from knowledge import retrieval
 from knowledge.embedding import EmbeddingError
 
 logger = logging.getLogger(__name__)
+
+#: Generic fallback when the Groq API fails for an unclassified reason.
+GENERIC_GROQ_FAILURE_MESSAGE = (
+    "Não foi possível obter uma resposta do assistente agora. Tente novamente em instantes."
+)
+
+#: Matches Groq rate-limit hints like "Please try again in 33m50.4s".
+_RETRY_AFTER_PATTERN = re.compile(
+    r"try again in (?:(\d+)m)?([\d.]+)s",
+    re.IGNORECASE,
+)
 
 MAINTENANCE_CATEGORIES = [
     "eletrica",
@@ -147,6 +165,70 @@ _MAINTENANCE_SYSTEM_PROMPT = (
 )
 
 
+def _format_retry_wait(exc: RateLimitError) -> str:
+    """Extract a short Portuguese wait hint from a Groq rate-limit error.
+
+    Args:
+        exc: The rate-limit exception raised by the Groq client.
+
+    Returns:
+        A phrase such as " Tente de novo em cerca de 34 minutos." or an empty
+        string when the retry hint cannot be parsed.
+    """
+    match = _RETRY_AFTER_PATTERN.search(str(exc))
+    if not match:
+        return ""
+
+    minutes = int(match.group(1) or 0)
+    seconds = float(match.group(2))
+    total_minutes = max(1, minutes + int(seconds // 60) + (1 if seconds % 60 else 0))
+    if total_minutes == 1:
+        return " Tente de novo em cerca de 1 minuto."
+    return f" Tente de novo em cerca de {total_minutes} minutos."
+
+
+def _technical_detail_for_groq_error(exc: GroqError) -> str:
+    """Build a console/log-friendly detail string from a Groq exception.
+
+    Args:
+        exc: The exception raised by the Groq SDK.
+
+    Returns:
+        A compact technical summary including exception type and message.
+    """
+    return f"{type(exc).__name__}: {exc}"
+
+
+def _ai_error_from_groq(exc: GroqError) -> AIServiceError:
+    """Map a Groq client exception to an AIServiceError with friendly + technical text.
+
+    Args:
+        exc: The exception raised by the Groq SDK.
+
+    Returns:
+        An AIServiceError ready to surface in the UI and browser console.
+    """
+    technical_detail = _technical_detail_for_groq_error(exc)
+
+    if isinstance(exc, RateLimitError):
+        return AIServiceError(
+            "O assistente recebeu muitas consultas e precisa de uma pausa."
+            f"{_format_retry_wait(exc)}",
+            technical_detail=technical_detail,
+        )
+    if isinstance(exc, AuthenticationError):
+        return AIServiceError(
+            "O assistente não está disponível no momento. Se continuar assim, fale com o suporte.",
+            technical_detail=technical_detail,
+        )
+    if isinstance(exc, APIConnectionError):
+        return AIServiceError(
+            "Não conseguimos falar com o assistente agora. Confira sua conexão e tente de novo.",
+            technical_detail=technical_detail,
+        )
+    return AIServiceError(GENERIC_GROQ_FAILURE_MESSAGE, technical_detail=technical_detail)
+
+
 def _get_client() -> Groq:
     """Build a Groq client using the configured API key.
 
@@ -158,7 +240,10 @@ def _get_client() -> Groq:
     """
     if not settings.GROQ_API_KEY:
         logger.error("GROQ_API_KEY não configurada; não é possível chamar o serviço de IA.")
-        raise AIServiceError("Serviço de IA não configurado (GROQ_API_KEY ausente).")
+        raise AIServiceError(
+            "O assistente não está disponível no momento. Se continuar assim, fale com o suporte.",
+            technical_detail="GROQ_API_KEY ausente na configuração do ambiente.",
+        )
     return Groq(api_key=settings.GROQ_API_KEY)
 
 
@@ -186,16 +271,19 @@ def _run_json_completion(system_prompt: str, user_content: str) -> dict:
             temperature=0.2,
             response_format={"type": "json_object"},
         )
-    except GroqError:
+    except GroqError as exc:
         logger.exception("Falha ao chamar a API da Groq.")
-        raise AIServiceError("Não foi possível consultar o serviço de IA no momento.") from None
+        raise _ai_error_from_groq(exc) from None
 
     raw_content = completion.choices[0].message.content
     try:
         return json.loads(raw_content)
     except (json.JSONDecodeError, TypeError):
         logger.error("Resposta da IA não é um JSON válido: %r", raw_content)
-        raise AIServiceError("O serviço de IA retornou uma resposta em formato inválido.") from None
+        raise AIServiceError(
+            "O assistente devolveu uma resposta incompleta. Tente novamente.",
+            technical_detail=f"JSON inválido na resposta do modelo: {raw_content!r}",
+        ) from None
 
 
 def _normalize_lookup_key(value: str) -> str:
@@ -374,13 +462,16 @@ def _run_text_completion(system_prompt: str, user_content: str) -> str:
             ],
             temperature=0.1,
         )
-    except GroqError:
+    except GroqError as exc:
         logger.exception("Falha ao chamar a API da Groq.")
-        raise AIServiceError("Não foi possível consultar o serviço de IA no momento.") from None
+        raise _ai_error_from_groq(exc) from None
 
     answer = (completion.choices[0].message.content or "").strip()
     if not answer:
-        raise AIServiceError("O serviço de IA devolveu uma resposta vazia.")
+        raise AIServiceError(
+            "O assistente devolveu uma resposta incompleta. Tente novamente.",
+            technical_detail=f"Resposta vazia do modelo {settings.GROQ_MODEL}.",
+        )
     return answer
 
 
@@ -506,7 +597,10 @@ def answer_from_documents(
         chunks = retrieval.search(search_query, top_k, hybrid=hybrid)
     except EmbeddingError as exc:
         logger.warning("Falha ao gerar embedding da pergunta: %s", exc)
-        raise AIServiceError(str(exc)) from exc
+        raise AIServiceError(
+            "Não foi possível analisar sua pergunta agora. Tente novamente em instantes.",
+            technical_detail=f"EmbeddingError: {exc}",
+        ) from exc
 
     if not chunks:
         return {"answer": NO_CONTEXT_ANSWER, "sources": [], "used_context": False}

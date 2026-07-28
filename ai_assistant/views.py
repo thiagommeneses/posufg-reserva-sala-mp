@@ -51,8 +51,11 @@ class RoomSearchAssistantView(APIView):
         try:
             filters = extract_room_search_filters(query)
         except AIServiceError as exc:
-            logger.warning("Falha no serviço de IA de busca de salas: %s", exc)
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            logger.warning("Falha no serviço de IA de busca de salas: %s", exc.technical_detail)
+            return Response(
+                {"detail": exc.user_message, "technical_detail": exc.technical_detail},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         queryset = Space.objects.filter(is_active=True).prefetch_related(
             "space_attributes__attribute",
@@ -93,8 +96,14 @@ class MaintenanceReasonClassifierView(APIView):
         try:
             classification = classify_maintenance_reason(reason)
         except AIServiceError as exc:
-            logger.warning("Falha no serviço de IA de classificação de manutenção: %s", exc)
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            logger.warning(
+                "Falha no serviço de IA de classificação de manutenção: %s",
+                exc.technical_detail,
+            )
+            return Response(
+                {"detail": exc.user_message, "technical_detail": exc.technical_detail},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         response_serializer = MaintenanceClassifyResponseSerializer(classification)
         return Response(response_serializer.data, status=status.HTTP_200_OK)
@@ -118,8 +127,11 @@ class DocumentQAView(APIView):
                 hybrid=dados["hybrid"],
             )
         except AIServiceError as exc:
-            logger.warning("Falha no serviço de consulta documental: %s", exc)
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            logger.warning("Falha no serviço de consulta documental: %s", exc.technical_detail)
+            return Response(
+                {"detail": exc.user_message, "technical_detail": exc.technical_detail},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         response_serializer = DocumentQAResponseSerializer(resultado)
         return Response(response_serializer.data, status=status.HTTP_200_OK)

@@ -65,8 +65,15 @@ class DocumentAssistantView(LoginRequiredMixin, View):
         try:
             result = answer_from_documents(question, history=history)
         except AIServiceError as exc:
-            logger.warning("Falha na consulta documental via web: %s", exc)
-            return render(request, ANSWER_PARTIAL, {"error": str(exc)})
+            logger.warning("Falha na consulta documental via web: %s", exc.technical_detail)
+            return render(
+                request,
+                ANSWER_PARTIAL,
+                {
+                    "error": exc.user_message,
+                    "error_detail": exc.technical_detail,
+                },
+            )
 
         ConversationTurn.objects.create(
             user=request.user,

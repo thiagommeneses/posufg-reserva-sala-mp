@@ -2,12 +2,16 @@
 
 from unittest.mock import patch
 
+import httpx
 import pytest
 from django.contrib.auth import get_user_model
+from groq import AuthenticationError, GroqError, RateLimitError
 from rest_framework.test import APIClient
 
 from ai_assistant.exceptions import AIServiceError
 from ai_assistant.services import (
+    GENERIC_GROQ_FAILURE_MESSAGE,
+    _ai_error_from_groq,
     classify_maintenance_reason,
     extract_room_search_filters,
     normalize_room_search_attributes,
@@ -300,3 +304,55 @@ class TestMaintenanceReasonClassifierView:
         )
 
         assert response.status_code in (401, 403)
+
+
+class TestMessageForGroqError:
+    """Unit tests for user-facing Groq error messages."""
+
+    def _rate_limit_error(self, message: str) -> RateLimitError:
+        """Build a RateLimitError with a controllable message string."""
+        request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+        response = httpx.Response(429, request=request)
+        return RateLimitError(message, response=response, body=None)
+
+    def test_rate_limit_includes_retry_hint(self):
+        """Daily quota exhaustion should mention approximate wait time."""
+        exc = self._rate_limit_error(
+            "Rate limit reached for model. Please try again in 33m50.4s."
+        )
+
+        error = _ai_error_from_groq(exc)
+
+        assert "muitas consultas" in error.user_message
+        assert "cerca de 34 minutos" in error.user_message
+        assert "RateLimitError" in error.technical_detail
+        assert "33m50.4s" in error.technical_detail
+
+    def test_rate_limit_without_retry_hint(self):
+        """Missing retry timing should still explain a temporary pause."""
+        exc = self._rate_limit_error("Rate limit reached for model.")
+
+        error = _ai_error_from_groq(exc)
+
+        assert "muitas consultas" in error.user_message
+        assert "minutos" not in error.user_message
+        assert "RateLimitError" in error.technical_detail
+
+    def test_authentication_error(self):
+        """Invalid API keys keep a friendly UI message and technical detail."""
+        request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+        response = httpx.Response(401, request=request)
+        exc = AuthenticationError("Invalid API Key", response=response, body=None)
+
+        error = _ai_error_from_groq(exc)
+
+        assert "não está disponível" in error.user_message
+        assert "chave" not in error.user_message.lower()
+        assert "AuthenticationError" in error.technical_detail
+
+    def test_generic_groq_error(self):
+        """Unclassified Groq failures keep the generic fallback."""
+        error = _ai_error_from_groq(GroqError("boom"))
+
+        assert error.user_message == GENERIC_GROQ_FAILURE_MESSAGE
+        assert "GroqError: boom" in error.technical_detail

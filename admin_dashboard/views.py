@@ -294,7 +294,10 @@ class AdminMaintenanceClassifyView(StaffRequiredMixin, View):
             return render(
                 request,
                 "admin_dashboard/_maintenance_ai_suggestion.html",
-                {"ai_error": str(exc)},
+                {
+                    "ai_error": exc.user_message,
+                    "ai_error_detail": exc.technical_detail,
+                },
             )
 
         return render(

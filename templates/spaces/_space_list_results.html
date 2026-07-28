@@ -1,7 +1,19 @@
 {% if ai_error %}
-<div class="notice notice-error mb-4">
+<div class="notice notice-error mb-4" role="alert">
     <span>{{ ai_error }}</span>
 </div>
+{% if ai_error_detail %}
+{{ ai_error_detail|json_script:"space-ai-error-detail" }}
+<script>
+(function () {
+    var node = document.getElementById("space-ai-error-detail");
+    if (!node) {
+        return;
+    }
+    console.warn("[busca-salas-ia]", JSON.parse(node.textContent));
+})();
+</script>
+{% endif %}
 {% elif ai_summary %}
 <div class="notice mb-4">
     <span><span class="font-medium">Entendi:</span> {{ ai_summary }}</span>

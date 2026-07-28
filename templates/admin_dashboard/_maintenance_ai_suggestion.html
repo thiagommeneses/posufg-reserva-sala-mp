@@ -1,7 +1,19 @@
 {% if ai_error %}
-<div class="notice notice-error mt-2">
+<div class="notice notice-error mt-2" role="alert">
     <span>{{ ai_error }}</span>
 </div>
+{% if ai_error_detail %}
+{{ ai_error_detail|json_script:"maintenance-ai-error-detail" }}
+<script>
+(function () {
+    var node = document.getElementById("maintenance-ai-error-detail");
+    if (!node) {
+        return;
+    }
+    console.warn("[manutencao-ia]", JSON.parse(node.textContent));
+})();
+</script>
+{% endif %}
 {% elif classification %}
 <div class="notice mt-2">
     <span>

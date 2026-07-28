@@ -160,12 +160,18 @@ class TestDocumentAssistantQuestion:
         """A failure in the AI service is shown to the user, not raised."""
         with patch(
             "knowledge.views.answer_from_documents",
-            side_effect=AIServiceError("serviço indisponível"),
+            side_effect=AIServiceError(
+                "O assistente precisa de uma pausa.",
+                technical_detail="RateLimitError: TPD exceeded",
+            ),
         ):
             response = cliente.post(url, {"question": "Qual a regra?"})
 
         assert response.status_code == 200
-        assert "indisponível" in response.content.decode()
+        html = response.content.decode()
+        assert "O assistente precisa de uma pausa." in html
+        assert "RateLimitError: TPD exceeded" in html
+        assert "console.warn" in html
 
     def test_answer_without_context_is_flagged(self, cliente, url):
         """An answer with no retrieved passages warns the user."""
