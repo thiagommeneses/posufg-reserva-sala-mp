@@ -50,6 +50,9 @@
         </div>
     </div>
 
-    <a href="{% url 'space_list' %}" class="btn btn-ghost btn-sm text-base-content/60">← Voltar aos espaços</a>
+    <a href="{% url 'space_list' %}" class="btn btn-ghost btn-sm text-base-content/60 inline-flex items-center gap-1.5">
+        {% include "partials/_icon.html" with name="arrow-left" %}
+        Voltar aos espaços
+    </a>
 </div>
 {% endblock %}

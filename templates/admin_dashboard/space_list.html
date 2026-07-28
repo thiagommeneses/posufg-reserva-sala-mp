@@ -7,7 +7,10 @@
             <h1 class="text-2xl font-semibold tracking-tight">Espaços</h1>
             <p class="mt-1 text-sm text-base-content/55">Cadastre, edite e ative ou desative espaços.</p>
         </div>
-        <a href="{% url 'admin_dashboard:space_create' %}" class="btn btn-primary btn-sm shrink-0">Novo espaço</a>
+        <a href="{% url 'admin_dashboard:space_create' %}" class="btn btn-primary btn-sm shrink-0 inline-flex items-center gap-1.5">
+            {% include "partials/_icon.html" with name="plus" %}
+            Novo espaço
+        </a>
     </header>
 
     <div class="surface overflow-hidden">
@@ -42,7 +45,10 @@
                             {% include "admin_dashboard/_space_status_badge.html" with space=space %}
                         </td>
                         <td class="text-right">
-                            <a href="{% url 'admin_dashboard:space_update' space.pk %}" class="btn btn-ghost btn-xs">Editar</a>
+                            <a href="{% url 'admin_dashboard:space_update' space.pk %}" class="btn btn-ghost btn-xs inline-flex items-center gap-1">
+                                {% include "partials/_icon.html" with name="pencil" %}
+                                Editar
+                            </a>
                         </td>
                     </tr>
                     {% empty %}

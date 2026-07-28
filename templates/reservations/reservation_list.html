@@ -40,7 +40,10 @@
                 {% include "components/_reservation_status_badge.html" with reservation=reservation %}
             </div>
             <div class="mt-4 flex justify-end">
-                <a href="{% url 'reservation_detail' reservation.id %}" class="btn btn-outline btn-sm">Ver detalhes</a>
+                <a href="{% url 'reservation_detail' reservation.id %}" class="btn btn-outline btn-sm inline-flex items-center gap-1.5">
+                    Ver detalhes
+                    {% include "partials/_icon.html" with name="eye" %}
+                </a>
             </div>
         </article>
         {% endfor %}

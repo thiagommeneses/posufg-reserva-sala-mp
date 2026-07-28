@@ -45,8 +45,9 @@
         {% endwith %}
 
         <div class="mt-auto pt-2">
-            <a href="{% url 'space_detail' space.id %}" class="btn btn-primary btn-sm w-full sm:w-auto">
+            <a href="{% url 'space_detail' space.id %}" class="btn btn-primary btn-sm w-full sm:w-auto inline-flex items-center justify-center gap-2">
                 Ver disponibilidade
+                {% include "partials/_icon.html" with name="calendar" %}
             </a>
         </div>
     </article>

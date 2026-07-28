@@ -47,32 +47,40 @@
         </dl>
 
         <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-base-300">
-            <a href="{% url 'reservation_list' %}" class="btn btn-ghost btn-sm text-base-content/60">← Voltar</a>
+            <a href="{% url 'reservation_list' %}" class="btn btn-ghost btn-sm text-base-content/60 inline-flex items-center gap-1.5">
+                {% include "partials/_icon.html" with name="arrow-left" %}
+                Voltar
+            </a>
             <div class="flex flex-wrap gap-2">
                 {% if can_check_in %}
                 <form method="post" action="{% url 'reservation_checkin' reservation.id %}">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-outline btn-sm border-success/40 text-success"
+                    <button type="submit" class="btn btn-outline btn-sm border-success/40 text-success inline-flex items-center gap-1.5"
                             hx-confirm="Confirmar check-in nesta reserva?"
                             hx-post="{% url 'reservation_checkin' reservation.id %}"
                             hx-swap="outerHTML"
                             hx-target="#reservation-actions">
                         Fazer check-in
+                        {% include "partials/_icon.html" with name="check" %}
                     </button>
                 </form>
                 {% endif %}
                 {% if can_reschedule %}
-                <a href="{% url 'reservation_reschedule' reservation.id %}" class="btn btn-outline btn-sm">Reagendar</a>
+                <a href="{% url 'reservation_reschedule' reservation.id %}" class="btn btn-outline btn-sm inline-flex items-center gap-1.5">
+                    Reagendar
+                    {% include "partials/_icon.html" with name="refresh" %}
+                </a>
                 {% endif %}
                 {% if can_cancel %}
                 <form method="post" action="{% url 'reservation_cancel' reservation.id %}">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-outline btn-sm border-error/40 text-error"
+                    <button type="submit" class="btn btn-outline btn-sm border-error/40 text-error inline-flex items-center gap-1.5"
                             hx-confirm="Tem certeza que deseja cancelar esta reserva?"
                             hx-post="{% url 'reservation_cancel' reservation.id %}"
                             hx-swap="outerHTML"
                             hx-target="#reservation-actions">
                         Cancelar
+                        {% include "partials/_icon.html" with name="x" %}
                     </button>
                 </form>
                 {% endif %}

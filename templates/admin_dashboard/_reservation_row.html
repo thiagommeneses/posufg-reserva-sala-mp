@@ -9,12 +9,13 @@
     <td class="text-right">
         {% if reservation.status == "confirmed" or reservation.status == "checked_in" %}
         <button
-            class="btn btn-ghost btn-xs text-error"
+            class="btn btn-ghost btn-xs text-error inline-flex items-center gap-1"
             hx-post="{% url 'admin_dashboard:reservation_cancel' reservation.pk %}"
             hx-target="#reservation-row-{{ reservation.pk }}"
             hx-swap="outerHTML"
             hx-confirm="Tem certeza que deseja cancelar esta reserva?"
         >
+            {% include "partials/_icon.html" with name="x" %}
             Cancelar
         </button>
         {% else %}

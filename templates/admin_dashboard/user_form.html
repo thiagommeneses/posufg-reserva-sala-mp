@@ -3,7 +3,10 @@
 {% block admin_content %}
 <div class="mx-auto max-w-xl space-y-6">
     <header>
-        <a href="{% url 'admin_dashboard:user_list' %}" class="text-sm text-base-content/50 hover:text-base-content">← Voltar</a>
+        <a href="{% url 'admin_dashboard:user_list' %}" class="text-sm text-base-content/50 hover:text-base-content inline-flex items-center gap-1">
+            {% include "partials/_icon.html" with name="arrow-left" %}
+            Voltar
+        </a>
         <h1 class="mt-2 text-2xl font-semibold tracking-tight">
             {% if object %}Editar usuário{% else %}Novo usuário{% endif %}
         </h1>
@@ -37,8 +40,14 @@
             {% endfor %}
 
             <div class="flex flex-wrap gap-2 pt-2">
-                <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
-                <a href="{% url 'admin_dashboard:user_list' %}" class="btn btn-ghost btn-sm">Cancelar</a>
+                <button type="submit" class="btn btn-primary btn-sm inline-flex items-center gap-1.5">
+                    Salvar
+                    {% include "partials/_icon.html" with name="save" %}
+                </button>
+                <a href="{% url 'admin_dashboard:user_list' %}" class="btn btn-ghost btn-sm inline-flex items-center gap-1.5">
+                    {% include "partials/_icon.html" with name="x" %}
+                    Cancelar
+                </a>
             </div>
         </form>
     </div>

@@ -5,12 +5,13 @@
     <td class="max-w-xs truncate text-sm text-base-content/70" title="{{ block.reason }}">{{ block.reason }}</td>
     <td class="text-right">
         <button
-            class="btn btn-ghost btn-xs text-error"
+            class="btn btn-ghost btn-xs text-error inline-flex items-center gap-1"
             hx-delete="{% url 'admin_dashboard:maintenance_delete' block.pk %}"
             hx-target="#maintenance-row-{{ block.pk }}"
             hx-swap="outerHTML"
             hx-confirm="Tem certeza que deseja remover este bloqueio de manutenção?"
         >
+            {% include "partials/_icon.html" with name="trash" %}
             Remover
         </button>
     </td>

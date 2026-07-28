@@ -78,10 +78,16 @@
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary w-full">Reservar</button>
+            <button type="submit" class="btn btn-primary w-full inline-flex items-center justify-center gap-2">
+                Reservar
+                {% include "partials/_icon.html" with name="calendar" %}
+            </button>
         </form>
     </div>
 
-    <a href="{% url 'space_list' %}" class="btn btn-ghost btn-sm text-base-content/60">← Voltar aos espaços</a>
+    <a href="{% url 'space_list' %}" class="btn btn-ghost btn-sm text-base-content/60 inline-flex items-center gap-1.5">
+        {% include "partials/_icon.html" with name="arrow-left" %}
+        Voltar aos espaços
+    </a>
 </div>
 {% endblock %}

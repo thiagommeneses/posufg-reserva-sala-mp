@@ -7,7 +7,10 @@
             <h1 class="text-2xl font-semibold tracking-tight">Manutenção</h1>
             <p class="mt-1 text-sm text-base-content/55">Bloqueie espaços e remova bloqueios quando necessário.</p>
         </div>
-        <a href="{% url 'admin_dashboard:maintenance_create' %}" class="btn btn-primary btn-sm shrink-0">Novo bloqueio</a>
+        <a href="{% url 'admin_dashboard:maintenance_create' %}" class="btn btn-primary btn-sm shrink-0 inline-flex items-center gap-1.5">
+            {% include "partials/_icon.html" with name="plus" %}
+            Novo bloqueio
+        </a>
     </header>
 
     <div class="surface overflow-hidden">

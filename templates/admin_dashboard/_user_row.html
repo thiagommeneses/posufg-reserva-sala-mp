@@ -17,15 +17,19 @@
     </td>
     <td class="text-right">
         <div class="inline-flex gap-1">
-            <a href="{% url 'admin_dashboard:user_update' user_obj.pk %}" class="btn btn-ghost btn-xs">Editar</a>
+            <a href="{% url 'admin_dashboard:user_update' user_obj.pk %}" class="btn btn-ghost btn-xs inline-flex items-center gap-1">
+                {% include "partials/_icon.html" with name="pencil" %}
+                Editar
+            </a>
             {% if user_obj.pk != request.user.pk %}
             <button
-                class="btn btn-ghost btn-xs text-error"
+                class="btn btn-ghost btn-xs text-error inline-flex items-center gap-1"
                 hx-delete="{% url 'admin_dashboard:user_delete' user_obj.pk %}"
                 hx-target="#user-row-{{ user_obj.pk }}"
                 hx-swap="outerHTML"
                 hx-confirm="Tem certeza que deseja remover o usuário {{ user_obj.username }}?"
             >
+                {% include "partials/_icon.html" with name="trash" %}
                 Remover
             </button>
             {% endif %}

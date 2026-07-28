@@ -7,7 +7,9 @@
         role="alert"
     >
         <span class="flex-1">{{ message }}</span>
-        <button type="button" class="btn btn-ghost btn-xs shrink-0" onclick="this.parentElement.remove()" aria-label="Fechar">×</button>
+        <button type="button" class="btn btn-ghost btn-xs shrink-0 inline-flex items-center" onclick="this.parentElement.remove()" aria-label="Fechar">
+            {% include "partials/_icon.html" with name="x" %}
+        </button>
     </div>
     {% endfor %}
 </div>

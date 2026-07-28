@@ -44,7 +44,10 @@
                     <p class="text-xs text-error mt-1">{{ form.password.errors.0 }}</p>
                     {% endif %}
                 </div>
-                <button type="submit" class="btn btn-primary w-full mt-2">Entrar</button>
+                <button type="submit" class="btn btn-primary w-full mt-2 inline-flex items-center justify-center gap-2">
+                    Entrar
+                    {% include "partials/_icon.html" with name="login" %}
+                </button>
             </form>
             <p class="mt-6 text-center text-sm text-base-content/55">
                 Não tem conta?
