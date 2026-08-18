@@ -1,12 +1,16 @@
 # Brief de Descoberta — Reserva de Espaços (MP-GO)
 
-| Campo | Valor |
-|---|---|
-| Autor | Revisão spec-driven (síntese do produto existente) |
-| Data | 2026-08-18 |
-| Status | em validação |
+
+| Campo  | Valor                                              |
+| ------ | -------------------------------------------------- |
+| Autor  | Revisão spec-driven (síntese do produto existente) |
+| Data   | 2026-08-18                                         |
+| Status | em validação                                       |
+
 
 > Revisão as-is de um produto já implementado. Não há pesquisa de campo nova nesta revisão. Cada afirmação relevante está marcada `[FATO]`, `[HIPÓTESE]` ou `[A VALIDAR]`. `[FATO]` aqui significa: dito em documento do produto, citado de servidora do MP-GO no README, ou verificado no código.
+
+
 
 ## 1. Problema e resultado de negócio
 
@@ -19,6 +23,8 @@
 - **Resultado secundário (OUT-03):** Administrador de facilities vê ocupação, bloqueia manutenção e resolve conflito sem planilha paralela.
 - **Resultado secundário (OUT-04):** Quem precisa redigir ou consultar regra de uso obtém resposta comparativa ancorada em normas de outras instituições públicas, com a fonte visível.
 
+
+
 ## 2. Proposta de valor
 
 > Para **servidor do MP-GO que precisa de uma sala agora e hoje depende de planilha, telefone ou ocupação informal**, o **Reserva de Espaços** é um **calendário único de autogestão** que **mostra disponibilidade real, reserva na hora e libera no-show**. Diferente da **planilha setorial + ligação**, ele **é a fonte da verdade: se não está no sistema, o horário não está reservado**.
@@ -30,25 +36,29 @@ Inovação de valor declarada pelo PO (três pilares Pareto): calendário único
 
 ## 3. Usuários
 
-| Perfil | Papel (usa / decide / é afetado) | Baseado em | Ficha |
-|---|---|---|---|
-| Servidor que reserva | usa | 1 citação de servidora MP-GO + docs do PO `[HIPÓTESE]` no restante | `01-perfil-usuario.md` § A |
-| Administrador de espaços | usa | docs do PO e jornadas do painel `[HIPÓTESE]` | `01-perfil-usuario.md` § B |
-| Chefia / gestor de área | decide adoção | domínio institucional `[HIPÓTESE]` | `01-perfil-usuario.md` § C |
-| Colega que chega na sala | é afetado | shadow booking descrito pelo PO `[HIPÓTESE]` | `01-perfil-usuario.md` § D |
-| Redator de norma / consulente do assistente | usa (secundário) | manifesto do corpus `[FATO]` no propósito; perfil `[HIPÓTESE]` | `01-perfil-usuario.md` § E |
+
+| Perfil                                      | Papel (usa / decide / é afetado) | Baseado em                                                         | Ficha                      |
+| ------------------------------------------- | -------------------------------- | ------------------------------------------------------------------ | -------------------------- |
+| Servidor que reserva                        | usa                              | 1 citação de servidora MP-GO + docs do PO `[HIPÓTESE]` no restante | `01-perfil-usuario.md` § A |
+| Administrador de espaços                    | usa                              | docs do PO e jornadas do painel `[HIPÓTESE]`                       | `01-perfil-usuario.md` § B |
+| Chefia / gestor de área                     | decide adoção                    | domínio institucional `[HIPÓTESE]`                                 | `01-perfil-usuario.md` § C |
+| Colega que chega na sala                    | é afetado                        | shadow booking descrito pelo PO `[HIPÓTESE]`                       | `01-perfil-usuario.md` § D |
+| Redator de norma / consulente do assistente | usa (secundário)                 | manifesto do corpus `[FATO]` no propósito; perfil `[HIPÓTESE]`     | `01-perfil-usuario.md` § E |
+
 
 Conflito típico do domínio `[HIPÓTESE]`: o servidor quer reserva instantânea; o administrador quer controle (duração, quem reserva o quê, prioridade). O PO nomeia isso como “conflito de expectativas”. Políticas de uso (PRD story 9) não foram implementadas — o produto hoje privilegia agilidade.
 
 ## 4. Alternativas atuais
 
-| Alternativa | Tipo | Por que as pessoas usam | Onde falha |
-|---|---|---|---|
-| Planilha setorial + telefone | improviso / direta | `[FATO]` é o processo atual no MP-GO; cada departamento tem a sua regra | dado divergente; conhecimento na cabeça de quem atende; sem norma verificável |
-| Google Agenda / calendário de sala | indireta | `[HIPÓTESE]` já está no e-mail institucional; baixo atrito para quem “dona” a sala | não filtra por equipamento; não combate no-show; não é calendário único da instituição |
-| Ocupar sala vazia (shadow booking) | improviso | `[FATO]` descrito pelo PO como prática que gera conflito quando o dono da reserva chega | quebra confiança no canal formal |
-| Não reservar / remarcar presencialmente | improviso | evita o rito | desperdício de deslocamento; reunião não acontece |
-| Sistemas comerciais de room booking | direta | `[HIPÓTESE]` conhecidos de outros órgãos | custo, contratação, identidade visual e SSO institucional; não resolvem norma inexistente |
+
+| Alternativa                             | Tipo               | Por que as pessoas usam                                                                 | Onde falha                                                                                |
+| --------------------------------------- | ------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Planilha setorial + telefone            | improviso / direta | `[FATO]` é o processo atual no MP-GO; cada departamento tem a sua regra                 | dado divergente; conhecimento na cabeça de quem atende; sem norma verificável             |
+| Google Agenda / calendário de sala      | indireta           | `[HIPÓTESE]` já está no e-mail institucional; baixo atrito para quem “dona” a sala      | não filtra por equipamento; não combate no-show; não é calendário único da instituição    |
+| Ocupar sala vazia (shadow booking)      | improviso          | `[FATO]` descrito pelo PO como prática que gera conflito quando o dono da reserva chega | quebra confiança no canal formal                                                          |
+| Não reservar / remarcar presencialmente | improviso          | evita o rito                                                                            | desperdício de deslocamento; reunião não acontece                                         |
+| Sistemas comerciais de room booking     | direta             | `[HIPÓTESE]` conhecidos de outros órgãos                                                | custo, contratação, identidade visual e SSO institucional; não resolvem norma inexistente |
+
 
 Detalhamento em `02-analise-competitiva.md`.
 
@@ -59,16 +69,20 @@ Detalhamento em `02-analise-competitiva.md`.
 - **Elevar/criar:** confiança de que o calendário reflete o mundo físico; rastreio de quem reservou, cancelou e fez check-in; consulta normativa com fonte citada (camada RAG).
 - **Frase testável:** um servidor encontra sala adequada e confirma a reserva em menos de 3 minutos, sem telefone; a sala cujo ocupante não fez check-in em 15 minutos volta a aparecer como livre para o próximo.
 
+
+
 ## 6. Hipóteses de risco
 
-| ID | Hipótese | Tipo | Dor se estiver errada | Experimento |
-|---|---|---|---|---|
-| H-01 | Servidores abandonam planilha/telefone e passam a tratar o calendário como fonte da verdade | valor | alta — o produto vira canal a mais | EXP-01 |
-| H-02 | Na hora H, o servidor consegue e aceita fazer check-in (na porta ou no celular) com a janela de 15 minutos | usabilidade | alta — auto-release pune quem usou a sala e não fechou o ciclo; ocupação continua mentirosa | EXP-02 |
-| H-03 | É possível definir políticas de uso (duração, antecedência, quem reserva o quê) sem norma formal consolidada, só com regra operacional do admin | negócio | alta — ou o admin não consegue controlar, ou o servidor volta ao telefone para “pedir exceção” | EXP-01 |
-| H-04 | Resposta do assistente sem trecho de fonte visível é pior para a confiança do que não ter assistente | valor / IA | média — alucinação institucional em órgão de controle | EXP-03 |
-| H-05 | Admin precisa reagendar reserva de terceiro (não só cancelar) para resolver conflito sem destruir o compromisso | usabilidade | média — cancelar e pedir para a pessoa refazer aumenta atrito e telefone | — |
-| H-06 | Reserva com check-in que já passou do horário, se continuar “ativa”, faz o calendário mentir e o dashboard perder credibilidade | valor | média — OUT-01 não se sustenta no tempo | — |
+
+| ID   | Hipótese                                                                                                                                        | Tipo        | Dor se estiver errada                                                                          | Experimento |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------- | ----------- |
+| H-01 | Servidores abandonam planilha/telefone e passam a tratar o calendário como fonte da verdade                                                     | valor       | alta — o produto vira canal a mais                                                             | EXP-01      |
+| H-02 | Na hora H, o servidor consegue e aceita fazer check-in (na porta ou no celular) com a janela de 15 minutos                                      | usabilidade | alta — auto-release pune quem usou a sala e não fechou o ciclo; ocupação continua mentirosa    | EXP-02      |
+| H-03 | É possível definir políticas de uso (duração, antecedência, quem reserva o quê) sem norma formal consolidada, só com regra operacional do admin | negócio     | alta — ou o admin não consegue controlar, ou o servidor volta ao telefone para “pedir exceção” | EXP-01      |
+| H-04 | Resposta do assistente sem trecho de fonte visível é pior para a confiança do que não ter assistente                                            | valor / IA  | média — alucinação institucional em órgão de controle                                          | EXP-03      |
+| H-05 | Admin precisa reagendar reserva de terceiro (não só cancelar) para resolver conflito sem destruir o compromisso                                 | usabilidade | média — cancelar e pedir para a pessoa refazer aumenta atrito e telefone                       | —           |
+| H-06 | Reserva com check-in que já passou do horário, se continuar “ativa”, faz o calendário mentir e o dashboard perder credibilidade                 | valor       | média — OUT-01 não se sustenta no tempo                                                        | —           |
+
 
 Ordenação por dor: H-01 e H-02 sustentam os pilares Pareto. H-03 é o conflito agilidade vs controle. H-04 é a aposta da camada acadêmica, não do núcleo de reserva.
 
@@ -79,6 +93,8 @@ Ordenação por dor: H-01 e H-02 sustentam os pilares Pareto. H-03 é o conflito
 - **Regulatórias/normativas:** `[FATO]` sistema público — acessibilidade e tratamento de dados pessoais importam; `[FATO]` não há norma própria de espaços no MP-GO, então a regra de negócio do produto não pode se apresentar como regulamento oficial. Trilha de quem alterou reserva de terceiro é exigência de domínio institucional `[HIPÓTESE]` a confirmar com a área.
 - **Técnicas/legado:** `[FATO]` Django templates + HTMX; PostgreSQL com exclusion constraint; check-in e auto-release já têm services; Groq é dependência externa do assistente e da busca NL.
 - **Organizacionais:** `[FATO]` vários departamentos, cada um com regra informal; adoção exige que o calendário único substitua (não conviva com) a planilha — senão H-01 cai.
+
+
 
 ## 8. Decisão
 
