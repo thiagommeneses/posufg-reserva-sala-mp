@@ -1,0 +1,494 @@
+# Story map as-is — Reserva de Espaços (MP-GO).
+# Valide:  python .agents/skills/spec-driven-ux/scripts/storymap.py validar docs/spec-driven/04-story-map.yaml
+# Renderize: python .agents/skills/spec-driven-ux/scripts/storymap.py md docs/spec-driven/04-story-map.yaml -o docs/spec-driven/05-story-map.md
+
+produto: Reserva de Espaços (MP-GO)
+versao: "1.0"
+atualizado_em: "2026-08-18"
+
+resultados:
+  - id: OUT-01
+    descricao: A ocupação visível no calendário corresponde ao uso real da sala
+    metrica: "Taxa de reservas que terminam em check-in ou no-show liberado, versus confirmed/checked_in que já passaram do horário (linha de base: [A VALIDAR] — não medida)"
+  - id: OUT-02
+    descricao: Servidor encontra e reserva o espaço adequado sem aprovação e sem telefone
+    metrica: "Tempo entre abrir a listagem e confirmar a reserva; % de reservas sem contato com o setor (linha de base: [A VALIDAR])"
+  - id: OUT-03
+    descricao: Admin opera inventário, manutenção e conflito sem planilha paralela
+    metrica: "Número de ajustes feitos no painel versus fora do sistema (telefone/planilha) (linha de base: [A VALIDAR])"
+  - id: OUT-04
+    descricao: Consulente obtém resposta comparativa ancorada em norma de outra instituição, sem parecer norma do MP-GO
+    metrica: "% de respostas com fonte visível e recusa quando não há contexto (linha de base do código: recusa já implementada; qualidade percebida [A VALIDAR] EXP-03)"
+
+fatias:
+  - id: FAT-01
+    nome: Servidor reserva e o calendário passa a ser a fonte da verdade
+    resultado: OUT-02
+    esqueleto_ambulante: true
+    objetivo_aprendizado: "H-01 — o canal formal substitui planilha e telefone no caso comum"
+  - id: FAT-02
+    nome: Admin vê ocupação ao vivo e bloqueia manutenção
+    resultado: OUT-03
+    esqueleto_ambulante: false
+    objetivo_aprendizado: "O painel substitui a planilha para ver o agora e impedir reserva em horário de limpeza"
+  - id: FAT-03
+    nome: Servidor consulta norma comparativa com citação de fonte
+    resultado: OUT-04
+    esqueleto_ambulante: false
+    objetivo_aprendizado: "H-04 — resposta sem fonte é pior do que não ter assistente"
+  - id: FAT-04
+    nome: Quem chega na porta confirma presença e o no-show libera a sala
+    resultado: OUT-01
+    esqueleto_ambulante: false
+    objetivo_aprendizado: "H-02 — check-in na hora H acontece; o terceiro pilar Pareto deixa de ser incompleto"
+  - id: FAT-05
+    nome: Admin impõe duração e quem reserva o quê sem planilha paralela
+    resultado: OUT-03
+    esqueleto_ambulante: false
+    objetivo_aprendizado: "H-03 — política operacional funciona mesmo sem norma formal consolidada"
+  - id: FAT-06
+    nome: Reserva encerrada vira histórico e o calendário para de mentir depois do horário
+    resultado: OUT-01
+    esqueleto_ambulante: false
+    objetivo_aprendizado: "H-06 — checked_in após o fim do horário não pode continuar ocupando o slot"
+  - id: FAT-07
+    nome: Admin desfaz conflito reagendando terceiros, não só cancelando
+    resultado: OUT-03
+    esqueleto_ambulante: false
+    objetivo_aprendizado: "H-05 — cancelar e mandar refazer aumenta telefone; reagendar com trilha resolve"
+
+atividades:
+  - id: ACT-01
+    nome: Entrar no sistema
+    passos:
+      - id: STP-01.01
+        nome: Identificar-se
+        historias:
+          - id: US-001
+            titulo: Criar conta de servidor comum
+            como: servidor que reserva
+            quero: registrar usuário, e-mail e senha
+            para: minhas reservas ficarem ligadas à minha identidade, sem virar administrador por engano
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+          - id: US-002
+            titulo: Entrar com usuário e senha
+            como: servidor que reserva
+            quero: autenticar e cair na busca de espaços
+            para: começar a reservar sem passar por tela de teste
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+            hipoteses: [H-01]
+          - id: US-003
+            titulo: Staff cai no painel após o login
+            como: administrador de espaços
+            quero: ir direto ao dashboard quando minha conta é staff
+            para: não perder o início da manhã na listagem de salas
+            fatia: FAT-02
+            resultado: OUT-03
+            estado: pronta
+      - id: STP-01.02
+        nome: Encontrar o ponto de partida
+        historias:
+          - id: US-004
+            titulo: Listagem de espaços como tela inicial
+            como: servidor que reserva
+            quero: ver as salas disponíveis assim que entro
+            para: não precisar lembrar de uma URL de reserva
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+
+  - id: ACT-02
+    nome: Descobrir o espaço
+    passos:
+      - id: STP-02.01
+        nome: Buscar por necessidade, não por nome
+        historias:
+          - id: US-010
+            titulo: Filtrar por capacidade, localização e equipamentos
+            como: servidor que reserva
+            quero: restringir a lista ao que cabe na reunião e tem o equipamento
+            para: não reservar auditório para duas pessoas nem sala sem TV
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+            hipoteses: [H-01]
+          - id: US-011
+            titulo: Buscar a sala em linguagem natural
+            como: servidor que reserva
+            quero: descrever o que preciso em uma frase
+            para: achar o espaço sem decorar o nome dos filtros
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+          - id: US-012
+            titulo: Esconder espaços inativos da busca
+            como: servidor que reserva
+            quero: ver só salas que ainda aceitam reserva
+            para: não perder tempo em espaço desativado
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+      - id: STP-02.02
+        nome: Ver se o horário está livre de verdade
+        historias:
+          - id: US-013
+            titulo: Grade de horários por data
+            como: servidor que reserva
+            quero: escolher um dia e ver faixas livres e ocupadas
+            para: confiar no dado sem ir até a porta
+            fatia: FAT-01
+            resultado: OUT-01
+            estado: pronta
+            hipoteses: [H-01]
+          - id: US-014
+            titulo: Distinguir reserva de bloqueio de manutenção
+            como: servidor que reserva
+            quero: ver quando o ocupado é limpeza e não reunião
+            para: não achar que alguém marcou reunião no horário da manutenção
+            fatia: FAT-01
+            resultado: OUT-01
+            estado: pronta
+
+  - id: ACT-03
+    nome: Reservar
+    passos:
+      - id: STP-03.01
+        nome: Escolher o horário
+        historias:
+          - id: US-020
+            titulo: Partir do slot livre para a confirmação
+            como: servidor que reserva
+            quero: clicar no horário livre e ir ao formulário já com espaço e início
+            para: não redigitar o que acabei de ver no calendário
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+          - id: US-021
+            titulo: Escolher o espaço quando a nova reserva abre sem sala
+            como: servidor que reserva
+            quero: selecionar a sala no próprio formulário se cheguei sem ela
+            para: não ser mandado de volta à listagem com uma mensagem de erro
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: descoberta
+      - id: STP-03.02
+        nome: Confirmar na hora
+        historias:
+          - id: US-022
+            titulo: Reserva instantânea sem aprovação
+            como: servidor que reserva
+            quero: confirmar o horário e já ficar com a sala
+            para: não esperar alguém do setor liberar o caso comum
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+            hipoteses: [H-01]
+          - id: US-023
+            titulo: Recusar overlap com outra reserva ou manutenção
+            como: servidor que reserva
+            quero: ser avisado na hora se o horário já não está livre
+            para: não achar que reservei quando o calendário único diz o contrário
+            fatia: FAT-01
+            resultado: OUT-01
+            estado: pronta
+          - id: US-024
+            titulo: Respeitar duração máxima e antecedência
+            como: servidor que reserva
+            quero: ver com clareza quando minha escolha viola a regra do espaço
+            para: ajustar o horário em vez de ligar pedindo exceção
+            fatia: FAT-05
+            resultado: OUT-03
+            estado: descoberta
+            hipoteses: [H-03]
+          - id: US-025
+            titulo: Só quem pode reservar aquele espaço consegue confirmar
+            como: servidor que reserva
+            quero: ser informado se aquele auditório não é para o meu perfil
+            para: não descobrir a recusa só no telefone, depois de achar que estava feito
+            fatia: FAT-05
+            resultado: OUT-03
+            estado: descoberta
+            hipoteses: [H-03]
+
+  - id: ACT-04
+    nome: Usar o espaço
+    passos:
+      - id: STP-04.01
+        nome: Confirmar presença
+        historias:
+          - id: US-030
+            titulo: Check-in pelo detalhe da reserva já autenticado
+            como: servidor que reserva
+            quero: confirmar presença na página da minha reserva, 15 minutos antes até o fim
+            para: o sistema saber que estou usando a sala
+            fatia: FAT-01
+            resultado: OUT-01
+            estado: pronta
+            hipoteses: [H-02]
+          - id: US-031
+            titulo: Check-in pela URL da porta com página que explica o estado
+            como: servidor que reserva
+            quero: apontar o celular para o QR, ver se posso confirmar, e confirmar
+            para: fechar o ciclo na porta sem caçar a reserva no menu
+            fatia: FAT-04
+            resultado: OUT-01
+            estado: descoberta
+            hipoteses: [H-02]
+          - id: US-032
+            titulo: Recusar check-in fora da janela ou de outra pessoa
+            como: servidor que reserva
+            quero: ver uma mensagem clara se ainda não é hora, já passou, ou a reserva não é minha
+            para: não achar que confirmei quando o sistema recusou
+            fatia: FAT-04
+            resultado: OUT-01
+            estado: descoberta
+            hipoteses: [H-02]
+      - id: STP-04.02
+        nome: Liberar quem não veio
+        historias:
+          - id: US-033
+            titulo: No-show 15 minutos após o início sem check-in
+            como: administrador de espaços
+            quero: que o horário volte a ficar livre quando a pessoa não confirmou presença
+            para: o próximo servidor conseguir reservar em vez de achar a sala eternamente ocupada
+            fatia: FAT-04
+            resultado: OUT-01
+            estado: pronta
+            hipoteses: [H-02]
+          - id: US-034
+            titulo: Liberação de no-show sem depender de alguém rodar o comando
+            como: administrador de espaços
+            quero: que a liberação aconteça sozinha no expediente
+            para: o calendário não mentir o dia inteiro se ninguém executou o cron
+            fatia: FAT-04
+            resultado: OUT-01
+            estado: descoberta
+            hipoteses: [H-02]
+      - id: STP-04.03
+        nome: Encerrar o uso no horário
+        historias:
+          - id: US-035
+            titulo: Reserva com presença vira histórico depois do fim
+            como: servidor que reserva
+            quero: ver a reunião de ontem em Passadas, não como se ainda ocupasse a sala
+            para: o calendário e o painel refletirem o mundo depois do horário
+            fatia: FAT-06
+            resultado: OUT-01
+            estado: descoberta
+            hipoteses: [H-06]
+
+  - id: ACT-05
+    nome: Gerir a própria reserva
+    passos:
+      - id: STP-05.01
+        nome: Ver o que é meu
+        historias:
+          - id: US-040
+            titulo: Abas de ativas, passadas e canceladas
+            como: servidor que reserva
+            quero: achar a reserva de hoje sem misturar com o histórico
+            para: cancelar, reagendar ou fazer check-in sem caçar
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+      - id: STP-05.02
+        nome: Desistir ou mudar sozinho
+        historias:
+          - id: US-041
+            titulo: Cancelar a própria reserva
+            como: servidor que reserva
+            quero: desistir sem pedir ao administrador
+            para: o horário voltar a ficar livre na hora
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+          - id: US-042
+            titulo: Reagendar a própria reserva sem overlap
+            como: servidor que reserva
+            quero: mudar o horário da mesma sala, com as mesmas regras de conflito
+            para: não cancelar e criar de novo quando o compromisso anda
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+
+  - id: ACT-06
+    nome: Operar o inventário
+    passos:
+      - id: STP-06.01
+        nome: Ver o que está acontecendo agora
+        historias:
+          - id: US-050
+            titulo: Painel de ocupação ao vivo
+            como: administrador de espaços
+            quero: ver totais e o estado de cada sala, atualizando sozinho
+            para: não ligar para saber se a Alfa está ocupada
+            fatia: FAT-02
+            resultado: OUT-03
+            estado: pronta
+      - id: STP-06.02
+        nome: Manter o cadastro das salas
+        historias:
+          - id: US-051
+            titulo: Cadastrar e editar espaço com atributos
+            como: administrador de espaços
+            quero: registrar nome, capacidade, localização e equipamentos
+            para: a busca do servidor encontrar o inventário real
+            fatia: FAT-02
+            resultado: OUT-03
+            estado: pronta
+          - id: US-052
+            titulo: Ativar ou desativar espaço sem apagar o histórico
+            como: administrador de espaços
+            quero: tirar uma sala da busca quando não pode mais ser reservada
+            para: parar novas reservas sem perder o que já aconteceu
+            fatia: FAT-02
+            resultado: OUT-03
+            estado: pronta
+      - id: STP-06.03
+        nome: Bloquear para manutenção
+        historias:
+          - id: US-053
+            titulo: Criar bloqueio de limpeza ou conserto
+            como: administrador de espaços
+            quero: fechar um intervalo para manutenção
+            para: ninguém reservar em cima da logística
+            fatia: FAT-02
+            resultado: OUT-03
+            estado: pronta
+          - id: US-054
+            titulo: Sugerir categoria do motivo via IA
+            como: administrador de espaços
+            quero: classificar o motivo em texto livre com uma sugestão
+            para: padronizar o tipo de bloqueio sem perder tempo em taxonomia
+            fatia: FAT-02
+            resultado: OUT-03
+            estado: pronta
+      - id: STP-06.04
+        nome: Resolver conflito
+        historias:
+          - id: US-055
+            titulo: Cancelar reserva de qualquer pessoa
+            como: administrador de espaços
+            quero: derrubar um horário para desfazer conflito
+            para: priorizar o caso urgente sem pedir a senha de ninguém
+            fatia: FAT-02
+            resultado: OUT-03
+            estado: pronta
+          - id: US-056
+            titulo: Reagendar reserva de terceiro com trilha
+            como: administrador de espaços
+            quero: mover o horário de outra pessoa, com os mesmos guards de overlap, e deixar visível quem alterou
+            para: resolver o conflito sem destruir o compromisso nem perder auditoria
+            fatia: FAT-07
+            resultado: OUT-03
+            estado: descoberta
+            hipoteses: [H-05]
+      - id: STP-06.05
+        nome: Definir as regras do jogo
+        historias:
+          - id: US-057
+            titulo: Configurar duração, antecedência e quem reserva o quê
+            como: administrador de espaços
+            quero: gravar a política operacional no sistema
+            para: a regra sair da minha cabeça e da planilha
+            fatia: FAT-05
+            resultado: OUT-03
+            estado: descoberta
+            hipoteses: [H-03]
+      - id: STP-06.06
+        nome: Controlar quem acessa
+        historias:
+          - id: US-058
+            titulo: Criar, editar, promover e remover usuários
+            como: administrador de espaços
+            quero: gerir contas e staff no painel
+            para: não depender do Django Admin para o dia a dia
+            fatia: FAT-02
+            resultado: OUT-03
+            estado: pronta
+
+  - id: ACT-07
+    nome: Consultar normas
+    passos:
+      - id: STP-07.01
+        nome: Perguntar em linguagem natural
+        historias:
+          - id: US-060
+            titulo: Perguntar e receber resposta com fontes
+            como: redator de norma
+            quero: perguntar em português e ver a resposta junto com instituição e excerto
+            para: usar o texto como insumo comparativo, não como dogma
+            fatia: FAT-03
+            resultado: OUT-04
+            estado: pronta
+            hipoteses: [H-04]
+          - id: US-061
+            titulo: Recusar quando não há trecho recuperado
+            como: redator de norma
+            quero: que o sistema diga que não sabe em vez de inventar
+            para: não levar alucinação para uma minuta institucional
+            fatia: FAT-03
+            resultado: OUT-04
+            estado: pronta
+            hipoteses: [H-04]
+          - id: US-062
+            titulo: Continuar a conversa com o histórico recente
+            como: redator de norma
+            quero: fazer uma pergunta de seguimento sem repetir o contexto
+            para: comparar instituições em sequência
+            fatia: FAT-03
+            resultado: OUT-04
+            estado: pronta
+      - id: STP-07.02
+        nome: Conferir a origem
+        historias:
+          - id: US-063
+            titulo: Expandir o excerto e abrir o documento original
+            como: redator de norma
+            quero: ver o trecho e o link da fonte
+            para: conferir antes de copiar qualquer coisa para a minuta
+            fatia: FAT-03
+            resultado: OUT-04
+            estado: pronta
+            hipoteses: [H-04]
+
+hipoteses:
+  - id: H-01
+    descricao: Servidores abandonam planilha e telefone e passam a tratar o calendário como fonte da verdade
+    risco: alto
+    experimento: EXP-01
+  - id: H-02
+    descricao: Na hora H o servidor consegue e aceita fazer check-in na porta, na janela de 15 minutos
+    risco: alto
+    experimento: EXP-02
+  - id: H-03
+    descricao: É possível gravar política operacional (duração, antecedência, elegibilidade) sem norma formal consolidada
+    risco: alto
+    experimento: EXP-01
+  - id: H-04
+    descricao: Resposta do assistente sem fonte visível, ou apresentada como norma do MP-GO, destrói mais confiança do que não ter assistente
+    risco: medio
+    experimento: EXP-03
+  - id: H-05
+    descricao: Admin precisa reagendar reserva de terceiro, não só cancelar, para resolver conflito sem gerar outro telefone
+    risco: medio
+  - id: H-06
+    descricao: Reserva com check-in que já passou do horário, se continuar ativa, faz o calendário mentir
+    risco: medio
+
+fora_de_escopo:
+  - "Pagamento in-app (PO: só faria sentido em modelo público pago)"
+  - "Notificações por e-mail ou push (PRD; pode voltar depois de FAT-04, senão o check-in depende de a pessoa lembrar sozinha)"
+  - Autenticação social / OAuth
+  - Multi-tenancy (várias organizações no mesmo deploy)
+  - Integração com Google Calendar, Outlook ou ERP
+  - Hardware de presença (catraca, sensor) — QR impresso é o teto desta leva
+  - Frontend SPA separado
+  - Check-in anônimo na porta (quebra auditoria de quem confirmou)
+  - Assistente falando em nome do MP-GO ou gerando minuta oficial
+  - Políticas de aprovação manual para sala premium (adiado até H-03 ser medida; hoje a reserva é instantânea)
+  - Dark mode e geração visual do QR no cadastro da sala (polimento, não resultado)

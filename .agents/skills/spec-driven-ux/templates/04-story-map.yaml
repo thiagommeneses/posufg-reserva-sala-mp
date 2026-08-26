@@ -1,0 +1,53 @@
+# Story map — fonte da verdade da fase 2. Substitua os placeholders.
+# Valide:      python scripts/storymap.py validar 04-story-map.yaml
+# Renderize:   python scripts/storymap.py md 04-story-map.yaml -o story-map.md
+#              python scripts/storymap.py html 04-story-map.yaml -o story-map.html
+# Exemplo real e preenchido: examples/04-story-map.yaml
+
+produto: "[Nome do produto]"
+versao: "0.1"
+atualizado_em: "AAAA-MM-DD"
+
+# Resultados buscados. Sem métrica não há como saber se aconteceu.
+resultados:
+  - id: OUT-01
+    descricao: "[Que comportamento/resultado muda]"
+    metrica: "[Como se mede] (linha de base: [valor atual])"
+
+# Fatias: corte horizontal que atravessa a espinha inteira.
+# Nomeie pelo resultado entregue, nunca por 'release 1' ou camada técnica.
+fatias:
+  - id: FAT-01
+    nome: "[Quem consegue fazer o quê de novo]"
+    resultado: OUT-01
+    esqueleto_ambulante: true      # exatamente uma fatia deve ser true
+    objetivo_aprendizado: "[Que hipótese esta fatia testa]"
+
+# Espinha dorsal: atividades em ordem narrativa, cada uma com seus passos,
+# cada passo com as histórias (variações, exceções, regras).
+atividades:
+  - id: ACT-01
+    nome: "[Verbo + objeto: ex. 'identificar a necessidade']"
+    passos:
+      - id: STP-01.01
+        nome: "[Verbo + objeto, mais específico]"
+        historias:
+          - id: US-001
+            titulo: "[Título curto e concreto]"
+            como: "[perfil de usuário]"
+            quero: "[ação]"
+            para: "[benefício real — não repita a ação]"
+            fatia: FAT-01
+            resultado: OUT-01
+            estado: descoberta          # descoberta | pronta | em-entrega | medindo | descartada
+            hipoteses: [H-01]           # opcional
+
+hipoteses:
+  - id: H-01
+    descricao: "[O que precisa ser verdade]"
+    risco: alto                          # alto | medio | baixo
+    experimento: EXP-01
+
+# O que foi deliberadamente adiado. Escrever aqui evita renegociação eterna.
+fora_de_escopo:
+  - "[Item adiado e, se possível, por quê]"

@@ -1,0 +1,223 @@
+# EXEMPLO PREENCHIDO — Painel de Triagem de Manifestações (caso didático fictício).
+# Mostra a estrutura completa: espinha dorsal narrativa, fatias por resultado,
+# esqueleto ambulante e histórias ligadas a hipóteses.
+# Valide com: python scripts/storymap.py validar examples/04-story-map.yaml
+
+produto: Painel de Triagem de Manifestações
+versao: "0.3"
+atualizado_em: "2026-08-14"
+
+resultados:
+  - id: OUT-01
+    descricao: Assessor distribui a manifestação no mesmo dia da chegada
+    metrica: "Tempo entre protocolo e distribuição (linha de base: 2,3 dias úteis)"
+  - id: OUT-02
+    descricao: Manifestação chega à área certa na primeira distribuição
+    metrica: "% de redistribuição por classificação errada (linha de base: 18%)"
+  - id: OUT-03
+    descricao: Coordenação enxerga o estado da fila sem pedir relatório
+    metrica: "Nº de solicitações manuais de status por semana (linha de base: 9)"
+
+fatias:
+  - id: FAT-01
+    nome: Assessor tria e distribui uma manifestação comum sem abrir o PDF
+    resultado: OUT-01
+    esqueleto_ambulante: true
+    objetivo_aprendizado: Verificar se os campos extraídos bastam para decidir (H-01, H-02)
+  - id: FAT-02
+    nome: Assessor lida com os casos que fogem do comum sem sair do painel
+    resultado: OUT-02
+    esqueleto_ambulante: false
+    objetivo_aprendizado: Medir se a redistribuição cai quando há contexto e histórico
+  - id: FAT-03
+    nome: Coordenação acompanha a fila e redistribui carga
+    resultado: OUT-03
+    esqueleto_ambulante: false
+    objetivo_aprendizado: Confirmar que a visão de fila substitui os pedidos manuais de status
+
+atividades:
+  - id: ACT-01
+    nome: Assumir a fila do dia
+    passos:
+      - id: STP-01.01
+        nome: Ver o que chegou e o que é meu
+        historias:
+          - id: US-001
+            titulo: Fila do dia ordenada por prazo
+            como: assessor de triagem
+            quero: ver as manifestações pendentes ordenadas pelo prazo mais apertado
+            para: começar pelo que corre risco de vencer
+            fatia: FAT-01
+            resultado: OUT-01
+            estado: pronta
+          - id: US-002
+            titulo: Reserva de item para evitar triagem duplicada
+            como: assessor de triagem
+            quero: que o item que abri fique marcado como meu
+            para: não triar o mesmo caso que o colega
+            fatia: FAT-02
+            resultado: OUT-01
+            estado: descoberta
+      - id: STP-01.02
+        nome: Retomar o que ficou pendente ontem
+        historias:
+          - id: US-003
+            titulo: Separação entre novos e retomados
+            como: assessor de triagem
+            quero: distinguir o que já vi e deixei pendente
+            para: não reler o que já analisei
+            fatia: FAT-02
+            resultado: OUT-01
+            estado: descoberta
+
+  - id: ACT-02
+    nome: Entender a manifestação
+    passos:
+      - id: STP-02.01
+        nome: Ler o essencial já extraído
+        historias:
+          - id: US-010
+            titulo: Resumo estruturado com assunto, requerente, órgão e prazo
+            como: assessor de triagem
+            quero: ver os campos essenciais extraídos do documento
+            para: decidir sem ler o PDF inteiro
+            fatia: FAT-01
+            resultado: OUT-01
+            estado: pronta
+            hipoteses: [H-02]
+          - id: US-011
+            titulo: Cada campo aponta o trecho de origem no documento
+            como: assessor de triagem
+            quero: ver de onde cada informação foi extraída
+            para: confiar no dado sem conferir tudo
+            fatia: FAT-01
+            resultado: OUT-01
+            estado: pronta
+            hipoteses: [H-01]
+      - id: STP-02.02
+        nome: Consultar o documento quando necessário
+        historias:
+          - id: US-012
+            titulo: Documento original ao lado, sem trocar de tela
+            como: assessor de triagem
+            quero: abrir o PDF na mesma tela quando o resumo não bastar
+            para: resolver o caso atípico sem perder o contexto da fila
+            fatia: FAT-02
+            resultado: OUT-02
+            estado: descoberta
+      - id: STP-02.03
+        nome: Ver se já houve manifestação parecida
+        historias:
+          - id: US-013
+            titulo: Histórico do mesmo requerente ou assunto
+            como: assessor de triagem
+            quero: saber se há caso relacionado já distribuído
+            para: encaminhar para quem já conhece o assunto
+            fatia: FAT-02
+            resultado: OUT-02
+            estado: descoberta
+
+  - id: ACT-03
+    nome: Decidir o encaminhamento
+    passos:
+      - id: STP-03.01
+        nome: Classificar o assunto
+        historias:
+          - id: US-020
+            titulo: Sugestão de classificação com nível de confiança visível
+            como: assessor de triagem
+            quero: receber uma sugestão de classificação e saber o quanto ela é confiável
+            para: aceitar rápido quando é claro e desconfiar quando não é
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+            hipoteses: [H-03]
+          - id: US-021
+            titulo: Correção da classificação em um passo
+            como: assessor de triagem
+            quero: trocar a classificação sugerida sem abrir outro formulário
+            para: não gastar mais tempo corrigindo do que classificando do zero
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+      - id: STP-03.02
+        nome: Escolher a área ou pessoa responsável
+        historias:
+          - id: US-022
+            titulo: Destino sugerido a partir da classificação
+            como: assessor de triagem
+            quero: ver o destino provável já preenchido
+            para: confirmar em vez de procurar na lista
+            fatia: FAT-01
+            resultado: OUT-02
+            estado: pronta
+          - id: US-023
+            titulo: Encaminhamento com justificativa obrigatória quando contraria a sugestão
+            como: coordenação
+            quero: registrar o motivo quando o assessor discorda da sugestão
+            para: melhorar a classificação com base nos casos reais
+            fatia: FAT-02
+            resultado: OUT-02
+            estado: descoberta
+
+  - id: ACT-04
+    nome: Registrar e acompanhar
+    passos:
+      - id: STP-04.01
+        nome: Confirmar a distribuição no sistema oficial
+        historias:
+          - id: US-030
+            titulo: Registro no sistema legado com confirmação visível
+            como: assessor de triagem
+            quero: que a distribuição seja gravada no sistema oficial e eu veja a confirmação
+            para: ter certeza de que não preciso repetir o registro
+            fatia: FAT-01
+            resultado: OUT-01
+            estado: pronta
+          - id: US-031
+            titulo: Comportamento definido quando o sistema legado está fora
+            como: assessor de triagem
+            quero: saber que a distribuição não foi registrada e o que fazer
+            para: não perder o trabalho nem duplicar o encaminhamento
+            fatia: FAT-01
+            resultado: OUT-01
+            estado: pronta
+      - id: STP-04.02
+        nome: Acompanhar a fila do time
+        historias:
+          - id: US-040
+            titulo: Painel de fila por área com prazos em risco
+            como: coordenador
+            quero: ver o volume pendente e o que está perto de vencer
+            para: remanejar carga antes do atraso
+            fatia: FAT-03
+            resultado: OUT-03
+            estado: descoberta
+          - id: US-041
+            titulo: Redistribuição de itens entre assessores
+            como: coordenador
+            quero: mover itens da fila de um assessor para outro
+            para: equilibrar a carga no pico
+            fatia: FAT-03
+            resultado: OUT-03
+            estado: descoberta
+
+hipoteses:
+  - id: H-01
+    descricao: O assessor confia na extração automática o bastante para decidir sem abrir o documento
+    risco: alto
+    experimento: EXP-01
+  - id: H-02
+    descricao: Assunto, requerente, órgão e prazo bastam para o caso comum
+    risco: alto
+    experimento: EXP-01
+  - id: H-03
+    descricao: A classificação automática acerta acima do patamar aceitável para ser exibida como sugestão
+    risco: medio
+    experimento: EXP-02
+
+fora_de_escopo:
+  - Responder a manifestação dentro do painel (segue no sistema legado)
+  - Fluxo específico das unidades regionais
+  - Ranking de produtividade individual por assessor
+  - Ingestão de manifestações por e-mail

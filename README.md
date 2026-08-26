@@ -8,6 +8,8 @@ Especialização em Sistemas e Agentes Inteligentes — Universidade Federal de 
 
 **Repositório:** https://github.com/thiagommeneses/posufg-reserva-sala-mp
 
+**Documentação de produto (spec-driven UX):** brief, mapa de histórias, plano de fatias e specs das próximas entregas estão em [`docs/spec-driven/`](docs/spec-driven/README.md). Complementa o [`PRD.md`](PRD.md); não o substitui.
+
 ---
 
 ## Sumário

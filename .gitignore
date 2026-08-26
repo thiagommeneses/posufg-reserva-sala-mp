@@ -61,3 +61,8 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 .Zone.Identifier
+
+# IDEs
+.cursor/
+.cursorrules
+.claude/

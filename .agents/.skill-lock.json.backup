@@ -1,0 +1,60 @@
+{
+  "version": 2,
+  "skills": {
+    "tlc-spec-driven": {
+      "name": "tlc-spec-driven",
+      "source": "local",
+      "contentHash": "9f4c793556001f3210a2d9fe3b41bf24e82e581c522d8dd50f65addfee169a29",
+      "installedAt": "2026-08-18T20:32:02.109Z",
+      "updatedAt": "2026-08-18T20:32:02.345Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "security-best-practices": {
+      "name": "security-best-practices",
+      "source": "local",
+      "contentHash": "6fec09f7e43bb297ad6097e13469e85aa5b5d671a839b4f7e7871ef8eaa76c4e",
+      "installedAt": "2026-08-18T20:32:54.624Z",
+      "updatedAt": "2026-08-18T20:32:54.792Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "security-ownership-map": {
+      "name": "security-ownership-map",
+      "source": "local",
+      "contentHash": "d6231f21029bc14fc776dbef909f631a6b39d7d1b46b11b25dbfe51c51dd7141",
+      "installedAt": "2026-08-18T20:33:32.350Z",
+      "updatedAt": "2026-08-18T20:33:32.472Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "security-threat-model": {
+      "name": "security-threat-model",
+      "source": "local",
+      "contentHash": "9f4cf3c7971c6d84a4657c2c0c395a4c7febbac5a2361950922fc150fcef9599",
+      "installedAt": "2026-08-18T20:33:46.383Z",
+      "updatedAt": "2026-08-18T20:33:46.426Z",
+      "agents": [
+        "cursor",
+        "claude-code"
+      ],
+      "method": "copy",
+      "global": false
+    }
+  }
+}

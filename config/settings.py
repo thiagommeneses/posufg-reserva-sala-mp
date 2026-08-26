@@ -182,7 +182,7 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 # AI services (Groq LLM)
 # https://console.groq.com/docs/overview
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
 # Base de conhecimento e RAG
 # Corpus documental em data/normas/, indexado com pgvector.
