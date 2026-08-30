@@ -1,0 +1,148 @@
+{% extends "base_admin.html" %}
+
+{% comment %}
+Calendário Geral da administração.
+
+Reaproveita a grade do calendário do usuário — mês, semana e dia são os mesmos
+partials — e troca só o desenho de cada entrada, via ``modelo_de_entrada``.
+Duplicar as três grades para mudar o conteúdo de um cartão faria as duas telas
+divergirem na primeira correção aplicada a uma só.
+
+Os filtros são um formulário GET: os valores acabam na querystring, então uma
+tela filtrada pode ser mandada por link para outra pessoa da administração.
+{% endcomment %}
+
+{% block title %}Calendário Geral — Admin{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-5">
+    <header>
+        <h1 class="text-2xl font-semibold tracking-tight">Calendário Geral</h1>
+        <p class="mt-1 text-sm text-muted">
+            {# Com filtro aplicado, "todos os espaços" seria falso — e a tela #}
+            {# ficaria dizendo o contrário do que mostra.                     #}
+            {% if ha_filtro %}
+            Reservas e manutenções dos espaços selecionados no filtro.
+            {% else %}
+            Reservas e manutenções de todos os espaços.
+            {% endif %}
+        </p>
+    </header>
+
+    <form method="get" class="surface p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-end">
+        {# A visão e o dia viajam junto com o filtro: sem isto, filtrar em #}
+        {# "semana de 12/09" jogaria a pessoa de volta no mês corrente.     #}
+        <input type="hidden" name="vista" value="{{ vista }}">
+        <input type="hidden" name="data" value="{{ dia|date:'Y-m-d' }}">
+
+        <div class="form-control">
+            <label class="label py-1" for="filtro-espaco">
+                <span class="label-text text-xs font-medium">Espaço</span>
+            </label>
+            <select name="espaco" id="filtro-espaco" class="select select-bordered select-sm">
+                <option value="">Todos</option>
+                {% for espaco in espacos %}
+                <option value="{{ espaco.pk }}" {% if filtros.espaco == espaco.pk %}selected{% endif %}>
+                    {{ espaco.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-control">
+            <label class="label py-1" for="filtro-tipo">
+                <span class="label-text text-xs font-medium">Tipo</span>
+            </label>
+            <select name="tipo" id="filtro-tipo" class="select select-bordered select-sm">
+                <option value="">Todos</option>
+                {% for tipo in tipos %}
+                <option value="{{ tipo.pk }}" {% if filtros.tipo == tipo.pk %}selected{% endif %}>
+                    {{ tipo.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-control">
+            <label class="label py-1" for="filtro-local">
+                <span class="label-text text-xs font-medium">Localização</span>
+            </label>
+            <select name="local" id="filtro-local" class="select select-bordered select-sm">
+                <option value="">Todas</option>
+                {% for local in locais %}
+                <option value="{{ local }}" {% if filtros.local == local %}selected{% endif %}>
+                    {{ local }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm inline-flex items-center gap-1.5">
+                {% include "partials/_icon.html" with name="filter" %}
+                Filtrar
+            </button>
+            {% if ha_filtro %}
+            {# Sem ícone: o único disponível para "limpar" é uma lixeira, e #}
+            {# lixeira ao lado de um filtro promete apagar dado. A tela de     #}
+            {# Reservas já resolve isso com texto puro.                        #}
+            <a href="{{ url_limpar }}" class="btn btn-ghost btn-sm">Limpar</a>
+            {% endif %}
+        </div>
+    </form>
+
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-1.5">
+            <a href="{{ url_anterior }}" class="btn btn-ghost btn-sm btn-square" aria-label="Período anterior">
+                {% include "partials/_icon.html" with name="arrow-left" %}
+            </a>
+            <a href="{{ url_proximo }}" class="btn btn-ghost btn-sm btn-square" aria-label="Próximo período">
+                {% include "partials/_icon.html" with name="arrow-right" %}
+            </a>
+            <a href="{{ url_hoje }}" class="btn btn-ghost btn-sm">Hoje</a>
+            <h2 class="ml-1 text-base font-semibold" aria-live="polite">{{ titulo }}</h2>
+        </div>
+
+        <div class="flex gap-1 rounded-lg bg-base-200 p-0.5" role="tablist" aria-label="Visão do calendário">
+            {% for aba in vistas %}
+            <a href="{{ aba.url }}"
+               role="tab"
+               aria-selected="{% if aba.atual %}true{% else %}false{% endif %}"
+               {% if aba.atual %}aria-current="page"{% endif %}
+               class="px-3 py-1 rounded-md text-sm font-medium transition-colors {% if aba.atual %}bg-base-100 text-base-content shadow-sm{% else %}text-muted hover:text-base-content{% endif %}">
+                {{ aba.rotulo }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if vista == "mes" %}
+        {% include "reservations/_calendar_month.html" %}
+    {% elif vista == "semana" %}
+        {% include "reservations/_calendar_week.html" %}
+    {% else %}
+        {% include "reservations/_calendar_day.html" %}
+    {% endif %}
+
+    {# Reservas e manutenções contadas separadamente: somá-las esconderia qual #}
+    {# das duas cresceu, que é a pergunta de quem administra a agenda.         #}
+    <p class="text-xs text-muted">
+        {{ total_reservas }} reserva{{ total_reservas|pluralize:"s" }}
+        e {{ total_manutencoes }} manutenç{{ total_manutencoes|pluralize:"ão,ões" }}
+        neste período{% if ha_filtro %}, com os filtros aplicados{% endif %}.
+    </p>
+
+    {% if not total %}
+    <div class="notice">
+        <span>
+            {% if ha_filtro %}
+            Nada marcado neste período com estes filtros.
+            <a href="{{ url_limpar }}" class="link">Ver todos os espaços</a>.
+            {% else %}
+            Nada marcado neste período.
+            {% endif %}
+        </span>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

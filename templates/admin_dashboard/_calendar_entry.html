@@ -1,0 +1,72 @@
+{% comment %}
+Uma entrada do Calendário Geral.
+
+A diferença para ``reservations/_calendar_entry.html`` é o que a administração
+pode ver: o assunto e quem reservou aparecem, porque quem administra a agenda
+precisa saber a quem ligar quando a sala cai. As observações continuam fora —
+ninguém precisa delas para operar a sala, e o calendário fica aberto na tela.
+
+O destino do link é a lista de reservas já filtrada pelo espaço e pelo dia: é
+lá que estão as ações (cancelar, ver quem pediu serviço). Um link que abrisse a
+tela do usuário não funcionaria — ela é filtrada pelo dono.
+
+Parâmetros:
+    entrada: o dicionário montado por ``reservations.calendario``.
+    compacta: em ``True``, imprime uma linha só (grade do mês).
+{% endcomment %}
+{% if compacta %}
+    {% if entrada.tipo == "manutencao" %}
+    <a href="{% url 'admin_dashboard:maintenance_list' %}"
+       class="block truncate rounded px-1.5 py-0.5 text-[11px] leading-tight bg-warning/25 text-base-content/70 hover:bg-warning/35 transition-colors"
+       title="{{ entrada.inicio|date:'H:i' }}–{{ entrada.fim|date:'H:i' }} · {{ entrada.espaco }} · {{ entrada.motivo }}">
+        <span class="tabular-nums">{{ entrada.inicio|date:"H:i" }}</span>
+        {{ entrada.espaco }}
+    </a>
+    {% else %}
+    {# No mês, a informação mais útil é qual sala: o Calendário Geral é sobre #}
+    {# ocupação de espaço. O assunto e a pessoa ficam no ``title`` e nas      #}
+    {# visões de semana e dia, onde há largura para dizê-los inteiros.        #}
+    <a href="{% url 'admin_dashboard:reservation_list' %}?space={{ entrada.espaco_id }}&start_date={{ entrada.inicio|date:'Y-m-d' }}&end_date={{ entrada.inicio|date:'Y-m-d' }}"
+       class="block truncate rounded px-1.5 py-0.5 text-[11px] leading-tight bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+       title="{{ entrada.inicio|date:'H:i' }}–{{ entrada.fim|date:'H:i' }} · {{ entrada.espaco }}{% if entrada.assunto %} · {{ entrada.assunto }}{% endif %} · {{ entrada.pessoa }}">
+        <span class="tabular-nums font-medium">{{ entrada.inicio|date:"H:i" }}</span>
+        {{ entrada.espaco }}
+    </a>
+    {% endif %}
+{% else %}
+    {% if entrada.tipo == "manutencao" %}
+    <a href="{% url 'admin_dashboard:maintenance_list' %}"
+       class="block rounded-lg border border-dashed border-warning/40 bg-warning/10 px-3 py-2 hover:bg-warning/20 transition-colors">
+        <span class="block text-xs tabular-nums text-muted whitespace-nowrap">
+            {{ entrada.inicio|date:"H:i" }} – {{ entrada.fim|date:"H:i" }}
+        </span>
+        <span class="flex items-center gap-1 text-sm font-medium mt-0.5 min-w-0">
+            <span class="shrink-0">{% include "partials/_icon.html" with name="wrench" %}</span>
+            <span class="truncate">{{ entrada.espaco }}</span>
+        </span>
+        <span class="block text-xs text-muted truncate">{{ entrada.motivo }}</span>
+    </a>
+    {% else %}
+    <a href="{% url 'admin_dashboard:reservation_list' %}?space={{ entrada.espaco_id }}&start_date={{ entrada.inicio|date:'Y-m-d' }}&end_date={{ entrada.inicio|date:'Y-m-d' }}"
+       class="block rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 hover:bg-primary/10 transition-colors"
+       title="{{ entrada.espaco }}{% if entrada.assunto %} · {{ entrada.assunto }}{% endif %} · {{ entrada.pessoa }}">
+        <span class="block text-xs tabular-nums text-primary font-medium whitespace-nowrap">
+            {{ entrada.inicio|date:"H:i" }} – {{ entrada.fim|date:"H:i" }}
+        </span>
+        <span class="block text-sm font-medium truncate mt-0.5">{{ entrada.espaco }}</span>
+        {# Reservas antigas não têm assunto. A linha some em vez de repetir o #}
+        {# nome da sala, que já está escrito logo acima.                      #}
+        {% if entrada.assunto %}
+        <span class="block text-xs text-muted truncate">{{ entrada.assunto }}</span>
+        {% endif %}
+        <span class="block text-xs text-muted truncate">{{ entrada.pessoa }}</span>
+        {# Check-in feito é diferente de só confirmada, e a diferença importa #}
+        {# para quem precisa saber se a sala está de fato ocupada agora.      #}
+        {% if entrada.status == "checked_in" %}
+        <span class="inline-block mt-1 rounded-full bg-success/15 px-1.5 text-[10px] text-success">
+            {{ entrada.situacao }}
+        </span>
+        {% endif %}
+    </a>
+    {% endif %}
+{% endif %}
