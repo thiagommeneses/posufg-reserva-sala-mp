@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from ai_assistant.exceptions import AIServiceError
 from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
+from reservations.validators import MAINTENANCE_RESERVATION_OVERLAP_MESSAGE
 from spaces.models import Attribute, Space, SpaceAttribute
 
 User = get_user_model()
@@ -117,7 +118,9 @@ class TestAdminDashboardView:
         """Context should reflect no-show reservations from today."""
         # Anchored to the start of today (not "now - 2h") so this can't flake
         # when the suite runs shortly after midnight.
-        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = timezone.localtime(timezone.now()).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
         Reservation.objects.create(
             space=dashboard_space,
             user=non_staff_user,
@@ -331,7 +334,7 @@ class TestAdminSpaceManagement:
         assert response.status_code == 200
         content = response.content.decode()
         assert 'class="spinner htmx-indicator' in content
-        assert "style=\"display: none;\"" not in content
+        assert 'style="display: none;"' not in content
 
     def test_toggle_response_includes_functional_badge(self, client, staff_user, dashboard_space):
         """Toggle response should include a functional badge with a real htmx-indicator spinner."""
@@ -344,7 +347,7 @@ class TestAdminSpaceManagement:
         content = response.content.decode()
         assert "hx-patch=" in content
         assert 'class="spinner htmx-indicator' in content
-        assert "style=\"display: none;\"" not in content
+        assert 'style="display: none;"' not in content
 
 
 @pytest.mark.django_db
@@ -557,7 +560,7 @@ class TestAdminReservationManagement:
         content = response.content.decode()
         assert 'id="filter-indicator"' in content
         assert "htmx-indicator" in content
-        assert "style=\"display: none;\"" not in content
+        assert 'style="display: none;"' not in content
 
 
 @pytest.mark.django_db
@@ -647,15 +650,19 @@ class TestAdminMaintenanceManagement:
             "/admin-dashboard/maintenance/new/",
             {
                 "space": str(dashboard_space.pk),
-                "start_time": (now + timezone.timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M"),
-                "end_time": (now + timezone.timedelta(hours=4)).strftime("%Y-%m-%dT%H:%M"),
+                "start_time": timezone.localtime(now + timezone.timedelta(hours=2)).strftime(
+                    "%Y-%m-%dT%H:%M"
+                ),
+                "end_time": timezone.localtime(now + timezone.timedelta(hours=4)).strftime(
+                    "%Y-%m-%dT%H:%M"
+                ),
                 "reason": "Manutenção",
             },
         )
         assert response.status_code == 200
         assert "admin_dashboard/maintenance_form.html" in [t.name for t in response.templates]
         content = response.content.decode()
-        assert "overlaps with an existing reservation" in content
+        assert MAINTENANCE_RESERVATION_OVERLAP_MESSAGE in content
         assert not MaintenanceBlock.objects.filter(reason="Manutenção").exists()
 
     def test_staff_can_delete_maintenance_block(

@@ -283,7 +283,7 @@ class TestSpaceAvailability:
     def test_availability_reflects_reservations(self, api_client, regular_user, space_with_tv):
         """Confirmed reservations should appear as occupied slots."""
         api_client.force_authenticate(user=regular_user)
-        today = timezone.now().date()
+        today = timezone.localdate()
         start = timezone.make_aware(datetime.combine(today, time(10, 0)))
         end = timezone.make_aware(datetime.combine(today, time(12, 0)))
         Reservation.objects.create(
@@ -311,7 +311,7 @@ class TestSpaceAvailability:
     ):
         """Maintenance blocks should appear as occupied slots."""
         api_client.force_authenticate(user=regular_user)
-        today = timezone.now().date()
+        today = timezone.localdate()
         start = timezone.make_aware(datetime.combine(today, time(14, 0)))
         end = timezone.make_aware(datetime.combine(today, time(15, 0)))
         MaintenanceBlock.objects.create(
@@ -332,7 +332,7 @@ class TestSpaceAvailability:
     def test_cancelled_reservation_does_not_block(self, api_client, regular_user, space_with_tv):
         """Cancelled reservations should not appear in occupied slots."""
         api_client.force_authenticate(user=regular_user)
-        today = timezone.now().date()
+        today = timezone.localdate()
         start = timezone.make_aware(datetime.combine(today, time(10, 0)))
         end = timezone.make_aware(datetime.combine(today, time(12, 0)))
         Reservation.objects.create(
@@ -363,15 +363,15 @@ class TestSpaceDetailView:
         assert response.status_code == 200
         assert "spaces/space_detail.html" in [t.name for t in response.templates]
         assert response.context["space"] == space_with_tv
-        assert "availability" in response.context
+        # Desde a Fase 4 a tela recebe os horários já fatiados no incremento da
+        # política, em vez dos intervalos contínuos da API.
+        assert "slots" in response.context
         assert "selected_date" in response.context
 
     def test_htmx_request_returns_partial(self, client, regular_user, space_with_tv):
         """HTMX request should return partial template with availability."""
-        from datetime import date
-
         client.force_login(regular_user)
-        today = date.today().isoformat()
+        today = timezone.localdate().isoformat()
         response = client.get(f"/spaces/{space_with_tv.id}/?date={today}", HTTP_HX_REQUEST="true")
         assert response.status_code == 200
         assert "spaces/_availability.html" in [t.name for t in response.templates]
@@ -384,13 +384,16 @@ class TestSpaceDetailView:
         assert "/accounts/login/" in response.url
 
     def test_default_date_is_today(self, client, regular_user, space_with_tv):
-        """Default selected_date should be today when no date param provided."""
-        from datetime import date
+        """Default selected_date should be today when no date param provided.
 
+        "Hoje" é o de quem usa a tela, e não o do relógio do servidor:
+        ``date.today()`` devolve o dia em UTC e, das 21h à meia-noite em
+        Goiás, já é o dia seguinte.
+        """
         client.force_login(regular_user)
         response = client.get(f"/spaces/{space_with_tv.id}/")
         assert response.status_code == 200
-        assert response.context["selected_date"] == date.today()
+        assert response.context["selected_date"] == timezone.localdate()
 
     def test_custom_date_from_query_param(self, client, regular_user, space_with_tv):
         """Selected date should come from query parameter."""
@@ -404,21 +407,29 @@ class TestSpaceDetailView:
 
     def test_invalid_date_defaults_to_today(self, client, regular_user, space_with_tv):
         """Invalid date format should default to today."""
-        from datetime import date
-
         client.force_login(regular_user)
         response = client.get(f"/spaces/{space_with_tv.id}/?date=invalid-date")
         assert response.status_code == 200
-        assert response.context["selected_date"] == date.today()
+        assert response.context["selected_date"] == timezone.localdate()
 
     def test_availability_reflects_reservations(self, client, regular_user, space_with_tv):
         """Availability should show occupied slots from reservations."""
-        from datetime import date, datetime, time
+        from datetime import datetime, time
 
         from django.utils import timezone
 
+        from reservations.models import BookingPolicy
+
+        # O teste é sobre fatiamento de horário, não sobre dia da semana: sem
+        # abrir o fim de semana ele passaria de segunda a sexta e falharia aos
+        # sábados, por um motivo que não tem relação com o que ele afirma.
+        politica = BookingPolicy.carregar()
+        politica.opens_saturday = True
+        politica.opens_sunday = True
+        politica.save(update_fields=["opens_saturday", "opens_sunday"])
+
         client.force_login(regular_user)
-        today = date.today()
+        today = timezone.localdate()
         start = timezone.make_aware(datetime.combine(today, time(10, 0)))
         end = timezone.make_aware(datetime.combine(today, time(12, 0)))
         Reservation.objects.create(
@@ -429,9 +440,12 @@ class TestSpaceDetailView:
         )
         response = client.get(f"/spaces/{space_with_tv.id}/")
         assert response.status_code == 200
-        availability = response.context["availability"]
-        assert len(availability["occupied"]) == 1
-        assert availability["occupied"][0]["type"] == "reservation"
+        slots = response.context["slots"]
+        ocupados = [slot for slot in slots if slot["situacao"] == "reservado"]
+        # Das 10h às 12h, em pedaços de 30 minutos, são quatro.
+        assert len(ocupados) == 4
+        assert ocupados[0]["inicio"] == start
+        assert all(not slot["disponivel"] for slot in ocupados)
 
     def test_inactive_space_returns_404(self, client, regular_user):
         """Inactive spaces should return 404."""
@@ -527,7 +541,7 @@ class TestSpaceListView:
         assert response.status_code == 200
         assert response.context["min_capacity"] == "5"
         assert response.context["location"] == "Building"
-        assert response.context["selected_attributes"] == "TV"
+        assert response.context["selected_attributes"] == ["TV"]
 
     def test_inactive_spaces_excluded(self, client, regular_user):
         """Inactive spaces should not appear in the list."""
@@ -551,13 +565,15 @@ class TestSpaceListView:
         assert not any(s.name == "Inactive Room" for s in spaces)
 
     def test_filter_button_aligned_with_fields(self, client, regular_user):
-        """The 'Filtrar' button container should vertically align with inputs."""
+        """The search button container should vertically align with the inputs."""
         client.force_login(regular_user)
         response = client.get("/spaces/")
         assert response.status_code == 200
         content = response.content.decode()
-        assert 'class="form-control justify-end"' in content
-        assert "Filtrar" in content
+        # Desde a Fase 7 o rótulo é "Buscar": o formulário deixou de ser só de
+        # filtros e passou a reunir data, pessoas e busca.
+        assert 'class="form-control justify-start"' in content
+        assert "Buscar" in content
 
     def test_filter_spinner_hidden_on_initial_load(self, client, regular_user):
         """Spinner must be an htmx-indicator, hidden by default via CSS (not inline style)."""
@@ -567,7 +583,7 @@ class TestSpaceListView:
         content = response.content.decode()
         assert 'id="loading-indicator"' in content
         assert "htmx-indicator" in content
-        assert "style=\"display: none;\"" not in content
+        assert 'style="display: none;"' not in content
 
     def test_filter_spinner_on_form_and_checkboxes(self, client, regular_user):
         """Form submit and checkbox changes should trigger the same loading indicator."""
@@ -583,8 +599,60 @@ class TestSpaceListView:
         attribute_checkbox_count = content.count('name="attributes"')
         assert attribute_checkbox_count > 0
         indicator_count = content.count('hx-indicator="#loading-indicator"')
-        # Form has 1 indicator, each attribute checkbox has 1 indicator
-        assert indicator_count == attribute_checkbox_count + 1
+        # Todo controle que dispara uma busca mostra o mesmo spinner: o
+        # formulário, o campo de data (que busca ao mudar) e cada checkbox.
+        assert indicator_count == attribute_checkbox_count + 2
+
+    def test_multiple_attributes_are_all_applied(self, client, regular_user):
+        """Two checked equipment boxes must both narrow the result (AND).
+
+        Os checkboxes enviam um ``attributes`` por item marcado. Com
+        ``request.GET.get`` só o último chegava ao filtro e os demais eram
+        ignorados em silêncio.
+        """
+        tv = Attribute.objects.create(name="TV")
+        projetor = Attribute.objects.create(name="Projetor")
+
+        ambos = Space.objects.create(name="Sala Completa", capacity=10, location="Bloco A")
+        SpaceAttribute.objects.create(space=ambos, attribute=tv)
+        SpaceAttribute.objects.create(space=ambos, attribute=projetor)
+
+        so_tv = Space.objects.create(name="Sala So TV", capacity=10, location="Bloco A")
+        SpaceAttribute.objects.create(space=so_tv, attribute=tv)
+
+        client.force_login(regular_user)
+        response = client.get("/spaces/?attributes=TV&attributes=Projetor")
+        assert response.status_code == 200
+
+        nomes = {space.name for space in response.context["spaces"]}
+        assert "Sala Completa" in nomes
+        assert "Sala So TV" not in nomes
+        assert response.context["selected_attributes"] == ["TV", "Projetor"]
+
+    def test_comma_separated_attributes_still_work(self, client, regular_user):
+        """The comma form (the API contract, and old bookmarks) keeps working."""
+        tv = Attribute.objects.create(name="TV")
+        projetor = Attribute.objects.create(name="Projetor")
+        sala = Space.objects.create(name="Sala Completa", capacity=10, location="Bloco A")
+        SpaceAttribute.objects.create(space=sala, attribute=tv)
+        SpaceAttribute.objects.create(space=sala, attribute=projetor)
+
+        client.force_login(regular_user)
+        response = client.get("/spaces/?attributes=TV,Projetor")
+        assert response.status_code == 200
+        assert response.context["selected_attributes"] == ["TV", "Projetor"]
+        assert {space.name for space in response.context["spaces"]} == {"Sala Completa"}
+
+    def test_selected_attributes_never_match_by_substring(self, client, regular_user):
+        """A selected attribute must not mark another whose name contains it."""
+        Attribute.objects.create(name="TV")
+        Attribute.objects.create(name="Videoconferencia")
+
+        client.force_login(regular_user)
+        response = client.get("/spaces/?attributes=Videoconferencia")
+        assert response.status_code == 200
+        assert response.context["selected_attributes"] == ["Videoconferencia"]
+        assert "TV" not in response.context["selected_attributes"]
 
 
 @pytest.mark.django_db
@@ -606,7 +674,11 @@ class TestSpaceListViewAISearch:
         client.force_login(regular_user)
         response = client.get("/spaces/?ai_query=sala+para+6+pessoas")
         assert response.status_code == 200
-        mock_extract.assert_called_once_with("sala para 6 pessoas")
+        # Desde a Fase 8 o serviço também recebe o contexto temporal — sem ele,
+        # o modelo não teria como resolver "amanhã".
+        consulta, contexto = mock_extract.call_args.args
+        assert consulta == "sala para 6 pessoas"
+        assert contexto["hoje_date"] == timezone.localdate()
         spaces = list(response.context["spaces"])
         assert space_with_tv in spaces
         assert small_space not in spaces

@@ -8,11 +8,15 @@ errors into the field-level errors expected by the API.
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
+from core.serializers import utc_datetime_field_mapping
 from reservations.models import MaintenanceBlock, Reservation
 from reservations.services import create_reservation
 from reservations.validators import (
+    ATTENDEE_COUNT_INVALID_CODE,
+    ATTENDEE_COUNT_OVER_CAPACITY_CODE,
     INVALID_TIME_RANGE_CODE,
     SPACE_INACTIVE_CODE,
+    validate_attendee_count,
     validate_maintenance_slot,
     validate_reservation_slot,
 )
@@ -23,6 +27,8 @@ from spaces.models import Space
 ERROR_CODE_TO_FIELD = {
     SPACE_INACTIVE_CODE: "space",
     INVALID_TIME_RANGE_CODE: "end_time",
+    ATTENDEE_COUNT_INVALID_CODE: "attendee_count",
+    ATTENDEE_COUNT_OVER_CAPACITY_CODE: "attendee_count",
 }
 
 
@@ -41,6 +47,10 @@ def _as_drf_error(exc: DjangoValidationError) -> serializers.ValidationError:
 
 class MaintenanceBlockSerializer(serializers.ModelSerializer):
     """Serializer for the MaintenanceBlock model with overlap validation."""
+
+    serializer_field_mapping = utc_datetime_field_mapping(
+        serializers.ModelSerializer.serializer_field_mapping
+    )
 
     space = serializers.PrimaryKeyRelatedField(queryset=Space.objects.all())
     created_by = serializers.PrimaryKeyRelatedField(
@@ -76,6 +86,10 @@ class MaintenanceBlockSerializer(serializers.ModelSerializer):
 class ReservationSerializer(serializers.ModelSerializer):
     """Serializer for the Reservation model with conflict validation."""
 
+    serializer_field_mapping = utc_datetime_field_mapping(
+        serializers.ModelSerializer.serializer_field_mapping
+    )
+
     space = serializers.PrimaryKeyRelatedField(queryset=Space.objects.all())
     user = serializers.PrimaryKeyRelatedField(
         read_only=True,
@@ -92,14 +106,22 @@ class ReservationSerializer(serializers.ModelSerializer):
             "user",
             "start_time",
             "end_time",
+            "title",
+            "attendee_count",
+            "notes",
             "status",
             "checked_in_at",
+            # Acrescentar campo é a direção compatível: quem já consumia a API
+            # ignora a chave nova. Removê-lo ou mudar o significado de um
+            # existente é que exigiria versão.
+            "cancelled_at",
             "created_at",
             "updated_at",
         ]
         read_only_fields = [
             "status",
             "checked_in_at",
+            "cancelled_at",
             "created_at",
             "updated_at",
         ]
@@ -108,6 +130,7 @@ class ReservationSerializer(serializers.ModelSerializer):
         """Validate reservation data for conflicts."""
         try:
             validate_reservation_slot(data["space"], data["start_time"], data["end_time"])
+            validate_attendee_count(data["space"], data.get("attendee_count"))
         except DjangoValidationError as exc:
             raise _as_drf_error(exc) from exc
         return data
@@ -124,6 +147,9 @@ class ReservationSerializer(serializers.ModelSerializer):
                 space=validated_data["space"],
                 start_time=validated_data["start_time"],
                 end_time=validated_data["end_time"],
+                title=validated_data.get("title", ""),
+                attendee_count=validated_data.get("attendee_count"),
+                notes=validated_data.get("notes", ""),
             )
         except DjangoValidationError as exc:
             raise _as_drf_error(exc) from exc

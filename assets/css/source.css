@@ -1,5 +1,44 @@
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
+
+/*
+ * Fontes servidas pela própria aplicação (static/fonts/), não pelo Google Fonts.
+ * Em rede institucional com egress restrito, o @import externo falhava e a
+ * tipografia caía silenciosamente para a fonte do sistema. Os arquivos são os
+ * originais do repositório google/fonts (licença OFL), subconjunto latin +
+ * latin-ext e convertidos para WOFF2 — 228 KB somados.
+ * O caminho é relativo a static/css/tailwind.css, que é onde o CSS é gerado.
+ */
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url("../fonts/dm-sans-var.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "DM Sans";
+  font-style: italic;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url("../fonts/dm-sans-italic-var.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../fonts/barlow-condensed-600.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/barlow-condensed-700.woff2") format("woff2");
+}
 
 @plugin "daisyui";
 
@@ -50,9 +89,50 @@
 @source "../../templates";
 
 /*
+ * Tokens derivados.
+ *
+ * O tema `mpgo` acima é a fonte das cores institucionais. Estes valores são
+ * combinações que apareciam repetidas literalmente em quatro seletores
+ * (`color-mix(in oklab, var(--color-primary) 6%, white)` e afins). Nomeá-los
+ * uma vez evita que a próxima tela invente um tom ligeiramente diferente.
+ *
+ * Nada aqui introduz cor nova: é sempre uma derivação de --color-primary ou
+ * --color-base-*.
+ */
+:root {
+  /* Fundo de item ativo e de card selecionado. */
+  --brand-primary-subtle: color-mix(in oklab, var(--color-primary) 6%, white);
+  /* Mesmo papel, no estado hover. */
+  --brand-primary-hover: color-mix(in oklab, var(--color-primary) 10%, white);
+  /* Halo de foco e de seleção. Sempre acompanhado de outro sinal além da cor. */
+  --brand-primary-ring: color-mix(in oklab, var(--color-primary) 22%, transparent);
+  /* Borda de elemento em destaque, sem chegar ao vermelho cheio. */
+  --brand-border-accent: color-mix(in oklab, var(--color-primary) 35%, var(--color-base-300));
+
+  /* Superfície um passo à frente do fundo, para blocos que precisam se separar
+     sem recorrer a sombra pesada. */
+  --surface-elevated: var(--color-base-100);
+  --border-subtle: color-mix(in oklab, var(--color-base-300) 60%, white);
+}
+
+/*
+ * Foco visível em toda a aplicação.
+ *
+ * O DaisyUI só marca foco em alguns componentes. Navegar por teclado exige que
+ * o foco seja visível em qualquer alvo, e o anel precisa aparecer também sobre
+ * fundo vermelho — por isso o offset.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-field);
+}
+
+/*
  * Tipografia: Barlow Condensed só na marca (.brand-font).
  * DM Sans no restante da UI (estilo Shadcn / institucional limpo).
  * Swis721 BlkCn BT do manual é proprietária; Barlow é a substituta gratuita.
+ * As duas famílias são servidas localmente — ver @font-face no topo do arquivo.
  */
 body {
   font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
@@ -85,6 +165,80 @@ h4,
   object-fit: contain;
   object-position: center;
   flex-shrink: 0;
+}
+
+/* Bloco de um campo: rótulo em cima, controle embaixo, ajuda depois.
+ *
+ * A classe é usada em dezesseis templates e não existia em lugar nenhum — é
+ * herança do DaisyUI 4, que a trazia pronta e o 5 removeu. Funcionava por
+ * acidente: como os controles são `w-full`, eles ocupavam a linha inteira e
+ * pareciam empilhados. Bastava um `max-w` num campo para o rótulo colar ao
+ * lado dele, porque `.input` é `inline-flex` neste build.
+ *
+ * Defini-la é melhor do que apagar as dezesseis ocorrências: o bloco de campo
+ * é um componente real desta interface, e agora ele se comporta como tal.
+ */
+.form-control {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Texto secundário — o único nível de "mais apagado" desta interface.
+ *
+ * Antes disto, "texto secundário" era `text-base-content/40`, `/45`, `/50`,
+ * `/55` ou `/60`, conforme quem escreveu a tela: cinco pesos diferentes para a
+ * mesma intenção, espalhados por 253 lugares, e nenhum deles alcançando os
+ * 4,5:1 que a WCAG 2.1 AA exige para texto normal. Medido no tema `mpgo` sobre
+ * `base-100`: /40 dá 2,45; /45, 2,80; /50, 3,21; /55, 3,72; /60, 4,33.
+ *
+ * 65% é uma escolha, e vale registrar as duas pontas. O mínimo que passa é 62%
+ * (4,63 sobre `base-100`, 4,56 sobre `base-200`) — perto demais da régua para
+ * sobreviver a um ajuste de tema. 70% passaria com folga, mas escurece o texto
+ * secundário a ponto de ele competir com o primário. 65% dá 5,12 e 5,00, que é
+ * margem suficiente sem achatar a hierarquia.
+ *
+ * `@layer components` não é detalhe: dentro dela, qualquer utilitário do
+ * Tailwind continua vencendo. É o que faz `hover:text-base-content` seguir
+ * funcionando nos links que escurecem ao passar o mouse — fora da camada, esta
+ * regra viria depois no arquivo e mataria o hover em silêncio.
+ *
+ * `color-mix` e não `opacity`: `opacity` apagaria o elemento inteiro, fundo e
+ * borda junto. Aqui só a cor do texto muda — que é a mesma técnica que o
+ * Tailwind usa para `/65`.
+ */
+@layer components {
+  .text-muted {
+    color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+  }
+}
+
+/* Cabeçalho de tabela, com contraste suficiente.
+ *
+ * O `.table` do DaisyUI pinta `thead` a 60% — 4,33:1, logo abaixo da régua.
+ * Vale para toda tabela da aplicação, inclusive as que não põem classe nenhuma
+ * no `<th>` e por isso escapariam de qualquer correção feita template a
+ * template. Foi assim que as sete tabelas da tela de Relatórios reprovaram
+ * enquanto as do catálogo passavam: as do catálogo tinham classe explícita.
+ */
+.table :where(thead, tfoot) {
+  color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+}
+
+/* Rótulo de campo, com contraste suficiente.
+ *
+ * O `.label-text` do DaisyUI vem com opacidade reduzida sobre o fundo claro, e
+ * medido dá 4,33:1 — abaixo dos 4,5:1 que a WCAG 2.1 AA exige para texto
+ * normal. Passa despercebido porque *parece* legível; a medição é que diz que
+ * não é, para quem enxerga menos do que quem desenhou a tela.
+ *
+ * Vale para todos os formulários da aplicação, e por isso está aqui e não numa
+ * classe utilitária repetida em cada template: rótulo de campo é o texto que o
+ * usuário mais precisa ler para não errar o preenchimento.
+ */
+.label-text {
+  color: var(--color-base-content);
+  opacity: 0.75;
 }
 
 /* Superfície estilo Shadcn: borda fina, sem sombra pesada. */
@@ -145,12 +299,12 @@ h4,
 
 .nav-link-active {
   color: var(--color-primary);
-  background-color: color-mix(in oklab, var(--color-primary) 6%, white);
+  background-color: var(--brand-primary-subtle);
 }
 
 .nav-link-active:hover {
   color: var(--color-primary);
-  background-color: color-mix(in oklab, var(--color-primary) 10%, white);
+  background-color: var(--brand-primary-hover);
 }
 
 .sidebar-link {
@@ -181,7 +335,7 @@ h4,
 
 .sidebar-link-active {
   color: var(--color-primary);
-  background-color: color-mix(in oklab, var(--color-primary) 6%, white);
+  background-color: var(--brand-primary-subtle);
   border-left-color: var(--color-primary);
 }
 
@@ -201,4 +355,124 @@ h4,
 .htmx-request.htmx-indicator,
 .htmx-request .htmx-indicator {
   opacity: 1;
+}
+
+/* Superfície um passo acima de .surface, para o resumo lateral e cards em foco. */
+.surface-elevated {
+  background-color: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-box);
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--color-base-content) 4%, transparent);
+}
+
+/*
+ * Card selecionável (grade de espaços).
+ *
+ * O estado selecionado precisa de três sinais além da cor — borda, anel e
+ * marca de check — porque cor sozinha não chega a quem não a distingue.
+ * Nenhum deles altera as dimensões do card, então a grade não salta no hover.
+ */
+.selectable-card {
+  position: relative;
+  display: block;
+  background-color: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.selectable-card:hover {
+  border-color: color-mix(in oklab, var(--color-base-content) 20%, var(--color-base-300));
+}
+
+.selectable-card[aria-selected="true"] {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--brand-primary-ring);
+}
+
+/*
+ * Stepper do fluxo de reserva.
+ *
+ * Os estados são: concluída, atual e futura. O número dentro do círculo e o
+ * aria-current="step" carregam a informação; a cor apenas reforça.
+ */
+.step-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  border: 1px solid var(--color-base-300);
+  background-color: var(--color-base-100);
+  /* 65% pelo mesmo motivo de `.text-muted`: 45% dava 2,80:1, e o número da
+   * etapa pendente é justamente o que diz à pessoa onde ela está no fluxo. */
+  color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+}
+
+.step-current .step-marker {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-content);
+}
+
+.step-done .step-marker {
+  background-color: var(--brand-primary-subtle);
+  border-color: var(--brand-border-accent);
+  color: var(--color-primary);
+}
+
+.step-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+  white-space: nowrap;
+}
+
+.step-current .step-label {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.step-done .step-label {
+  color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+}
+
+/* Traço de ligação entre etapas; recolhe no mobile, onde o stepper rola. */
+.step-line {
+  height: 1px;
+  min-width: 1rem;
+  flex: 1 1 auto;
+  background-color: var(--color-base-300);
+}
+
+/* Iniciais do usuário no rodapé da sidebar, no lugar de uma foto que não existe. */
+.avatar-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  background-color: var(--color-base-200);
+  border: 1px solid var(--color-base-300);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
+  flex-shrink: 0;
+}
+
+/* Seta de um <details>. O marcador nativo some sob o reset do Tailwind, e sem
+   nenhuma seta o resumo não parece clicável. */
+.disclosure-marker {
+  transition: transform 0.15s ease;
+}
+
+details[open] > summary .disclosure-marker {
+  transform: rotate(180deg);
 }

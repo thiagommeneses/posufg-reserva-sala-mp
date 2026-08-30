@@ -1,60 +1,163 @@
-{% if availability.free or availability.occupied %}
-<div class="space-y-4">
-    <div class="flex flex-wrap gap-4 text-xs text-base-content/60">
+{% comment %}
+Horários de um espaço num dia, fatiados no incremento da política e separados
+em manhã e tarde.
+
+Antes da Fase 4 este bloco mostrava intervalos contínuos, o que num dia vazio
+virava um único botão "00:00 – 00:00". A Fase 9 acrescentou os períodos: vinte
+botões em fileira única são difíceis de varrer com os olhos.
+
+A duração vem antes do horário. Com ela escolhida, cada botão significa
+"reservar das 9h às 10h30" — e não "reservar os trinta minutos das 9h", que era
+o que ele significava antes e obrigava a pessoa a descobrir no passo 3 que a
+hora e meia seguinte estava ocupada. Um pedaço livre cujo bloco seguinte está
+ocupado aparece desabilitado, dizendo por escrito que a duração não cabe ali.
+
+O estado nunca depende só da cor: cada botão traz o rótulo escrito, e os
+indisponíveis são <button disabled>, não links estilizados.
+{% endcomment %}
+
+{% if grupos_de_slots %}
+<div class="space-y-5">
+    {# Links, e não um <select> com submit: a duração é estado de servidor na #}
+    {# querystring, como a data e o espaço. Recarregar e compartilhar o link  #}
+    {# reproduzem a mesma tela.                                              #}
+    <div class="form-control">
+        <p class="label-text text-sm font-medium mb-2">Por quanto tempo?</p>
+        <ul class="flex flex-wrap gap-2 list-none p-0 m-0">
+            {% for opcao in duracoes_oferecidas %}
+            <li>
+                <a href="?date={{ selected_date|date:'Y-m-d' }}&duration={{ opcao.minutos }}{% if horario_pedido %}&start={{ horario_pedido|time:'H:i' }}{% endif %}"
+                   class="btn btn-sm {% if opcao.minutos == duracao_escolhida %}btn-primary{% else %}btn-outline border-base-300 font-normal{% endif %}"
+                   {% if opcao.minutos == duracao_escolhida %}aria-current="true"{% endif %}
+                   hx-get="?date={{ selected_date|date:'Y-m-d' }}&duration={{ opcao.minutos }}{% if horario_pedido %}&start={{ horario_pedido|time:'H:i' }}{% endif %}"
+                   hx-target="#availability-content"
+                   hx-indicator="#availability-loading">
+                    {{ opcao.rotulo }}<span class="sr-only"> de duração</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="flex flex-wrap gap-4 text-xs text-muted">
         <div class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-sm bg-success/80"></span>
+            <span class="w-3 h-3 rounded-sm bg-success/80" aria-hidden="true"></span>
             <span>Disponível</span>
         </div>
         <div class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-sm bg-base-300"></span>
+            <span class="w-3 h-3 rounded-sm bg-base-300" aria-hidden="true"></span>
             <span>Reservado</span>
         </div>
         <div class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-sm bg-warning/70"></span>
+            <span class="w-3 h-3 rounded-sm bg-warning/70" aria-hidden="true"></span>
             <span>Manutenção</span>
         </div>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-        {% for slot in availability.free %}
-        <a
-            href="/reservations/new/?space={{ space.id }}&start={{ slot.start }}"
-            class="btn btn-outline btn-sm h-auto py-3 flex flex-col items-center justify-center gap-0.5 border-success/40 text-success hover:bg-success hover:text-success-content hover:border-success"
-        >
-            <span class="text-[10px] uppercase tracking-wide opacity-70">Disponível</span>
-            <span class="font-medium text-sm">
-                {{ slot.start|slice:"11:16" }} – {{ slot.end|slice:"11:16" }}
-            </span>
-        </a>
-        {% endfor %}
-
-        {% for slot in availability.occupied %}
-        {% if slot.type == "reservation" %}
-        <button class="btn btn-ghost btn-sm h-auto py-3 flex flex-col items-center justify-center gap-0.5 bg-base-200 border border-base-300 cursor-not-allowed opacity-70" disabled>
-            <span class="text-[10px] uppercase tracking-wide">Reservado</span>
-            <span class="font-medium text-sm">
-                {{ slot.start|slice:"11:16" }} – {{ slot.end|slice:"11:16" }}
-            </span>
-        </button>
-        {% else %}
-        <button class="btn btn-ghost btn-sm h-auto py-3 flex flex-col items-center justify-center gap-0.5 bg-warning/10 border border-warning/30 cursor-not-allowed opacity-80" disabled>
-            <span class="text-[10px] uppercase tracking-wide text-warning">Manutenção</span>
-            <span class="font-medium text-sm">
-                {{ slot.start|slice:"11:16" }} – {{ slot.end|slice:"11:16" }}
-            </span>
-        </button>
+        {% if tem_nao_cabe %}
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-sm border border-dashed border-base-content/30" aria-hidden="true"></span>
+            <span>Livre, mas curto para {{ rotulo_da_duracao }}</span>
+        </div>
         {% endif %}
-        {% endfor %}
     </div>
 
-    {% if not availability.free %}
-    <div class="notice">
-        <span>Não há horários disponíveis para esta data. Tente outra data.</span>
+    {% if horario_pedido %}
+    {% if horario_disponivel %}
+    <div class="notice notice-success" role="status">
+        <span>
+            O horário que você pediu — {{ horario_pedido|time:"H:i" }} — está livre.
+            Ele aparece destacado abaixo.
+        </span>
+    </div>
+    {% else %}
+    <div class="notice notice-warning" role="status">
+        <span>
+            {{ horario_pedido|time:"H:i" }} não está disponível neste espaço.
+            Veja as alternativas abaixo.
+        </span>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% for grupo in grupos_de_slots %}
+    <div>
+        <p class="text-[11px] font-medium uppercase tracking-wider text-muted mb-2">{{ grupo.rotulo }}</p>
+        <ul class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 list-none p-0 m-0">
+            {% for slot in grupo.slots %}
+            <li>
+                {% if slot.cabe %}
+                <a
+                    href="/reservations/new/?space={{ space.id }}&start={{ slot.inicio|date:'c' }}&end={{ slot.fim_da_reserva|date:'c' }}"
+                    title="Reservar das {{ slot.inicio|time:'H:i' }} às {{ slot.fim_da_reserva|time:'H:i' }}"
+                    class="btn btn-outline btn-sm w-full h-auto py-2.5 flex flex-col items-center justify-center gap-0.5
+                        {% if horario_pedido and horario_disponivel and slot.inicio|time:'H:i' == horario_pedido|time:'H:i' %}
+                        border-primary bg-primary/5 text-primary ring-2 ring-primary/30
+                        {% else %}
+                        border-success/40 text-success hover:bg-success hover:text-success-content hover:border-success
+                        {% endif %}"
+                >
+                    <span class="font-medium text-sm">{{ slot.inicio|time:"H:i" }}</span>
+                    <span class="text-[10px] uppercase tracking-wide opacity-70">até {{ slot.fim_da_reserva|time:"H:i" }}</span>
+                </a>
+                {% elif slot.disponivel %}
+                {# Livre, mas a duração escolhida não cabe a partir daqui. Dizer #}
+                {# "Disponível" seria verdade pela metade — e a metade que      #}
+                {# importa é a que faria o clique falhar no passo seguinte.     #}
+                <button
+                    type="button"
+                    title="Livre às {{ slot.inicio|time:'H:i' }}, mas não há {{ rotulo_da_duracao }} seguidos a partir daí"
+                    class="btn btn-ghost btn-sm w-full h-auto py-2.5 flex flex-col items-center justify-center gap-0.5 bg-transparent border border-dashed border-base-content/25 opacity-70"
+                    disabled
+                >
+                    <span class="font-medium text-sm">{{ slot.inicio|time:"H:i" }}</span>
+                    <span class="text-[10px] uppercase tracking-wide">Não cabe</span>
+                </button>
+                {% elif slot.situacao == "manutencao" %}
+                <button
+                    type="button"
+                    title="{{ slot.inicio|time:'H:i' }} às {{ slot.fim|time:'H:i' }} — bloqueado para manutenção"
+                    class="btn btn-ghost btn-sm w-full h-auto py-2.5 flex flex-col items-center justify-center gap-0.5 bg-warning/10 border border-warning/30 opacity-80"
+                    disabled
+                >
+                    <span class="font-medium text-sm">{{ slot.inicio|time:"H:i" }}</span>
+                    <span class="text-[10px] uppercase tracking-wide text-warning">Manutenção</span>
+                </button>
+                {% else %}
+                <button
+                    type="button"
+                    title="{{ slot.inicio|time:'H:i' }} às {{ slot.fim|time:'H:i' }} — já reservado"
+                    class="btn btn-ghost btn-sm w-full h-auto py-2.5 flex flex-col items-center justify-center gap-0.5 bg-base-200 border border-base-300 opacity-70"
+                    disabled
+                >
+                    <span class="font-medium text-sm">{{ slot.inicio|time:"H:i" }}</span>
+                    <span class="text-[10px] uppercase tracking-wide">Reservado</span>
+                </button>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+
+    {% include "spaces/_alternativas.html" %}
+
+    {% if not tem_horario_livre %}
+    <div class="notice" role="status">
+        <span>Não há horários disponíveis nesta data. Tente outro dia.</span>
+    </div>
+    {% elif not cabe_algum %}
+    <div class="notice notice-warning" role="status">
+        <span>
+            Há horários livres nesta data, mas nenhum comporta {{ rotulo_da_duracao }}
+            seguidos. Escolha uma duração menor ou outro dia.
+        </span>
     </div>
     {% endif %}
 </div>
 {% else %}
-<div class="notice">
-    <span>Selecione uma data para ver a disponibilidade.</span>
+<div class="notice" role="status">
+    <span>
+        Nenhum horário configurado para este dia. Verifique a política de reserva
+        com um administrador.
+    </span>
 </div>
 {% endif %}

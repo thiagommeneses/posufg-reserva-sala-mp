@@ -13,6 +13,7 @@ import os
 import urllib.parse
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -57,12 +58,17 @@ INSTALLED_APPS = [
     "core",
     "spaces",
     "reservations",
+    "services",
     "ai_assistant",
     "knowledge",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # WhiteNoise serve os arquivos estáticos direto do processo da aplicação, logo
+    # depois do SecurityMiddleware, que é a posição exigida pela documentação.
+    # É o que dispensa um nginx só para servir CSS, fontes e o htmx local.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -139,9 +145,12 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "pt-br"
 
-TIME_ZONE = "UTC"
+# Fuso oficial da operação (MPGO, Goiás). Os instantes continuam armazenados em
+# UTC pelo PostgreSQL — TIME_ZONE define apenas como datas/horas informadas pelo
+# usuário são interpretadas e como são exibidas.
+TIME_ZONE = "America/Sao_Paulo"
 
 USE_I18N = True
 
@@ -153,9 +162,41 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+# Fontes dos estáticos, versionadas no repositório.
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+
+# Destino do `collectstatic`. Precisa ficar FORA de STATICFILES_DIRS, senão o
+# Django coleta a saída da coleta anterior a cada execução.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Uploads de usuário. O diretório é um volume nomeado em produção — o dump do
+# Postgres não recupera arquivo perdido.
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+# Em desenvolvimento e nos testes o STATIC_ROOT não existe (só é preenchido pelo
+# collectstatic, durante o build da imagem). Sem isto o WhiteNoise emite um aviso
+# por requisição e tenta mapear um diretório ausente.
+WHITENOISE_AUTOREFRESH = DEBUG
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        # Em desenvolvimento o Django serve os arquivos direto de STATICFILES_DIRS.
+        # Em produção o WhiteNoise comprime e versiona por hash, o que permite
+        # cache imutável — e falha alto se um arquivo referenciado não existir,
+        # em vez de servir um 404 silencioso.
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -173,6 +214,48 @@ REST_FRAMEWORK = {
         "django_filters.rest_framework.DjangoFilterBackend",
     ],
 }
+
+# Segurança em produção
+# https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+#
+# Só entra em vigor com DEBUG desligado, para não atrapalhar o desenvolvimento
+# local (onde não há HTTPS e um redirect para https quebraria tudo).
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
+if not DEBUG:
+    if SECRET_KEY.startswith("django-insecure-"):
+        raise ImproperlyConfigured(
+            "SECRET_KEY não foi definida. Configure a variável de ambiente SECRET_KEY "
+            "antes de rodar com DEBUG desligado."
+        )
+
+    # TLS geralmente termina no proxy à frente da aplicação; sem este cabeçalho o
+    # Django acha que a requisição é http e entra em loop de redirect.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "True").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # 1 ano. Comece com um valor baixo e aumente depois de confirmar que todo o
+    # domínio responde em HTTPS — HSTS não é reversível no navegador do usuário.
+    SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", 60 * 60 * 24 * 365))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SESSION_COOKIE_HTTPONLY = True
+    X_FRAME_OPTIONS = "DENY"
+
 
 # Authentication redirects
 LOGIN_URL = "/accounts/login/"

@@ -1,5 +1,6 @@
 """Tests for the reservations app."""
 
+import re
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -11,8 +12,20 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from reservations.models import MaintenanceBlock, Reservation, ReservationStatus
+from reservations.models import (
+    BookingPolicy,
+    MaintenanceBlock,
+    Reservation,
+    ReservationStatus,
+)
 from reservations.services import auto_release_no_shows
+from reservations.validators import (
+    INVALID_TIME_RANGE_MESSAGE,
+    MAINTENANCE_OVERLAP_MESSAGE,
+    MAINTENANCE_RESERVATION_OVERLAP_MESSAGE,
+    RESERVATION_OVERLAP_MESSAGE,
+    SPACE_INACTIVE_MESSAGE,
+)
 from spaces.models import Space
 
 User = get_user_model()
@@ -132,7 +145,7 @@ class TestReservationModel:
             start_time=start,
             end_time=end,
         )
-        with pytest.raises(ValidationError, match="End time must be after start time"):
+        with pytest.raises(ValidationError, match=re.escape(INVALID_TIME_RANGE_MESSAGE)):
             reservation.clean()
 
     def test_equal_start_and_end_time_raises_validation_error(self, db, user, space):
@@ -144,7 +157,7 @@ class TestReservationModel:
             start_time=start,
             end_time=start,
         )
-        with pytest.raises(ValidationError, match="End time must be after start time"):
+        with pytest.raises(ValidationError, match=re.escape(INVALID_TIME_RANGE_MESSAGE)):
             reservation.clean()
 
     def test_overlapping_confirmed_reservation_raises_validation_error(self, db, user, space):
@@ -162,7 +175,7 @@ class TestReservationModel:
             start_time=now + timedelta(hours=1),
             end_time=now + timedelta(hours=3),
         )
-        with pytest.raises(ValidationError, match="overlaps with an existing reservation"):
+        with pytest.raises(ValidationError, match=re.escape(RESERVATION_OVERLAP_MESSAGE)):
             overlapping.clean()
 
     def test_overlapping_checked_in_reservation_raises_validation_error(self, db, user, space):
@@ -182,7 +195,7 @@ class TestReservationModel:
             start_time=now + timedelta(hours=1),
             end_time=now + timedelta(hours=3),
         )
-        with pytest.raises(ValidationError, match="overlaps with an existing reservation"):
+        with pytest.raises(ValidationError, match=re.escape(RESERVATION_OVERLAP_MESSAGE)):
             overlapping.clean()
 
     def test_non_overlapping_reservation_is_valid(self, db, user, space):
@@ -381,7 +394,7 @@ class TestMaintenanceBlockModel:
             reason="Bad block",
             created_by=user,
         )
-        with pytest.raises(ValidationError, match="End time must be after start time"):
+        with pytest.raises(ValidationError, match=re.escape(INVALID_TIME_RANGE_MESSAGE)):
             block.clean()
 
     def test_overlap_with_confirmed_reservation_raises_validation_error(self, db, user, space):
@@ -402,7 +415,7 @@ class TestMaintenanceBlockModel:
         )
         with pytest.raises(
             ValidationError,
-            match="overlaps with an existing reservation",
+            match=re.escape(MAINTENANCE_RESERVATION_OVERLAP_MESSAGE),
         ):
             block.clean()
 
@@ -426,7 +439,7 @@ class TestMaintenanceBlockModel:
         )
         with pytest.raises(
             ValidationError,
-            match="overlaps with an existing reservation",
+            match=re.escape(MAINTENANCE_RESERVATION_OVERLAP_MESSAGE),
         ):
             block.clean()
 
@@ -486,12 +499,30 @@ class TestReservationStatusChoices:
         assert "no_show" in choices
 
     def test_status_labels(self):
-        """Status labels should be human-readable."""
-        assert ReservationStatus.CONFIRMED.label == "Confirmed"
-        assert ReservationStatus.CANCELLED.label == "Cancelled"
-        assert ReservationStatus.CHECKED_IN.label == "Checked In"
-        assert ReservationStatus.COMPLETED.label == "Completed"
-        assert ReservationStatus.NO_SHOW.label == "No Show"
+        """Os rótulos são texto de interface, e a interface é em português."""
+        assert ReservationStatus.CONFIRMED.label == "Confirmada"
+        assert ReservationStatus.CANCELLED.label == "Cancelada"
+        assert ReservationStatus.CHECKED_IN.label == "Check-in realizado"
+        assert ReservationStatus.COMPLETED.label == "Concluída"
+        assert ReservationStatus.NO_SHOW.label == "Não compareceu"
+
+    def test_status_values_stay_in_english(self):
+        """O que está gravado no banco e publicado na API não pode mudar.
+
+        Traduzir os rótulos não custa nada; traduzir os valores quebraria
+        integrações e exigiria migração de dados. Este teste existe para que a
+        distinção não se perca na próxima vez que alguém "terminar a tradução".
+        """
+        assert ReservationStatus.CONFIRMED.value == "confirmed"
+        assert ReservationStatus.CANCELLED.value == "cancelled"
+        assert ReservationStatus.CHECKED_IN.value == "checked_in"
+        assert ReservationStatus.COMPLETED.value == "completed"
+        assert ReservationStatus.NO_SHOW.value == "no_show"
+
+    def test_nenhum_rotulo_ficou_em_ingles(self):
+        """Um rótulo esquecido reapareceria numa tela qualquer, sem aviso."""
+        esquecidos = {"Confirmed", "Cancelled", "Checked In", "Completed", "No Show"}
+        assert not esquecidos & {status.label for status in ReservationStatus}
 
 
 @pytest.fixture
@@ -565,7 +596,7 @@ class TestReservationApiCreate:
             },
         )
         assert response.status_code == 400
-        assert "overlaps" in str(response.data).lower()
+        assert RESERVATION_OVERLAP_MESSAGE.lower() in str(response.data).lower()
 
     def test_inactive_space_is_rejected(self, api_client, regular_user, inactive_space):
         """Reservations on inactive spaces should be rejected."""
@@ -581,7 +612,7 @@ class TestReservationApiCreate:
             },
         )
         assert response.status_code == 400
-        assert "not available" in str(response.data).lower()
+        assert SPACE_INACTIVE_MESSAGE.lower() in str(response.data).lower()
 
     def test_db_level_conflict_returns_friendly_error(self, api_client, regular_user, space):
         """A race that slips past the pre-check should still be rejected cleanly.
@@ -605,7 +636,7 @@ class TestReservationApiCreate:
                 },
             )
         assert response.status_code == 400
-        assert "overlaps" in str(response.data).lower()
+        assert RESERVATION_OVERLAP_MESSAGE.lower() in str(response.data).lower()
 
     def test_unauthenticated_request_is_rejected(self, api_client, space):
         """Unauthenticated requests should be rejected."""
@@ -642,7 +673,7 @@ class TestReservationApiCreate:
             },
         )
         assert response.status_code == 400
-        assert "maintenance" in str(response.data).lower()
+        assert MAINTENANCE_OVERLAP_MESSAGE.lower() in str(response.data).lower()
 
     def test_end_time_before_start_time_is_rejected(self, api_client, regular_user, space):
         """Reservations with end_time <= start_time should be rejected."""
@@ -658,7 +689,7 @@ class TestReservationApiCreate:
             },
         )
         assert response.status_code == 400
-        assert "after start" in str(response.data).lower()
+        assert INVALID_TIME_RANGE_MESSAGE.lower() in str(response.data).lower()
 
     def test_user_sees_only_own_reservations(self, api_client, regular_user, space, user):
         """Users should only see their own reservations in the list."""
@@ -854,7 +885,7 @@ class TestReservationApiCancel:
         )
         response = api_client.patch(f"/api/v1/reservations/{reservation.id}/cancel/")
         assert response.status_code == 400
-        assert "cancelled" in str(response.data).lower()
+        assert "cancelar reservas confirmadas" in str(response.data).lower()
 
     def test_cancelling_frees_up_slot(self, api_client, regular_user, space):
         """After cancellation, the time slot should be available for new reservations."""
@@ -935,7 +966,7 @@ class TestReservationApiReschedule:
             },
         )
         assert response.status_code == 400
-        assert "overlaps" in str(response.data).lower()
+        assert RESERVATION_OVERLAP_MESSAGE.lower() in str(response.data).lower()
 
     def test_non_owner_cannot_reschedule(self, api_client, regular_user, other_user, space):
         """Non-owners should get 403 when trying to reschedule another user's reservation."""
@@ -976,7 +1007,7 @@ class TestReservationApiReschedule:
             },
         )
         assert response.status_code == 400
-        assert "after start" in str(response.data).lower()
+        assert INVALID_TIME_RANGE_MESSAGE.lower() in str(response.data).lower()
 
     def test_reschedule_frees_original_slot(self, api_client, regular_user, space):
         """After reschedule, the original slot should be available again."""
@@ -1070,7 +1101,7 @@ class TestReservationApiCheckIn:
         )
         response = api_client.post(f"/api/v1/reservations/{reservation.id}/check-in/")
         assert response.status_code == 400
-        assert "confirmed" in str(response.data).lower()
+        assert "reservas confirmadas" in str(response.data).lower()
         reservation.refresh_from_db()
         assert reservation.status == ReservationStatus.CANCELLED
         assert reservation.checked_in_at is None
@@ -1095,7 +1126,20 @@ class TestReservationApiCheckIn:
 
 
 class TestAutoReleaseNoShows:
-    """Tests for the auto-release no-shows service."""
+    """Tests for the auto-release no-shows service.
+
+    A regra passou a vir desligada na política — ligá-la é decisão do MPGO, como
+    já era com ``enforce_window``. Estes testes exercitam o comportamento da
+    função, então ligam a regra na fixture; os testes de que ela vem desligada
+    ficam em ``test_agendador.py``.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _com_a_regra_ligada(self, db):
+        """Turn the release on, since these tests are about what it does."""
+        politica = BookingPolicy.carregar()
+        politica.release_no_shows = True
+        politica.save(update_fields=["release_no_shows"])
 
     def test_past_threshold_without_check_in_marked_no_show(self, db, user, space):
         """Confirmed reservation past threshold should be marked no-show."""
@@ -1228,7 +1272,7 @@ class TestMaintenanceBlockApi:
             },
         )
         assert response.status_code == 400
-        assert "overlaps" in str(response.data).lower()
+        assert MAINTENANCE_RESERVATION_OVERLAP_MESSAGE.lower() in str(response.data).lower()
 
     def test_maintenance_block_appears_in_availability(self, api_client, admin_user, space):
         """Maintenance block should appear in the space availability check."""
@@ -1242,9 +1286,10 @@ class TestMaintenanceBlockApi:
             reason="Cleaning",
             created_by=admin_user,
         )
-        from datetime import date as _date
-
-        today = _date.today()
+        # ``localdate`` e não ``date.today()``: o segundo usa o fuso do sistema
+        # operacional (UTC no contêiner) e, das 21h à meia-noite em Goiás,
+        # pediria a disponibilidade do dia seguinte.
+        today = timezone.localdate()
         url = f"/api/v1/spaces/{space.id}/availability/?date={today.isoformat()}"
         response = api_client.get(url)
         assert response.status_code == 200
@@ -1292,7 +1337,7 @@ class TestOccupancyApi:
     def test_admin_can_view_occupancy(self, api_client, admin_user, regular_user, space):
         """Admin should be able to view occupancy for a given date."""
         api_client.force_authenticate(user=admin_user)
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         reservation = Reservation.objects.create(
             space=space,
@@ -1317,14 +1362,14 @@ class TestOccupancyApi:
     def test_non_admin_gets_403_on_occupancy(self, api_client, regular_user):
         """Non-admin should get 403 when viewing occupancy."""
         api_client.force_authenticate(user=regular_user)
-        today = timezone.now().date()
+        today = timezone.localdate()
         response = api_client.get(f"/api/v1/admin/occupancy/?date={today.isoformat()}")
         assert response.status_code in (401, 403)
 
     def test_occupancy_includes_all_spaces(self, api_client, admin_user, space):
         """Response should include all spaces even if they have no reservations."""
         api_client.force_authenticate(user=admin_user)
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         response = api_client.get(f"/api/v1/admin/occupancy/?date={today.isoformat()}")
         assert response.status_code == 200
@@ -1353,7 +1398,7 @@ class TestOccupancyApi:
     def test_occupancy_includes_maintenance_blocks(self, api_client, admin_user, space):
         """Occupancy should include maintenance blocks for the date."""
         api_client.force_authenticate(user=admin_user)
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         MaintenanceBlock.objects.create(
             space=space,
@@ -1373,7 +1418,7 @@ class TestOccupancyApi:
     def test_occupancy_shows_reservation_status(self, api_client, admin_user, regular_user, space):
         """Occupancy should distinguish reservation statuses."""
         api_client.force_authenticate(user=admin_user)
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         Reservation.objects.create(
             space=space,
@@ -1392,7 +1437,7 @@ class TestOccupancyApi:
     def test_occupancy_filters_by_date(self, api_client, admin_user, regular_user, space):
         """Occupancy should only return reservations overlapping the given date."""
         api_client.force_authenticate(user=admin_user)
-        today = timezone.now().date()
+        today = timezone.localdate()
         tomorrow = today + timedelta(days=1)
 
         Reservation.objects.create(
@@ -1430,11 +1475,23 @@ class TestReservationCreateView:
     def test_get_prefills_start_time_from_query(self, client, regular_user, space):
         """GET should prefill date and time from start query parameter."""
         client.force_login(regular_user)
-        response = client.get(f"/reservations/new/?space={space.id}&start=2025-12-25T10:00:00Z")
+        # O slot vem da API em UTC; o formulário precisa mostrar a hora local,
+        # que é a mesma que o usuário viu na grade de disponibilidade.
+        import datetime as dt
+
+        local_start = timezone.make_aware(dt.datetime(2025, 12, 25, 10, 0))
+        start_iso = local_start.astimezone(dt.UTC).isoformat().replace("+00:00", "Z")
+
+        response = client.get(f"/reservations/new/?space={space.id}&start={start_iso}")
         assert response.status_code == 200
         assert response.context["prefill_date"] == "2025-12-25"
         assert response.context["prefill_start_time"] == "10:00"
-        assert response.context["prefill_end_time"] == "11:00"
+        # Desde a Fase 4 o término sugerido é a duração mínima da política, e
+        # não uma hora fixa escrita no código.
+        from reservations.models import BookingPolicy
+
+        assert BookingPolicy.carregar().min_duration_minutes == 30
+        assert response.context["prefill_end_time"] == "10:30"
 
     def test_valid_post_creates_reservation_and_redirects(self, client, regular_user, space):
         """Valid POST should create reservation and redirect."""
@@ -1446,6 +1503,10 @@ class TestReservationCreateView:
                 "date": "2025-12-25",
                 "start_time": "10:00",
                 "end_time": "12:00",
+                # Desde a Fase 10 o formulário da web exige assunto e
+                # participantes; o serviço e a API continuam aceitando sem.
+                "title": "Reunião de teste",
+                "attendee_count": "4",
             },
         )
         assert response.status_code == 302
@@ -1554,10 +1615,12 @@ class TestReservationCreateView:
                     "date": "2025-12-25",
                     "start_time": "10:00",
                     "end_time": "12:00",
+                    "title": "Reunião de teste",
+                    "attendee_count": "4",
                 },
             )
         assert response.status_code == 200
-        assert "overlaps" in response.context["error"].lower()
+        assert RESERVATION_OVERLAP_MESSAGE.lower() in response.context["error"].lower()
 
 
 @pytest.mark.django_db
@@ -1933,8 +1996,9 @@ class TestReservationRescheduleView:
         assert response.status_code == 302
 
         reservation.refresh_from_db()
-        assert reservation.start_time.day == 26
-        assert reservation.start_time.hour == 14
+        local_start = timezone.localtime(reservation.start_time)
+        assert local_start.day == 26
+        assert local_start.hour == 14
 
     def test_reschedule_shows_success_message(self, client, regular_user, space):
         """Reschedule should show success message."""
@@ -2167,3 +2231,93 @@ class TestReservationCheckInView:
         response = client.post(f"/reservations/{reservation.id}/check-in/")
         assert response.status_code == 302
         assert "/accounts/login/" in response.url
+
+
+@pytest.mark.django_db
+class TestAvailabilityTimezone:
+    """The availability day is delimited in the local timezone, not in UTC.
+
+    Antes da correção de fuso, ``get_availability_for_date`` montava o dia em UTC.
+    Uma reserva das 22h em Goiás (UTC−3) vira 01h UTC do dia seguinte, então ela
+    sumia da grade do dia em que o usuário a marcou.
+    """
+
+    def test_late_night_reservation_stays_on_the_local_day(self, user, space):
+        """A 22:00 local reservation belongs to that same local date."""
+        import datetime as dt
+
+        from reservations.services import get_availability_for_date
+
+        local_day = dt.date(2026, 3, 10)
+        start = timezone.make_aware(dt.datetime.combine(local_day, dt.time(22, 0)))
+        end = timezone.make_aware(dt.datetime.combine(local_day, dt.time(23, 0)))
+        Reservation.objects.create(
+            space=space,
+            user=user,
+            start_time=start,
+            end_time=end,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        availability = get_availability_for_date(space, local_day)
+        assert len(availability["occupied"]) == 1, "a reserva sumiu do dia em que foi marcada"
+
+        next_day = get_availability_for_date(space, local_day + dt.timedelta(days=1))
+        assert next_day["occupied"] == [], "a reserva vazou para o dia seguinte"
+
+    def test_day_window_covers_exactly_24_local_hours(self, space):
+        """With no reservations, the free window spans the whole local day."""
+        import datetime as dt
+
+        from reservations.services import get_availability_for_date
+
+        local_day = dt.date(2026, 3, 10)
+        availability = get_availability_for_date(space, local_day)
+
+        assert len(availability["free"]) == 1
+        start = dt.datetime.fromisoformat(availability["free"][0]["start"].replace("Z", "+00:00"))
+        end = dt.datetime.fromisoformat(availability["free"][0]["end"].replace("Z", "+00:00"))
+        assert timezone.localtime(start).hour == 0
+        assert end - start == dt.timedelta(hours=24)
+
+    def test_availability_payload_stays_in_utc(self, space):
+        """The public payload keeps the ``Z`` suffix even with a local TIME_ZONE."""
+        import datetime as dt
+
+        from reservations.services import get_availability_for_date
+
+        availability = get_availability_for_date(space, dt.date(2026, 3, 10))
+        assert availability["free"][0]["start"].endswith("Z")
+
+
+@pytest.mark.django_db
+class TestApiDatetimeRepresentation:
+    """The REST API keeps representing instants in UTC with a ``Z`` suffix.
+
+    ``TIME_ZONE`` passou a ser ``America/Sao_Paulo`` para a interface web. Sem o
+    campo de UTC dedicado, o DRF passaria a devolver ``-03:00`` e quebraria em
+    silêncio o contrato documentado da API.
+    """
+
+    def test_reservation_datetimes_are_serialized_in_utc(self, api_client, regular_user, space):
+        """Reservation timestamps end with ``Z``, not with a local offset."""
+        api_client.force_authenticate(user=regular_user)
+        start = timezone.now() + timedelta(hours=1)
+        Reservation.objects.create(
+            space=space,
+            user=regular_user,
+            start_time=start,
+            end_time=start + timedelta(hours=1),
+        )
+
+        response = api_client.get("/api/v1/reservations/")
+        assert response.status_code == 200
+        assert response.data[0]["start_time"].endswith("Z")
+        assert response.data[0]["end_time"].endswith("Z")
+
+    def test_space_datetimes_are_serialized_in_utc(self, api_client, regular_user, space):
+        """Space timestamps end with ``Z`` as well."""
+        api_client.force_authenticate(user=regular_user)
+        response = api_client.get(f"/api/v1/spaces/{space.id}/")
+        assert response.status_code == 200
+        assert response.data["created_at"].endswith("Z")

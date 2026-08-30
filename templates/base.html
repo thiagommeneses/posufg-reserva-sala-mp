@@ -1,12 +1,20 @@
-{% load tailwind_cli %}
+{% load static tailwind_cli %}
 <!DOCTYPE html>
 <html lang="pt-BR" data-theme="mpgo">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Reserva de Espaços{% endblock %}</title>
+    {# As fontes são servidas pela própria aplicação; o preload evita o flash de fonte do sistema. #}
+    <link rel="preload" href="{% static 'fonts/dm-sans-var.woff2' %}" as="font" type="font/woff2" crossorigin>
+    {# O ícone da aba é o brasão que já está no repositório. Um .ico separado #}
+    {# seria mais um arquivo para manter em sincronia com a identidade, e     #}
+    {# navegador nenhum exige o formato antigo desde há muito.                #}
+    <link rel="icon" href="{% static 'img/logo.png' %}" type="image/png">
+    <link rel="apple-touch-icon" href="{% static 'img/logo.png' %}">
     {% tailwind_css %}
-    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    {# htmx local: em rede institucional com egress restrito, a CDN pública falhava e a interface perdia toda a interatividade. #}
+    <script src="{% static 'js/htmx.min.js' %}"></script>
     {% block extra_css %}{% endblock %}
 </head>
 <body class="min-h-screen bg-base-100 text-base-content antialiased">

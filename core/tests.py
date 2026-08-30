@@ -37,10 +37,17 @@ class TemplateInfrastructureTestCase(TestCase):
         response = self.client.get(reverse("htmx_test"))
         self.assertContains(response, "tailwind.css")
 
-    def test_base_template_contains_htmx_cdn(self):
-        """Verify base.html includes HTMX CDN."""
+    def test_base_template_loads_htmx_from_local_static(self):
+        """Verify base.html serves HTMX from static files, not from a public CDN.
+
+        Em rede institucional com egress restrito a CDN pública falhava e a
+        aplicação perdia toda a interatividade, então o arquivo passou a ser
+        servido pela própria aplicação.
+        """
         response = self.client.get(reverse("htmx_test"))
-        self.assertContains(response, "htmx.org")
+        self.assertContains(response, "js/htmx.min.js")
+        self.assertNotContains(response, "unpkg.com")
+        self.assertNotContains(response, "cdn.jsdelivr.net")
 
     def test_base_template_has_theme_attribute(self):
         """Verify base.html has DaisyUI theme data-theme attribute."""
@@ -66,19 +73,53 @@ class TemplateInfrastructureTestCase(TestCase):
         assert 'id="htmx-test-target"' in response.content.decode()
 
     def test_base_user_template_renders_navbar(self):
-        """Verify base_user.html contains expected shell and sidebar shortcuts."""
+        """Verify base_user.html contains the shell and the working destinations."""
         from django.template.loader import render_to_string
 
         html = render_to_string("base_user.html", {})
         assert "Reserva de Espaços" in html
-        assert "Espaços" in html
+        assert "Início" in html
+        assert "Nova Reserva" in html
         assert "Minhas Reservas" in html
         assert "Consultar Normas" in html
         assert "Sair" in html
         assert "navbar" in html
         assert "drawer" in html
         assert "sidebar-link" in html
-        assert "Atalhos" in html
+        # Seções do redesign V2
+        assert "Reservas" in html
+        assert "Informações" in html
+
+    def test_user_sidebar_has_no_dead_entries(self):
+        """No menu entry may point to a screen that does not exist yet.
+
+        A lista encolheu de novo: "Calendário" saiu na Fase 19 e "Ajuda" na
+        Fase 23, cada um quando a tela passou a existir. Sobram os itens que o
+        redesign prevê e o sistema ainda não tem — item que leva a lugar nenhum
+        é pior do que item ausente.
+
+        A guarda que não depende de alguém manter esta lista é
+        ``test_every_sidebar_link_resolves_to_a_real_url``.
+        """
+        from django.template.loader import render_to_string
+
+        html = render_to_string("base_user.html", {})
+        for ainda_nao_existe in ["Relatórios", "Configurações"]:
+            assert ainda_nao_existe not in html, (
+                f"{ainda_nao_existe!r} está no menu do usuário mas não tem tela"
+            )
+
+    def test_user_sidebar_has_ajuda(self):
+        """Ajuda existe desde a Fase 23 e precisa estar no menu, com rota viva."""
+        from django.template.loader import render_to_string
+        from django.urls import Resolver404, resolve
+
+        html = render_to_string("base_user.html", {})
+        assert "Ajuda" in html, "a tela existe desde a Fase 23 e precisa estar no menu"
+        try:
+            resolve("/ajuda/")
+        except Resolver404:  # pragma: no cover - só dispara em regressão
+            raise AssertionError("Ajuda está no menu mas a rota sumiu") from None
 
     def test_base_admin_template_renders_sidebar(self):
         """Verify base_admin.html contains expected sidebar elements."""
@@ -86,12 +127,76 @@ class TemplateInfrastructureTestCase(TestCase):
 
         html = render_to_string("base_admin.html", {})
         assert "Admin" in html
-        assert "Dashboard" in html
+        assert "Visão Geral" in html
         assert "Espaços" in html
         assert "Reservas" in html
         assert "Manutenção" in html
+        assert "Tipos de Espaço" in html
+        assert "Equipamentos" in html
+        assert "Política de reserva" in html
+        assert "Usuários" in html
+        assert "Serviços" in html
+        assert "Catálogo de Serviços" in html
         assert "drawer" in html
         assert "sidebar-link" in html
+
+    def test_admin_sidebar_has_no_dead_entries(self):
+        """Todo item do menu admin aponta para uma tela que existe.
+
+        A lista de proibidos esvaziou: "Calendário Geral" saiu na Fase 19b e
+        "Relatórios" na Fase 22b, quando cada tela passou a existir. A guarda
+        de verdade é ``test_every_sidebar_link_resolves_to_a_real_url``, que não
+        depende de alguém lembrar de manter uma lista.
+        """
+        from django.template.loader import render_to_string
+        from django.urls import Resolver404, resolve
+
+        html = render_to_string("base_admin.html", {})
+        assert "Relatórios" in html, "a tela existe desde a Fase 22b e precisa estar no menu"
+        try:
+            resolve("/admin-dashboard/relatorios/")
+        except Resolver404:  # pragma: no cover - só dispara em regressão
+            raise AssertionError("Relatórios está no menu mas a rota sumiu") from None
+
+    def test_os_layouts_cortam_o_excesso_horizontal(self):
+        """Both layouts must clip horizontal overflow — and with ``clip``.
+
+        Guarda fraca de propósito: afirma sobre uma classe, porque a suíte não
+        tem navegador para medir largura. Ela existe porque o defeito é caro de
+        reencontrar — em 390px o documento ficava com 616px e um vazio branco à
+        direita, sem erro nenhum no console — e porque a escolha entre ``clip``
+        e ``hidden`` não é indiferente: ``hidden`` cria contexto de rolagem e
+        faria o resumo fixo do passo 1 parar de grudar no rodapé.
+        """
+        from django.template.loader import render_to_string
+
+        for template in ["base_user.html", "base_admin.html"]:
+            html = render_to_string(template, {})
+            assert "overflow-x-clip" in html, f"{template} não corta o excesso horizontal"
+            assert "overflow-x-hidden" not in html, (
+                f"{template} usa hidden, que quebraria o resumo fixo"
+            )
+
+    def test_every_sidebar_link_resolves_to_a_real_url(self):
+        """Every href in both sidebars must resolve — no dead links, ever."""
+        import re
+
+        from django.template.loader import render_to_string
+        from django.urls import Resolver404, resolve
+
+        for template in ["base_user.html", "base_admin.html"]:
+            html = render_to_string(template, {})
+            # Só a sidebar: o <head> tem links para CSS e fontes, que são
+            # arquivos servidos pelo staticfiles e não rotas do URLconf.
+            sidebar = re.search(r"<aside\b.*?</aside>", html, re.S)
+            assert sidebar, f"{template} não tem sidebar"
+            hrefs = set(re.findall(r'href="(/[^"]*)"', sidebar.group(0)))
+            assert hrefs, f"{template} não tem nenhum link na sidebar"
+            for href in hrefs:
+                try:
+                    resolve(href)
+                except Resolver404:  # pragma: no cover - só dispara em regressão
+                    raise AssertionError(f"{template}: {href} não resolve") from None
 
     def test_messages_partial_renders_alerts(self):
         """Verify messages partial renders muted notice toasts."""
@@ -248,10 +353,17 @@ class TestReservationLifecycleIntegration:
         )
 
         # Verify slot is occupied before auto-release
-        availability = get_availability_for_date(space, start.date())
+        availability = get_availability_for_date(space, timezone.localdate(start))
         assert len(availability["occupied"]) > 0
 
-        # Run auto-release
+        # A regra vem desligada na política; este teste é sobre o que ela faz
+        # quando ligada, então liga.
+        from reservations.models import BookingPolicy
+
+        politica = BookingPolicy.carregar()
+        politica.release_no_shows = True
+        politica.save(update_fields=["release_no_shows"])
+
         released = auto_release_no_shows(threshold_minutes=15)
         assert released == 1
 
@@ -259,7 +371,7 @@ class TestReservationLifecycleIntegration:
         assert reservation.status == ReservationStatus.NO_SHOW
 
         # Verify slot is now available
-        availability = get_availability_for_date(space, start.date())
+        availability = get_availability_for_date(space, timezone.localdate(start))
         assert len(availability["occupied"]) == 0
 
     def test_conflict_prevention_two_users_same_slot(self):
@@ -349,17 +461,26 @@ class TestUserInterfaceFlow:
         assert response.status_code == 200
         assert response.context["space"] == space
 
-        # Create reservation via web form
-        now = timezone.now()
-        start = now + timezone.timedelta(hours=2)
-        end = now + timezone.timedelta(hours=3)
+        # Create reservation via web form.
+        #
+        # Data e horário fixos, e não derivados de ``timezone.now()``. A versão
+        # anterior somava duas e três horas ao agora *em UTC* e postava a data
+        # do início com a hora do término: entre 21h e 22h UTC o término caía no
+        # dia seguinte, a data postada continuava sendo a do início, e o
+        # formulário recusava por término anterior ao início. Falhava uma hora
+        # por dia, e a sonda de fuso não via — ``timezone.now()`` é UTC
+        # independentemente de ``TIME_ZONE``.
+        amanha = timezone.localdate() + timezone.timedelta(days=1)
         response = client.post(
             "/reservations/new/",
             {
                 "space": str(space.pk),
-                "date": start.strftime("%Y-%m-%d"),
-                "start_time": start.strftime("%H:%M"),
-                "end_time": end.strftime("%H:%M"),
+                "date": amanha.isoformat(),
+                "start_time": "09:00",
+                "end_time": "10:00",
+                # Desde a Fase 10 o formulário exige assunto e participantes.
+                "title": "Reunião do fluxo completo",
+                "attendee_count": "2",
             },
         )
         assert response.status_code == 302
@@ -391,7 +512,7 @@ class TestUserInterfaceFlow:
         )
 
         # Verify slot is occupied before cancel
-        availability = get_availability_for_date(space, start.date())
+        availability = get_availability_for_date(space, timezone.localdate(start))
         assert len(availability["occupied"]) > 0
 
         # Cancel via web interface
@@ -402,7 +523,7 @@ class TestUserInterfaceFlow:
         assert reservation.status == ReservationStatus.CANCELLED
 
         # Verify slot is now available
-        availability = get_availability_for_date(space, start.date())
+        availability = get_availability_for_date(space, timezone.localdate(start))
         assert len(availability["occupied"]) == 0
 
     def test_user_checks_in_via_direct_url(self, client):
@@ -547,8 +668,9 @@ class TestAdminInterfaceFlow:
             "/admin-dashboard/maintenance/new/",
             {
                 "space": str(space.pk),
-                "start_time": start.strftime("%Y-%m-%dT%H:%M"),
-                "end_time": end.strftime("%Y-%m-%dT%H:%M"),
+                # datetime-local é hora de parede local, não UTC
+                "start_time": timezone.localtime(start).strftime("%Y-%m-%dT%H:%M"),
+                "end_time": timezone.localtime(end).strftime("%Y-%m-%dT%H:%M"),
                 "reason": "Manutenção preventiva",
             },
         )
@@ -586,3 +708,59 @@ class TestAdminInterfaceFlow:
             assert response.status_code == 403, (
                 f"Expected 403 for {url}, got {response.status_code}"
             )
+
+
+class AcabamentoTestCase(TestCase):
+    """The finishing touches that no feature test would ever notice."""
+
+    def test_base_template_declara_o_icone_da_aba(self):
+        """Sem isto o navegador pede /favicon.ico e registra 404 a cada visita."""
+        from django.template.loader import render_to_string
+
+        html = render_to_string("base.html", {})
+        assert 'rel="icon"' in html
+        assert "logo.png" in html
+
+    def test_form_control_existe_no_css(self):
+        """A classe é usada em dezesseis templates e vinha do DaisyUI 4.
+
+        Funcionava por acidente — os controles são ``w-full`` e ocupavam a linha
+        inteira. Bastava um ``max-w`` num campo para o rótulo colar ao lado.
+        """
+        from pathlib import Path
+
+        from django.conf import settings
+
+        fonte = Path(settings.BASE_DIR) / "assets" / "css" / "source.css"
+        assert ".form-control {" in fonte.read_text(encoding="utf-8")
+
+    def test_classes_usadas_nos_templates_existem_no_css(self):
+        """Uma classe de componente sem definição é estilo que ninguém vê faltar."""
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+
+        base = Path(settings.BASE_DIR)
+        fonte = (base / "assets" / "css" / "source.css").read_text(encoding="utf-8")
+        # Só as classes próprias desta interface: as do Tailwind e do DaisyUI
+        # são geradas na compilação e não estariam aqui.
+        proprias = {
+            "surface",
+            "notice",
+            "sidebar-link",
+            "nav-link",
+            "step-marker",
+            "step-label",
+            "selectable-card",
+            "avatar-initials",
+            "brand-font",
+            "brand-logo",
+            "form-control",
+        }
+        usadas = set()
+        for template in (base / "templates").rglob("*.html"):
+            for atributo in re.findall(r'class="([^"]*)"', template.read_text(encoding="utf-8")):
+                usadas |= set(atributo.split()) & proprias
+        ausentes = {classe for classe in usadas if f".{classe} {{" not in fonte}
+        assert not ausentes, f"classes usadas sem definição no CSS: {sorted(ausentes)}"
