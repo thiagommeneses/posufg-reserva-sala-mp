@@ -15,6 +15,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from drf_yasg import openapi
@@ -23,12 +25,16 @@ from rest_framework import permissions as drf_permissions
 
 from knowledge.views import DocumentAssistantView
 from reservations.views import (
+    CalendarView,
     ReservationCancelView,
     ReservationCheckInView,
     ReservationCreateView,
+    ReservationDetailsEditView,
     ReservationDetailView,
+    ReservationEditView,
     ReservationListView,
     ReservationRescheduleView,
+    ReservationReviewView,
 )
 from spaces.views import SpaceDetailView, SpaceListView
 
@@ -62,9 +68,20 @@ urlpatterns = [
     path("accounts/", include("accounts.urls", namespace="accounts")),
     path("spaces/", SpaceListView.as_view(), name="space_list"),
     path("spaces/<int:pk>/", SpaceDetailView.as_view(), name="space_detail"),
+    path("calendario/", CalendarView.as_view(), name="calendar"),
     path("reservations/", ReservationListView.as_view(), name="reservation_list"),
     path("reservations/new/", ReservationCreateView.as_view(), name="reservation_create"),
+    # As duas telas do fim do fluxo só existem em POST: o estado da reserva
+    # em construção vive no formulário, não em sessão nem em rascunho no
+    # banco, então não há o que reabrir por URL.
+    path("reservations/review/", ReservationReviewView.as_view(), name="reservation_review"),
+    path("reservations/edit/", ReservationEditView.as_view(), name="reservation_edit"),
     path("reservations/<int:pk>/", ReservationDetailView.as_view(), name="reservation_detail"),
+    path(
+        "reservations/<int:pk>/details/",
+        ReservationDetailsEditView.as_view(),
+        name="reservation_details_edit",
+    ),
     path(
         "reservations/<int:pk>/cancel/", ReservationCancelView.as_view(), name="reservation_cancel"
     ),
@@ -82,3 +99,9 @@ urlpatterns = [
     path("admin-dashboard/", include("admin_dashboard.urls")),
     path("", include("core.urls")),
 ]
+
+if settings.DEBUG:
+    # Só em desenvolvimento: `django.views.static.serve` é single-threaded e sem
+    # controle de acesso. Quem serve /media/ em produção é decidido na fase que
+    # introduz o upload de fotos — até lá não há arquivo de usuário no sistema.
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

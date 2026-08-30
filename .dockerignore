@@ -9,3 +9,10 @@ __pycache__
 htmlcov
 node_modules
 .django_tailwind_cli
+staticfiles
+media
+var
+docs
+.agents
+.claude
+.cursor

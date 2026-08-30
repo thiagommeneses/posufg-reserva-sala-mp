@@ -723,7 +723,7 @@ Copie `.env.example` para `.env` e preencha. Para usar os endpoints de IA (`/api
 | Variável | Descrição |
 |----------|-----------|
 | `GROQ_API_KEY` | Chave de API do Groq (gratuita em https://console.groq.com/keys). Sem ela, os endpoints de IA retornam erro 502. |
-| `GROQ_MODEL` | Modelo usado nas chamadas (padrão: `llama-3.3-70b-versatile`) |
+| `GROQ_MODEL` | Modelo usado nas chamadas (padrão: `openai/gpt-oss-120b`) |
 
 ### Comandos úteis
 
@@ -738,6 +738,49 @@ Copie `.env.example` para `.env` e preencha. Para usar os endpoints de IA (`/api
 | `make lint` | Executa o linter (ruff) |
 | `make format` | Formata o código (ruff) |
 | `make shell` | Abre terminal bash dentro do container web |
+
+---
+
+## Como executar em produção
+
+O `docker-compose.yml` da raiz é de **desenvolvimento**: monta o código do host e roda o `runserver`. Para produção existe um arquivo separado.
+
+```bash
+# 1. Configure o .env com valores reais
+cp .env.example .env
+python -c "from django.core.management.utils import get_random_secret_key as k; print(k())"
+#    → cole o resultado em SECRET_KEY; preencha ALLOWED_HOSTS,
+#      CSRF_TRUSTED_ORIGINS e POSTGRES_PASSWORD
+
+# 2. Suba a composição de produção
+docker compose -f docker-compose.prod.yml up -d --build
+
+# 3. Aplique as migrações
+docker compose -f docker-compose.prod.yml exec web python manage.py migrate
+
+# 4. Crie o primeiro administrador
+docker compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
+```
+
+### O que muda em relação ao desenvolvimento
+
+| | Desenvolvimento | Produção |
+|---|---|---|
+| Servidor | `manage.py tailwind runserver` | `gunicorn`, 3 workers |
+| Código | bind mount do host | copiado para dentro da imagem |
+| Estáticos | servidos de `static/` pelo Django | `collectstatic` no build, servidos pelo WhiteNoise com hash no nome e `Cache-Control: immutable` |
+| Compressão | nenhuma | Brotli e gzip pré-gerados (o CSS sai de 104 KB para ~15 KB na rede) |
+| Mídia | `./media` no host | volume nomeado `media_data` |
+| Cookies | comuns | `Secure`, `HttpOnly`, HSTS ligado |
+| `SECRET_KEY` | valor de desenvolvimento | **a aplicação recusa subir** se a chave de desenvolvimento for mantida |
+
+### Pontos de atenção
+
+- **Não é preciso nginx para servir estáticos** — o WhiteNoise faz isso dentro do processo. Um proxy à frente continua sendo recomendável para TLS.
+- **Se o TLS termina em um proxy** que não encaminha `X-Forwarded-Proto`, defina `SECURE_SSL_REDIRECT=False`, senão o redirect entra em loop.
+- **`SECURE_HSTS_SECONDS` começa em um ano.** HSTS não é reversível no navegador de quem já acessou: comece com `3600` e aumente depois de confirmar que todo o domínio responde em HTTPS.
+- **O volume `media_data` precisa entrar no backup.** É o único estado da aplicação fora do Postgres, e o dump do banco não recupera um arquivo perdido.
+- **A liberação de no-show depende do serviço `agendador`.** Quem executa a regra é `python manage.py agendador`, que o `docker-compose` sobe como serviço próprio. Se esse serviço não estiver no ar, a liberação automática de reservas não utilizadas — o segundo pilar do produto — nunca acontece, mesmo com `release_no_shows` ligado na política.
 
 ---
 

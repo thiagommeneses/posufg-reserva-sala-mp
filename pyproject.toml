@@ -18,6 +18,9 @@ dependencies = [
     "fastembed>=0.4",
     "langchain-text-splitters>=0.3",
     "trafilatura>=1.12",
+    "pillow>=11.0",
+    "whitenoise[brotli]>=6.7",
+    "gunicorn>=23.0",
 ]
 
 [dependency-groups]
@@ -25,6 +28,14 @@ dev = [
     "pytest",
     "pytest-django",
     "pytest-cov",
+    # Congela o relógio nos testes. Entrou depois de três falhas seguidas
+    # causadas pela hora em que a suíte rodava — a última cruzava a meia-noite
+    # e transformava um término em anterior ao início.
+    "freezegun",
+    # Navegador headless para a guarda de contraste (`pytest -m visual`). É a
+    # única forma de medir a cor que o usuário realmente vê: as opacidades do
+    # DaisyUI chegam como `color-mix(... oklab ...)`, que só o navegador resolve.
+    "playwright",
     "ruff",
     "pre-commit",
     "conventional-pre-commit",
@@ -34,7 +45,38 @@ dev = [
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
-addopts = "--cov=. --cov-report=term-missing --cov-fail-under=80"
+# O compose monta a raiz inteira em /app, então o `.dockerignore` não protege a
+# coleta: qualquer cópia de trabalho deixada em `var/` seria varrida como se
+# fosse código do projeto. E como as cópias repetem nomes de módulo — dois
+# `tests.py` de `reservations` —, o pytest nem chega a rodar: para na coleta.
+norecursedirs = [
+    "var",
+    "docs",
+    "entregas",
+    "knowledge/data",
+    ".django_tailwind_cli",
+    "staticfiles",
+    "media",
+    "*.egg",
+    ".*",
+    "build",
+    "dist",
+    "node_modules",
+]
+# `-m "not visual"`: a guarda de contraste sobe um navegador de verdade e mede
+# a cor pintada de cada nó de texto. É o único teste da suíte que precisa de
+# Chromium, leva dezenas de segundos e falharia em qualquer máquina sem o
+# navegador instalado — então fica fora da rodada padrão, e roda por pedido:
+#
+#     pytest -m visual
+#
+# Não é teste de segunda classe: foi ele que achou o `.label-text` do DaisyUI
+# reprovando em 4,33. É teste caro, e teste caro que roda sempre acaba
+# desligado por alguém com pressa.
+addopts = "--cov=. --cov-report=term-missing --cov-fail-under=80 -m 'not visual'"
+markers = [
+    "visual: exige navegador headless; roda com `pytest -m visual`.",
+]
 
 [tool.ruff]
 target-version = "py312"
@@ -59,6 +101,12 @@ omit = [
     "manage.py",
     "config/wsgi.py",
     "config/asgi.py",
+    # Pelo mesmo motivo do `norecursedirs`: cópias de trabalho em `var/` não são
+    # código do projeto e distorceriam a cobertura para cima ou para baixo
+    # conforme o que estivesse guardado ali no momento.
+    "var/*",
+    "docs/*",
+    "entregas/*",
 ]
 
 [tool.coverage.report]
