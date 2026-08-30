@@ -43,13 +43,13 @@ class TestLoginView:
         assert "form" in response.context
 
     def test_login_with_valid_credentials(self, client, user):
-        """Valid credentials should authenticate and redirect to /spaces/."""
+        """Valid credentials should authenticate and land on the home screen."""
         response = client.post(
             reverse("accounts:login"),
             {"username": "testuser", "password": "testpass123"},
         )
         assert response.status_code == 302
-        assert response.url == reverse("space_list")
+        assert response.url == reverse("inicio")
 
     @pytest.mark.django_db
     def test_login_with_invalid_credentials(self, client):
@@ -67,7 +67,7 @@ class TestLoginView:
         client.force_login(user)
         response = client.get(reverse("accounts:login"))
         assert response.status_code == 302
-        assert response.url == reverse("space_list")
+        assert response.url == reverse("inicio")
 
     def test_authenticated_staff_redirected_to_admin_dashboard(self, client, staff_user):
         """Already authenticated staff users should be redirected to the admin dashboard."""
@@ -97,7 +97,7 @@ class TestRegisterView:
 
     @pytest.mark.django_db
     def test_valid_registration_creates_user_and_redirects(self, client):
-        """Valid registration should create user, log in, and redirect to /spaces/."""
+        """Valid registration should create the user, log in and land on the home screen."""
         response = client.post(
             reverse("accounts:register"),
             {
@@ -108,7 +108,7 @@ class TestRegisterView:
             },
         )
         assert response.status_code == 302
-        assert response.url == reverse("space_list")
+        assert response.url == reverse("inicio")
         assert User.objects.filter(username="newuser").exists()
 
     @pytest.mark.django_db
@@ -132,7 +132,7 @@ class TestRegisterView:
         client.force_login(user)
         response = client.get(reverse("accounts:register"))
         assert response.status_code == 302
-        assert response.url == reverse("space_list")
+        assert response.url == reverse("inicio")
 
 
 class TestLogoutView:

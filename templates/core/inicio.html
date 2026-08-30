@@ -1,0 +1,157 @@
+{% extends "base_user.html" %}
+
+{% comment %}
+Tela de Início.
+
+A ordem dos blocos é a ordem das perguntas de quem chega: tenho algo agora?
+o que vem depois? quero repetir algo? quais são as regras?
+
+Nada aqui é contador nem gráfico — o pacote V2 proíbe KPI de vaidade, e nenhum
+número desses ajudaria alguém a conseguir uma sala.
+{% endcomment %}
+
+{% block title %}Início - Reserva de Espaços{% endblock %}
+
+{% block user_content %}
+<div class="space-y-6">
+    <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight">Olá, {{ request.user.username }}</h1>
+            <p class="mt-1 text-sm text-muted">{{ agora|date:"l, j \d\e F"|capfirst }}</p>
+        </div>
+        <a href="{% url 'space_list' %}" class="btn btn-primary btn-sm shrink-0 inline-flex items-center gap-1.5">
+            {% include "partials/_icon.html" with name="plus" %}
+            Nova reserva
+        </a>
+    </header>
+
+    {# ---------- Próxima reserva ---------- #}
+    <section aria-labelledby="titulo-proxima">
+        <h2 id="titulo-proxima" class="text-sm font-semibold mb-3">Próxima reserva</h2>
+
+        {% if proxima %}
+        <article class="surface surface-elevated p-5 sm:p-6">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0 space-y-1.5">
+                    {% if proxima.space.space_type %}
+                    <p class="text-[11px] font-medium uppercase tracking-wider text-muted">{{ proxima.space.space_type.name }}</p>
+                    {% endif %}
+                    <h3 class="text-lg font-semibold leading-snug">{{ proxima.space.name }}</h3>
+                    <p class="text-sm text-base-content/70">
+                        {{ proxima.start_time|date:"j \d\e F" }},
+                        {{ proxima.start_time|time:"H:i" }} – {{ proxima.end_time|time:"H:i" }}
+                    </p>
+                    <p class="text-sm text-muted">{{ proxima.space.location }}</p>
+                    {% if proxima.status == "checked_in" %}
+                    <p class="pt-1">
+                        <span class="badge badge-sm badge-success badge-outline font-normal gap-1">
+                            {% include "partials/_icon.html" with name="check" %}
+                            Check-in realizado
+                        </span>
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div class="flex flex-wrap gap-2 shrink-0">
+                    {% if pode_check_in %}
+                    {# O botão só aparece dentro da janela em que o check-in seria aceito. #}
+                    <form method="post" action="{% url 'reservation_checkin' proxima.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-sm inline-flex items-center gap-1.5">
+                            {% include "partials/_icon.html" with name="check" %}
+                            Fazer check-in
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="{% url 'reservation_detail' proxima.pk %}" class="btn btn-outline btn-sm inline-flex items-center gap-1.5">
+                        Ver detalhes
+                        {% include "partials/_icon.html" with name="eye" %}
+                    </a>
+                </div>
+            </div>
+        </article>
+        {% else %}
+        <div class="surface p-6 text-center">
+            <p class="text-sm text-muted">Você não tem nenhuma reserva marcada.</p>
+            <a href="{% url 'space_list' %}" class="btn btn-primary btn-sm mt-4 inline-flex items-center gap-1.5">
+                {% include "partials/_icon.html" with name="plus" %}
+                Reservar um espaço
+            </a>
+        </div>
+        {% endif %}
+    </section>
+
+    {# ---------- Próximas reservas ---------- #}
+    {% if proximas %}
+    <section aria-labelledby="titulo-proximas">
+        <div class="flex items-baseline justify-between mb-3">
+            <h2 id="titulo-proximas" class="text-sm font-semibold">Depois dessa</h2>
+            <a href="{% url 'reservation_list' %}" class="text-sm text-muted hover:text-base-content">Ver todas</a>
+        </div>
+        <ul class="surface divide-y divide-base-300 list-none p-0 m-0">
+            {% for reserva in proximas %}
+            <li>
+                <a href="{% url 'reservation_detail' reserva.pk %}"
+                   class="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-base-200/50 transition-colors">
+                    <span class="min-w-0">
+                        <span class="block text-sm font-medium truncate">{{ reserva.space.name }}</span>
+                        <span class="block text-xs text-muted">{{ reserva.space.location }}</span>
+                    </span>
+                    <span class="text-sm text-base-content/70 whitespace-nowrap tabular-nums">
+                        {{ reserva.start_time|date:"d/m" }} · {{ reserva.start_time|time:"H:i" }}
+                    </span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {# ---------- Reservar novamente ---------- #}
+        {% if espacos_recentes %}
+        <section aria-labelledby="titulo-repetir">
+            <h2 id="titulo-repetir" class="text-sm font-semibold mb-3">Reservar novamente</h2>
+            <ul class="surface divide-y divide-base-300 list-none p-0 m-0">
+                {% for espaco in espacos_recentes %}
+                <li>
+                    <a href="{% url 'space_detail' espaco.pk %}"
+                       class="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-base-200/50 transition-colors">
+                        <span class="min-w-0">
+                            <span class="block text-sm font-medium truncate">{{ espaco.name }}</span>
+                            <span class="block text-xs text-muted">
+                                {% if espaco.space_type %}{{ espaco.space_type.name }} · {% endif %}{{ espaco.location }}
+                            </span>
+                        </span>
+                        <span class="text-muted shrink-0">{% include "partials/_icon.html" with name="calendar" %}</span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
+        {# ---------- Informações úteis ---------- #}
+        <section aria-labelledby="titulo-informacoes">
+            <h2 id="titulo-informacoes" class="text-sm font-semibold mb-3">Informações úteis</h2>
+            <div class="surface p-5 space-y-3.5">
+                {% for item in informacoes %}
+                <div class="flex items-start gap-3">
+                    <span class="text-muted mt-0.5 shrink-0">{% include "partials/_icon.html" with name=item.icone %}</span>
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium leading-tight">{{ item.rotulo }}</p>
+                        <p class="text-sm text-muted leading-tight mt-0.5">{{ item.valor }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="pt-1 border-t border-base-300">
+                    <a href="/assistente/" class="text-sm text-primary hover:underline inline-flex items-center gap-1.5 pt-2.5">
+                        {% include "partials/_icon.html" with name="book" %}
+                        Consultar as normas
+                    </a>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
