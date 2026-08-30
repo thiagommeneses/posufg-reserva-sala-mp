@@ -102,6 +102,92 @@ Build Docker images:
 make build
 ```
 
+### Stylesheet (Tailwind)
+
+Rebuild the CSS bundle after changing templates or `assets/css/source.css`:
+```bash
+make css
+```
+
+O comando de desenvolvimento (`manage.py tailwind runserver`) recompila o CSS
+sozinho **quando o sistema de arquivos avisa que algo mudou**. Isso falha em
+dois casos comuns:
+
+- projeto em `/mnt/c/...` sob WSL2 — o inotify do Linux não recebe eventos do
+  sistema de arquivos do Windows;
+- arquivos criados por `tar zxf` ou `git checkout` enquanto o contêiner já
+  está de pé, em qualquer sistema de arquivos com watcher parcial.
+
+Nos dois, o navegador continua servindo o `static/css/tailwind.css` da última
+compilação, e **só as classes Tailwind novas somem** — as que já existiam em
+outra tela continuam funcionando. O sintoma é sempre o mesmo: um layout que
+"quase" funciona, com uma grade colapsada em uma coluna ou um espaçamento
+ignorado, sem nenhum erro no console e com a suíte de testes verde (o teste
+renderiza o HTML, e o HTML está correto; quem está errado é o CSS).
+
+Por isso: **depois de aplicar qualquer entrega que mexa em template, rode
+`make css`.** Produção não sofre disso — o `Dockerfile` compila o CSS durante
+o build da imagem.
+
+### Contraste de texto (WCAG 2.1 AA)
+
+Texto normal precisa de **4,5:1** contra o fundo; texto grande (≥24px, ou
+≥18,7px em negrito), de 3:1. Medido no tema `mpgo` sobre `base-100` branco, o
+que cada nível de `text-base-content/N` entrega:
+
+| classe | razão | serve para |
+| --- | --- | --- |
+| `/40` | 2,45 | nada — reprova até para texto grande |
+| `/45` | 2,80 | nada — reprova até para texto grande |
+| `/50` | 3,22 | só texto grande |
+| `/55` | 3,71 | só texto grande |
+| `/60` | 4,33 | só texto grande |
+| `/70` | 6,04 | **qualquer texto** |
+| `/75` | 7,15 | qualquer texto |
+
+**Não escreva `text-base-content/N` para texto secundário. Use `.text-muted`.**
+
+`.text-muted` (em `assets/css/source.css`) é o único nível de "mais apagado"
+desta interface: 65%, que dá 5,12:1 sobre `base-100` e 5,00:1 sobre `base-200`.
+Antes da Fase 24 havia cinco níveis diferentes para a mesma intenção — `/40`,
+`/45`, `/50`, `/55`, `/60` — espalhados por 253 lugares, **todos** reprovando no
+AA. Um nível só, num arquivo só, é o que impede a quinta variante de nascer.
+
+Três correções vivem no mesmo arquivo, e valem para a aplicação inteira:
+
+| o quê | era | virou |
+| --- | --- | --- |
+| `.text-muted` | cinco utilitários entre /40 e /60 | 65% |
+| `.label-text` (DaisyUI) | 4,33:1 em todo formulário | 75% |
+| `.table thead` (DaisyUI) | 4,33:1 em toda tabela | 65% |
+
+### A guarda
+
+```bash
+make contraste          # ou: pytest -m visual
+```
+
+`core/test_contraste.py` sobe um Chromium, visita doze telas e mede a **cor
+pintada** de cada nó de texto — pintando-a num `<canvas>` de 1×1 sobre o fundo
+real, porque as opacidades do DaisyUI chegam como `color-mix(... oklab ...)` e
+só o navegador resolve isso corretamente.
+
+Fica fora do `make test` (marcador `visual`, excluído no `addopts`) porque é o
+único teste que precisa de navegador. Na primeira vez, instale-o:
+
+```bash
+docker compose exec web uv run playwright install --with-deps chromium
+```
+
+Se a sua máquina já tem um Chromium, `CHROMIUM_EXECUTAVEL=/caminho/para/chrome`
+evita o download.
+
+Não é teste de segunda classe. Ele achou três defeitos que nenhuma leitura de
+template acharia, porque moravam no CSS e não no HTML: o `.label-text`, o
+`thead` do DaisyUI e as etapas pendentes do stepper a 2,80:1. Se precisar
+declarar uma exceção, ela vai na lista `ISENTOS` do teste, **com o motivo
+escrito** — hoje há uma só, o ícone decorativo de espaço sem foto.
+
 ### Dependency Changes in Development
 
 When `pyproject.toml` or `uv.lock` changes, the container's virtualenv (`/opt/venv`) must be updated. Because the virtualenv lives outside the mounted project directory (`/app`), it persists across restarts. You do **not** need to rebuild the image.
