@@ -1,0 +1,40 @@
+{% comment %}
+Foto de capa de um espaço, com fallback.
+
+Uso:
+    {% include "partials/_space_image.html" with space=space %}
+    {% include "partials/_space_image.html" with space=space classe="rounded-lg" eager=True %}
+
+Parâmetros:
+    space   — a instância de Space (obrigatório)
+    classe  — classes extras no contêiner (opcional)
+    eager   — True para não adiar o carregamento; use nas primeiras imagens visíveis
+
+A proporção 16:9 é fixada no contêiner, e não na imagem, para que o espaço já
+esteja reservado antes de a foto chegar. É isso que impede o card de pular
+quando a imagem carrega — e é a mesma proporção que qualquer celular produz,
+então o recorte é mínimo.
+
+Espaço sem foto recebe um marcador neutro. O logo institucional não serve como
+placeholder: repetido em vinte cards, a marca vira textura.
+{% endcomment %}
+<div class="relative w-full overflow-hidden bg-base-200 aspect-[16/9] {{ classe }}">
+    {% if space.cover_image %}
+    <img
+        src="{{ space.cover_image.url }}"
+        alt="Foto do espaço {{ space.name }}"
+        class="absolute inset-0 h-full w-full object-cover object-center"
+        loading="{% if eager %}eager{% else %}lazy{% endif %}"
+        decoding="async"
+    >
+    {% else %}
+    <div class="absolute inset-0 flex items-center justify-center text-base-content/20">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.25" width="40" height="40" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 21V7l9-4 9 4v14M3 21h18M9 21v-6h6v6M7 11h.01M12 11h.01M17 11h.01"/>
+        </svg>
+        <span class="sr-only">Espaço sem foto cadastrada</span>
+    </div>
+    {% endif %}
+</div>
