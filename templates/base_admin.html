@@ -1,8 +1,18 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% comment %}
+Layout do painel administrativo.
+
+Como na área do usuário, a sidebar traz a estrutura em seções do V2 com os
+destinos que já existem — nenhum item aponta para tela que não exista.
+
+``overflow-x-clip`` no drawer pelo mesmo motivo do layout do usuário: corta o
+excesso horizontal sem virar contexto de rolagem.
+{% endcomment %}
+
 {% block content %}
-<div class="drawer lg:drawer-open">
+<div class="drawer lg:drawer-open overflow-x-clip">
     <input id="admin-drawer" type="checkbox" class="drawer-toggle" />
     <div class="drawer-content flex flex-col min-h-screen bg-base-200">
         <div class="navbar min-h-14 bg-base-100 border-b border-base-300 px-3 sm:px-4 lg:hidden gap-2">
@@ -45,18 +55,109 @@
                 >
                 <div class="min-w-0">
                     <p class="brand-font text-lg leading-tight">Admin</p>
-                    <p class="text-xs text-base-content/50 truncate">Olá, {{ request.user.username }}</p>
+                    <p class="text-xs text-muted truncate">Reserva de Espaços</p>
                 </div>
             </div>
-            <nav class="flex flex-col gap-0.5 flex-1">
-                <a href="/admin-dashboard/" class="sidebar-link {% if request.path == "/admin-dashboard/" %}sidebar-link-active{% endif %}">Dashboard</a>
-                <a href="/admin-dashboard/spaces/" class="sidebar-link {% if "/admin-dashboard/spaces/" in request.path %}sidebar-link-active{% endif %}">Espaços</a>
-                <a href="/admin-dashboard/reservations/" class="sidebar-link {% if "/admin-dashboard/reservations/" in request.path %}sidebar-link-active{% endif %}">Reservas</a>
-                <a href="/admin-dashboard/maintenance/" class="sidebar-link {% if "/admin-dashboard/maintenance/" in request.path %}sidebar-link-active{% endif %}">Manutenção</a>
-                <a href="/admin-dashboard/users/" class="sidebar-link {% if "/admin-dashboard/users/" in request.path %}sidebar-link-active{% endif %}">Usuários</a>
+
+            <nav class="flex flex-col gap-0.5 flex-1" aria-label="Menu administrativo">
+                <a href="/admin-dashboard/"
+                   class="sidebar-link {% if request.path == "/admin-dashboard/" %}sidebar-link-active{% endif %}"
+                   {% if request.path == "/admin-dashboard/" %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="chart" %}
+                    <span>Visão Geral</span>
+                </a>
+
+                <p class="px-3 pt-5 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted">Gestão</p>
+                <a href="/admin-dashboard/reservations/"
+                   class="sidebar-link {% if "/admin-dashboard/reservations/" in request.path %}sidebar-link-active{% endif %}"
+                   {% if "/admin-dashboard/reservations/" in request.path %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="clock" %}
+                    <span>Reservas</span>
+                </a>
+                <a href="/admin-dashboard/calendario/"
+                   class="sidebar-link {% if "/admin-dashboard/calendario/" in request.path %}sidebar-link-active{% endif %}"
+                   {% if "/admin-dashboard/calendario/" in request.path %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="calendar" %}
+                    <span>Calendário Geral</span>
+                </a>
+                <a href="/admin-dashboard/spaces/"
+                   class="sidebar-link {% if "/admin-dashboard/spaces/" in request.path %}sidebar-link-active{% endif %}"
+                   {% if "/admin-dashboard/spaces/" in request.path %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="grid" %}
+                    <span>Espaços</span>
+                </a>
+                <a href="/admin-dashboard/space-types/"
+                   class="sidebar-link {% if "/admin-dashboard/space-types/" in request.path %}sidebar-link-active{% endif %}"
+                   {% if "/admin-dashboard/space-types/" in request.path %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="layers" %}
+                    <span>Tipos de Espaço</span>
+                </a>
+                <a href="/admin-dashboard/attributes/"
+                   class="sidebar-link {% if "/admin-dashboard/attributes/" in request.path %}sidebar-link-active{% endif %}"
+                   {% if "/admin-dashboard/attributes/" in request.path %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="projector" %}
+                    <span>Equipamentos</span>
+                </a>
+                <a href="/admin-dashboard/service-requests/"
+                   class="sidebar-link {% if "/admin-dashboard/service-requests/" in request.path %}sidebar-link-active{% endif %}"
+                   {% if "/admin-dashboard/service-requests/" in request.path %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="sparkles" %}
+                    <span>Serviços</span>
+                </a>
+                <a href="/admin-dashboard/maintenance/"
+                   class="sidebar-link {% if "/admin-dashboard/maintenance/" in request.path %}sidebar-link-active{% endif %}"
+                   {% if "/admin-dashboard/maintenance/" in request.path %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="wrench" %}
+                    <span>Manutenção</span>
+                </a>
+
+                <p class="px-3 pt-5 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted">Análise</p>
+                <a href="/admin-dashboard/relatorios/"
+                   class="sidebar-link {% if "/admin-dashboard/relatorios/" in request.path %}sidebar-link-active{% endif %}"
+                   {% if "/admin-dashboard/relatorios/" in request.path %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="chart" %}
+                    <span>Relatórios</span>
+                </a>
+
+                <p class="px-3 pt-5 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted">Administração</p>
+                <a href="/admin-dashboard/services/"
+                   class="sidebar-link {% if request.path|slice:":26" == "/admin-dashboard/services/" %}sidebar-link-active{% endif %}"
+                   {% if request.path|slice:":26" == "/admin-dashboard/services/" %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="sparkles" %}
+                    <span>Catálogo de Serviços</span>
+                </a>
+                <a href="/admin-dashboard/policy/"
+                   class="sidebar-link {% if "/admin-dashboard/policy/" in request.path %}sidebar-link-active{% endif %}"
+                   {% if "/admin-dashboard/policy/" in request.path %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="sliders" %}
+                    <span>Política de reserva</span>
+                </a>
+                <a href="/admin-dashboard/ajuda/"
+                   class="sidebar-link {% if "/admin-dashboard/ajuda/" in request.path %}sidebar-link-active{% endif %}"
+                   {% if "/admin-dashboard/ajuda/" in request.path %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="help" %}
+                    <span>Blocos de Ajuda</span>
+                </a>
+                <a href="/admin-dashboard/users/"
+                   class="sidebar-link {% if "/admin-dashboard/users/" in request.path %}sidebar-link-active{% endif %}"
+                   {% if "/admin-dashboard/users/" in request.path %}aria-current="page"{% endif %}>
+                    {% include "partials/_icon.html" with name="users" %}
+                    <span>Usuários</span>
+                </a>
             </nav>
+
             <div class="pt-4 mt-4 border-t border-base-300">
-                <a href="/" class="sidebar-link">Voltar ao Site</a>
+                <div class="flex items-center gap-2.5 px-1 mb-2 min-w-0">
+                    <span class="avatar-initials" aria-hidden="true">{{ request.user.username|slice:":2"|upper }}</span>
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium truncate leading-tight">{{ request.user.username }}</p>
+                        <p class="text-xs text-muted leading-tight">Administrador</p>
+                    </div>
+                </div>
+                <a href="/spaces/" class="sidebar-link text-muted">
+                    {% include "partials/_icon.html" with name="arrow-left" %}
+                    <span>Voltar à área do usuário</span>
+                </a>
             </div>
         </aside>
     </div>

@@ -1,29 +1,38 @@
 {% extends "base_user.html" %}
 
-{% block title %}{{ space.name }} - Reserva de Espaços{% endblock %}
+{% block title %}{{ space.name }} - Data e horário{% endblock %}
 
 {% block user_content %}
 <div class="space-y-6 max-w-4xl">
-    {% include "components/_reservation_steps.html" with current_step=2 %}
+    {% include "components/_reservation_steps.html" %}
 
-    <div class="surface p-5 sm:p-6">
+    <div class="surface overflow-hidden">
+        {% include "partials/_space_image.html" with space=space eager=True %}
+        <div class="p-5 sm:p-6">
+        {% if space.space_type %}
+        <p class="text-[11px] font-medium uppercase tracking-wider text-muted mb-1">{{ space.space_type.name }}</p>
+        {% endif %}
         <h1 class="text-2xl font-semibold tracking-tight">{{ space.name }}</h1>
         <div class="flex flex-wrap gap-1.5 mt-3 mb-4">
-            <span class="badge badge-outline badge-sm font-normal">{{ space.capacity }} lugares</span>
+            <span class="badge badge-outline badge-sm font-normal">Até {{ space.capacity }} pessoa{{ space.capacity|pluralize:"s" }}</span>
             <span class="badge badge-ghost badge-sm font-normal text-base-content/70">{{ space.location }}</span>
         </div>
         {% if space.description %}
-        <p class="text-sm text-base-content/60 mb-4">{{ space.description }}</p>
+        <p class="text-sm text-muted mb-4">{{ space.description }}</p>
         {% endif %}
         {% with attrs=space.space_attributes.all %}
         {% if attrs %}
         <div class="flex flex-wrap gap-1">
             {% for space_attr in attrs %}
-            <span class="badge badge-outline badge-sm font-normal">{{ space_attr.attribute.name }}</span>
+            <span class="badge badge-outline badge-sm font-normal gap-1">
+                {% if space_attr.attribute.icon_name %}{% include "partials/_icon.html" with name=space_attr.attribute.icon_name %}{% endif %}
+                {{ space_attr.attribute.name }}
+            </span>
             {% endfor %}
         </div>
         {% endif %}
         {% endwith %}
+        </div>
     </div>
 
     <div class="surface p-5 sm:p-6">
@@ -37,20 +46,30 @@
                 id="availability-date"
                 name="date"
                 value="{{ selected_date|date:'Y-m-d' }}"
+                {# O horizonte vem da política: não se oferece um dia que a #}
+                {# regra não deixaria reservar. #}
+                min="{{ hoje|date:'Y-m-d' }}"
+                max="{{ data_maxima|date:'Y-m-d' }}"
                 class="input input-bordered w-full"
                 hx-get="{% url 'space_detail' space.id %}"
                 hx-target="#availability-content"
+                {# Só os campos escondidos: incluir o bloco inteiro mandaria a #}
+                {# própria data duas vezes. #}
+                hx-include="#horario-pedido, #duracao-pedida"
                 hx-trigger="change"
                 hx-indicator="#availability-loading"
             >
             <span id="availability-loading" class="htmx-indicator loading loading-spinner loading-sm mt-2"></span>
+            {# O horário pedido no passo 1 sobrevive à troca de data. #}
+            {% if horario_pedido %}<input type="hidden" id="horario-pedido" name="start" value="{{ horario_pedido|time:'H:i' }}">{% endif %}
+            {% if duracao_pedida %}<input type="hidden" id="duracao-pedida" name="duration" value="{{ duracao_pedida }}">{% endif %}
         </div>
         <div id="availability-content">
             {% include "spaces/_availability.html" %}
         </div>
     </div>
 
-    <a href="{% url 'space_list' %}" class="btn btn-ghost btn-sm text-base-content/60 inline-flex items-center gap-1.5">
+    <a href="{% url 'space_list' %}" class="btn btn-ghost btn-sm text-muted inline-flex items-center gap-1.5">
         {% include "partials/_icon.html" with name="arrow-left" %}
         Voltar aos espaços
     </a>

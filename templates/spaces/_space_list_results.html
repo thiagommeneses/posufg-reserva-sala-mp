@@ -19,42 +19,118 @@
     <span><span class="font-medium">Entendi:</span> {{ ai_summary }}</span>
 </div>
 {% endif %}
-{% if spaces %}
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    {% for space in spaces %}
-    <article class="surface p-5 flex flex-col gap-3 transition-colors hover:border-base-content/20">
-        <h2 class="text-base font-semibold leading-snug">{{ space.name }}</h2>
 
-        <div class="flex flex-wrap gap-1.5">
-            <span class="badge badge-outline badge-sm font-normal">{{ space.capacity }} lugares</span>
-            <span class="badge badge-ghost badge-sm font-normal text-base-content/70">{{ space.location }}</span>
-        </div>
-
-        {% if space.description %}
-        <p class="text-sm text-base-content/55 line-clamp-2">{{ space.description }}</p>
-        {% endif %}
-
-        {% with attrs=space.space_attributes.all %}
-        {% if attrs %}
-        <div class="flex flex-wrap gap-1">
-            {% for space_attr in attrs %}
-            <span class="badge badge-outline badge-sm font-normal text-base-content/60">{{ space_attr.attribute.name }}</span>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
-
-        <div class="mt-auto pt-2">
-            <a href="{% url 'space_detail' space.id %}" class="btn btn-primary btn-sm w-full sm:w-auto inline-flex items-center justify-center gap-2">
-                Ver disponibilidade
-                {% include "partials/_icon.html" with name="calendar" %}
-            </a>
-        </div>
-    </article>
-    {% endfor %}
+{% comment %}
+O que a IA pediu e a regra recusou é dito em voz alta. Sem isso, o resumo acima
+prometeria uma data ou um horário que a tela não está mostrando.
+{% endcomment %}
+{% for aviso in ai_avisos %}
+<div class="notice notice-warning mb-4" role="status">
+    <span>{{ aviso }}</span>
 </div>
+{% endfor %}
+
+{% if horario_pedido %}
+<div class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-sm text-muted">Filtrando por horário:</span>
+    <span class="badge badge-outline gap-1.5 font-normal py-3">
+        {% include "partials/_icon.html" with name="clock" %}
+        {{ selected_date|date:"d/m" }}, {{ horario_pedido|time:"H:i" }}
+        {% if duracao_pedida %} · {{ duracao_pedida }} min{% endif %}
+        <a href="?{{ querystring_sem_horario }}"
+           class="ml-0.5 text-muted hover:text-base-content"
+           aria-label="Remover filtro de horário">
+            {% include "partials/_icon.html" with name="x" %}
+        </a>
+    </span>
+</div>
+{% endif %}
+
+{% if spaces %}
+{% comment %}
+Cada cartão é um botão de seleção inteiro, não um link para outra tela: quem
+escolhe aqui continua no passo 1 e confirma no resumo. `aria-selected` diz o
+estado a quem não vê a borda, e o estado nunca depende só da cor.
+
+`hx-push-url` mantém a escolha na URL — recarregar ou voltar preserva tudo.
+{% endcomment %}
+<ul role="listbox"
+    aria-label="Espaços disponíveis"
+    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0 m-0">
+    {% for space in spaces %}
+    {% if espaco_selecionado and espaco_selecionado.pk == space.pk %}
+    <li role="option" aria-selected="true">
+        <a href="?{{ querystring_sem_espaco }}"
+           hx-get="{% url 'space_list' %}?{{ querystring_sem_espaco }}"
+           hx-target="#space-results"
+           hx-push-url="true"
+           class="selectable-card surface overflow-hidden flex flex-col h-full ring-2 ring-primary border-primary">
+    {% else %}
+    <li role="option" aria-selected="false">
+        <a href="?{{ querystring_sem_espaco }}space={{ space.pk }}"
+           hx-get="{% url 'space_list' %}?{{ querystring_sem_espaco }}space={{ space.pk }}"
+           hx-target="#space-results"
+           hx-push-url="true"
+           class="selectable-card surface overflow-hidden flex flex-col h-full transition-colors hover:border-base-content/20">
+    {% endif %}
+            <div class="relative">
+                {# As três primeiras já estão na tela ao carregar; adiar essas custaria mais do que economiza. #}
+                {% if forloop.counter <= 3 %}
+                {% include "partials/_space_image.html" with space=space eager=True %}
+                {% else %}
+                {% include "partials/_space_image.html" with space=space %}
+                {% endif %}
+                {% if espaco_selecionado and espaco_selecionado.pk == space.pk %}
+                <span class="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-primary text-primary-content text-xs font-medium px-2.5 py-1">
+                    {% include "partials/_icon.html" with name="check" %}
+                    Selecionado
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="p-5 flex flex-col gap-2 flex-1">
+                <div class="space-y-0.5">
+                    <h3 class="text-base font-semibold leading-snug">{{ space.name }}</h3>
+                    {% if space.space_type %}
+                    <p class="text-xs text-muted">{{ space.space_type.name }}</p>
+                    {% endif %}
+                </div>
+
+                <p class="text-sm text-muted">
+                    Até {{ space.capacity }} pessoa{{ space.capacity|pluralize:"s" }} · {{ space.location }}
+                </p>
+
+                {% with attrs=space.space_attributes.all %}
+                {% if attrs %}
+                <div class="flex flex-wrap gap-1">
+                    {% for space_attr in attrs %}
+                    <span class="badge badge-outline badge-sm font-normal text-muted gap-1">
+                        {% if space_attr.attribute.icon_name %}
+                        {% include "partials/_icon.html" with name=space_attr.attribute.icon_name %}
+                        {% endif %}
+                        {{ space_attr.attribute.name }}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                {% if space.description %}
+                <p class="text-sm text-muted line-clamp-2">{{ space.description }}</p>
+                {% endif %}
+
+                <div class="mt-auto pt-2.5 border-t border-base-300">
+                    {# A situação é do dia escolhido e nada tem a ver com is_active: #}
+                    {# um espaço ativo pode estar lotado. #}
+                    {% include "partials/_availability_badge.html" with resumo=space.resumo_disponibilidade %}
+                </div>
+            </div>
+        </a>
+    </li>
+    {% endfor %}
+</ul>
 {% else %}
-<div class="notice">
+<div class="notice" role="status">
     <span>Nenhum espaço encontrado com os filtros selecionados.</span>
 </div>
 {% endif %}

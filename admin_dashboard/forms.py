@@ -4,10 +4,14 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.utils.text import slugify
 
-from reservations.models import MaintenanceBlock
+from core.models import HelpArticle
+from reservations.models import BookingPolicy, MaintenanceBlock
 from reservations.validators import validate_maintenance_slot
-from spaces.models import Attribute, Space, SpaceAttribute
+from services.models import ServiceType
+from spaces.models import Attribute, Space, SpaceAttribute, SpaceType
+from spaces.validators import ICONES_DISPONIVEIS
 
 USER_FIELD_WIDGETS = {
     "username": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
@@ -113,8 +117,21 @@ class SpaceForm(forms.ModelForm):
         """Meta options for SpaceForm."""
 
         model = Space
-        fields = ["name", "description", "capacity", "location", "is_active", "attributes"]
+        fields = [
+            "name",
+            "description",
+            "space_type",
+            "capacity",
+            "location",
+            "cover_image",
+            "is_active",
+            "attributes",
+        ]
         widgets = {
+            "space_type": forms.Select(attrs={"class": "select select-bordered w-full"}),
+            "cover_image": forms.ClearableFileInput(
+                attrs={"class": "file-input w-full", "accept": "image/jpeg,image/png,image/webp"}
+            ),
             "name": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
             "description": forms.Textarea(
                 attrs={"class": "textarea textarea-bordered w-full", "rows": 3}
@@ -190,3 +207,229 @@ class MaintenanceBlockForm(forms.ModelForm):
             validate_maintenance_slot(space, start_time, end_time)
 
         return cleaned_data
+
+
+class SpaceTypeForm(forms.ModelForm):
+    """Form for creating and updating space types."""
+
+    class Meta:
+        """Meta options for SpaceTypeForm."""
+
+        model = SpaceType
+        fields = ["name", "slug", "icon_name", "sort_order", "is_active"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "slug": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "icon_name": forms.Select(attrs={"class": "select select-bordered w-full"}),
+            "sort_order": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
+            "is_active": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        """Offer the icon catalog as a select, instead of free text.
+
+        Digitar o nome do ícone à mão erra fácil, e o erro só aparece na tela.
+        Um select com o catálogo torna o campo impossível de preencher errado.
+        """
+        super().__init__(*args, **kwargs)
+        opcoes = [("", "Sem ícone")] + [(nome, nome) for nome in sorted(ICONES_DISPONIVEIS)]
+        self.fields["icon_name"].widget.choices = opcoes
+        self.fields["slug"].required = False
+        self.fields["slug"].help_text = "Deixe em branco para gerar a partir do nome."
+
+    def clean_slug(self):
+        """Derive the slug from the name when it is left blank."""
+        slug = self.cleaned_data.get("slug")
+        if slug:
+            return slug
+        return slugify(self.cleaned_data.get("name", ""))
+
+
+class BookingPolicyForm(forms.ModelForm):
+    """Form for the single booking policy row.
+
+    Os sete dias da semana são um conceito só, não sete interruptores
+    independentes, e por isso a tela precisa desenhá-los juntos. Quem sabe
+    quais campos são esses é este formulário — via :attr:`campos_de_dia` —, e
+    não o template: o template continua sem conhecer nome de campo nenhum,
+    que é o que o mantém correto quando a política ganha um parâmetro novo.
+    """
+
+    @property
+    def campos_de_dia(self):
+        """Return the bound fields of the weekday switches, Monday first."""
+        return [self[nome] for nome in BookingPolicy.CAMPOS_DE_DIA]
+
+    @property
+    def campos_gerais(self):
+        """Return every other bound field, in the order declared in Meta."""
+        dias = set(BookingPolicy.CAMPOS_DE_DIA)
+        return [campo for campo in self if campo.name not in dias]
+
+    class Meta:
+        """Meta options for BookingPolicyForm."""
+
+        model = BookingPolicy
+        fields = [
+            "opening_time",
+            "closing_time",
+            "slot_minutes",
+            "min_duration_minutes",
+            "max_duration_minutes",
+            "horizon_days",
+            "few_slots_threshold",
+            "opens_monday",
+            "opens_tuesday",
+            "opens_wednesday",
+            "opens_thursday",
+            "opens_friday",
+            "opens_saturday",
+            "opens_sunday",
+            # A ordem é a de leitura: o interruptor primeiro, o número que
+            # ele usa logo abaixo. Ao contrário, a tolerância aparecia antes
+            # da regra que lhe dá sentido.
+            "enforce_window",
+            "release_no_shows",
+            "no_show_threshold_minutes",
+        ]
+        widgets = {
+            "opening_time": forms.TimeInput(
+                format="%H:%M", attrs={"type": "time", "class": "input input-bordered w-full"}
+            ),
+            "closing_time": forms.TimeInput(
+                format="%H:%M", attrs={"type": "time", "class": "input input-bordered w-full"}
+            ),
+            "slot_minutes": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
+            "min_duration_minutes": forms.NumberInput(
+                attrs={"class": "input input-bordered w-full"}
+            ),
+            "max_duration_minutes": forms.NumberInput(
+                attrs={"class": "input input-bordered w-full"}
+            ),
+            "horizon_days": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
+            "few_slots_threshold": forms.NumberInput(
+                attrs={"class": "input input-bordered w-full"}
+            ),
+            "no_show_threshold_minutes": forms.NumberInput(
+                attrs={"class": "input input-bordered w-full"}
+            ),
+            "enforce_window": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
+            "release_no_shows": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
+            **{
+                nome: forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"})
+                for nome in BookingPolicy.CAMPOS_DE_DIA
+            },
+        }
+
+
+class AttributeForm(forms.ModelForm):
+    """Form for creating and updating equipment attributes."""
+
+    class Meta:
+        """Meta options for AttributeForm."""
+
+        model = Attribute
+        fields = ["name", "category", "icon_name", "is_featured", "sort_order"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "category": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "icon_name": forms.Select(attrs={"class": "select select-bordered w-full"}),
+            "is_featured": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
+            "sort_order": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        """Offer the icon catalog as a select, as in SpaceTypeForm."""
+        super().__init__(*args, **kwargs)
+        opcoes = [("", "Sem ícone")] + [(nome, nome) for nome in sorted(ICONES_DISPONIVEIS)]
+        self.fields["icon_name"].widget.choices = opcoes
+
+
+class ServiceTypeForm(forms.ModelForm):
+    """Form for creating and updating service types."""
+
+    class Meta:
+        """Meta options for ServiceTypeForm."""
+
+        model = ServiceType
+        fields = [
+            "name",
+            "slug",
+            "category",
+            "description",
+            "icon_name",
+            "spaces",
+            "min_lead_time_hours",
+            "requires_notes",
+            "is_active",
+            "sort_order",
+        ]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "slug": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "category": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "description": forms.Textarea(
+                attrs={"class": "textarea textarea-bordered w-full", "rows": 2}
+            ),
+            "icon_name": forms.Select(attrs={"class": "select select-bordered w-full"}),
+            "spaces": forms.CheckboxSelectMultiple(),
+            "min_lead_time_hours": forms.NumberInput(
+                attrs={"class": "input input-bordered w-full"}
+            ),
+            "requires_notes": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
+            "is_active": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
+            "sort_order": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        """Offer the icon catalog as a select and derive the slug from the name."""
+        super().__init__(*args, **kwargs)
+        opcoes = [("", "Sem ícone")] + [(nome, nome) for nome in sorted(ICONES_DISPONIVEIS)]
+        self.fields["icon_name"].widget.choices = opcoes
+        self.fields["slug"].required = False
+        self.fields["slug"].help_text = "Deixe em branco para gerar a partir do nome."
+        # Só espaços ativos: vincular um serviço a um espaço desativado criaria
+        # uma oferta que nunca aparece — e que ninguém entenderia ao revisar.
+        self.fields["spaces"].queryset = Space.objects.filter(is_active=True).order_by("name")
+
+    def clean_slug(self):
+        """Derive the slug from the name when it is left blank."""
+        slug = self.cleaned_data.get("slug")
+        if slug:
+            return slug
+        return slugify(self.cleaned_data.get("name", ""))
+
+
+class HelpArticleForm(forms.ModelForm):
+    """Form for the institutional help blocks.
+
+    O ``slug`` não está aqui de propósito: ele é a âncora da seção na tela de
+    Ajuda e o modelo o deriva do título. Pedi-lo ao administrador seria expor um
+    detalhe de implementação numa tela cujo assunto é escrever texto.
+    """
+
+    class Meta:
+        """Meta options for HelpArticleForm."""
+
+        model = HelpArticle
+        fields = ["title", "body", "sort_order", "is_published"]
+        widgets = {
+            "title": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "body": forms.Textarea(
+                attrs={"class": "textarea textarea-bordered w-full", "rows": 10}
+            ),
+            "sort_order": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
+            "is_published": forms.CheckboxInput(attrs={"class": "checkbox checkbox-sm"}),
+        }
+
+    def clean_body(self):
+        """Reject a body that is only whitespace.
+
+        ``TextField`` obrigatório já barra o vazio, mas não barra um campo com
+        três quebras de linha — que publicaria um bloco com título e nenhum
+        parágrafo na tela de Ajuda.
+        """
+        body = self.cleaned_data.get("body", "")
+        if not body.strip():
+            raise ValidationError("Escreva o texto do bloco.")
+        return body

@@ -1,27 +1,64 @@
 {% extends "base_user.html" %}
 
-{% block title %}Espaços - Reserva de Espaços{% endblock %}
+{% comment %}
+Passo 1 do fluxo de reserva: escolher o espaço.
+
+A ordem dos controles segue a pergunta que a pessoa faz: que tipo de espaço,
+para quando, para quantos. Capacidade mínima e máxima saíram da interface
+principal — viraram "Quantas pessoas?", que é como alguém pensa. Os dois
+parâmetros continuam aceitos na URL, para links guardados e para a API.
+
+Tudo é estado de servidor na querystring: recarregar, voltar pelo histórico ou
+compartilhar o link preserva aba, data, pessoas, filtros e o espaço escolhido.
+{% endcomment %}
+
+{% block title %}Escolher espaço - Reserva de Espaços{% endblock %}
 
 {% block user_content %}
 <div class="space-y-6">
+    {% include "components/_reservation_steps.html" %}
+
     <header>
-        <h1 class="text-2xl font-semibold tracking-tight">Buscar espaços</h1>
-        <p class="mt-1 text-sm text-base-content/55">Encontre salas por linguagem natural ou filtros.</p>
+        <h1 class="text-2xl font-semibold tracking-tight">Nova reserva</h1>
+        <p class="mt-1 text-sm text-muted">
+            Escolha o espaço. Você confirma o horário na etapa seguinte.
+        </p>
     </header>
 
+    {% if space_types %}
+    {# As abas trocam só o tipo: o resto da busca vai junto em query_sem_tipo. #}
+    <nav class="flex flex-wrap gap-2" aria-label="Filtrar por tipo de espaço">
+        <a href="?{{ query_sem_tipo }}"
+           class="btn btn-sm font-normal {% if not selected_type %}btn-primary{% else %}btn-outline border-base-300 text-base-content/70{% endif %}"
+           {% if not selected_type %}aria-current="page"{% endif %}>Todos</a>
+        {% for tipo in space_types %}
+        <a href="?{{ query_sem_tipo }}type={{ tipo.slug }}"
+           class="btn btn-sm font-normal {% if selected_type == tipo.slug %}btn-primary{% else %}btn-outline border-base-300 text-base-content/70{% endif %}"
+           {% if selected_type == tipo.slug %}aria-current="page"{% endif %}>{{ tipo.name }}</a>
+        {% endfor %}
+    </nav>
+    {% endif %}
+
+    {# ---------- Busca com IA ---------- #}
     <form
         hx-get="{% url 'space_list' %}"
         hx-target="#space-results"
+        hx-push-url="true"
         hx-indicator="#ai-loading-indicator"
         class="surface p-5 sm:p-6"
     >
+        {% if selected_type %}<input type="hidden" name="type" value="{{ selected_type }}">{% endif %}
+        <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+
         <h2 class="text-sm font-semibold mb-1">Busca com IA</h2>
-        <p class="text-sm text-base-content/55 mb-4">
+        <p class="text-sm text-muted mb-4">
             Ex.: "sala para até 4 pessoas" ou "sala para 8 pessoas com projetor".
         </p>
         <div class="flex flex-col sm:flex-row gap-2">
+            <label class="sr-only" for="ai_query">Descreva o espaço que você precisa</label>
             <input
                 type="text"
+                id="ai_query"
                 name="ai_query"
                 value="{{ ai_query }}"
                 placeholder="Descreva o que você precisa…"
@@ -35,90 +72,150 @@
         </div>
     </form>
 
+    {# ---------- Data, pessoas e filtros ---------- #}
+    {% comment %}
+    Este formulário não carrega `ai_query`: uma busca com IA substitui os
+    filtros no servidor, então mantê-la aqui faria o botão "Filtrar" não
+    filtrar nada. O que a IA entendeu volta preenchido nos campos abaixo — a
+    pessoa vê a interpretação e pode corrigi-la sem reescrever a frase.
+    {% endcomment %}
     <form
         hx-get="{% url 'space_list' %}"
         hx-target="#space-results"
+        hx-push-url="true"
         hx-indicator="#loading-indicator"
         class="surface p-5 sm:p-6"
     >
-        <h2 class="text-sm font-semibold mb-4">Filtros</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {% if selected_type %}<input type="hidden" name="type" value="{{ selected_type }}">{% endif %}
+        {% if espaco_selecionado %}<input type="hidden" name="space" value="{{ espaco_selecionado.pk }}">{% endif %}
+        {# O horário pedido não tem campo próprio; viaja escondido para não se perder num filtro. #}
+        {% if horario_pedido %}<input type="hidden" name="start" value="{{ horario_pedido|time:'H:i' }}">{% endif %}
+        {% if duracao_pedida %}<input type="hidden" name="duration" value="{{ duracao_pedida }}">{% endif %}
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] gap-4">
             <div class="form-control">
-                <label class="label py-1" for="min_capacity">
-                    <span class="label-text text-sm font-medium">Capacidade mínima</span>
+                <label class="label py-1" for="date">
+                    <span class="label-text text-sm font-medium">Data</span>
+                </label>
+                <input
+                    type="date"
+                    id="date"
+                    name="date"
+                    value="{{ selected_date|date:'Y-m-d' }}"
+                    min="{{ hoje|date:'Y-m-d' }}"
+                    max="{{ data_maxima|date:'Y-m-d' }}"
+                    class="input input-bordered w-full"
+                    hx-get="{% url 'space_list' %}"
+                    hx-target="#space-results"
+                    hx-include="closest form"
+                    hx-push-url="true"
+                    hx-trigger="change"
+                    hx-indicator="#loading-indicator"
+                >
+            </div>
+
+            <div class="form-control">
+                <label class="label py-1" for="people">
+                    <span class="label-text text-sm font-medium">Quantas pessoas?</span>
                 </label>
                 <input
                     type="number"
-                    id="min_capacity"
-                    name="min_capacity"
-                    value="{{ min_capacity }}"
+                    id="people"
+                    name="people"
+                    value="{{ people }}"
                     min="1"
-                    placeholder="Ex.: 5"
+                    placeholder="Ex.: 8"
                     class="input input-bordered w-full"
                 >
+                <p class="text-xs text-muted mt-1">Mostra espaços que comportam esse número.</p>
             </div>
-            <div class="form-control">
-                <label class="label py-1" for="max_capacity">
-                    <span class="label-text text-sm font-medium">Capacidade máxima</span>
-                </label>
-                <input
-                    type="number"
-                    id="max_capacity"
-                    name="max_capacity"
-                    value="{{ max_capacity }}"
-                    min="1"
-                    placeholder="Ex.: 4"
-                    class="input input-bordered w-full"
-                >
-            </div>
-            <div class="form-control">
-                <label class="label py-1" for="location">
-                    <span class="label-text text-sm font-medium">Localização</span>
-                </label>
-                <input
-                    type="text"
-                    id="location"
-                    name="location"
-                    value="{{ location }}"
-                    placeholder="Ex.: Bloco A"
-                    class="input input-bordered w-full"
-                >
-            </div>
-            <div class="form-control justify-end">
+
+            <div class="form-control justify-start">
                 <label class="label py-1 hidden lg:flex"><span class="label-text">&nbsp;</span></label>
-                <button type="submit" class="btn btn-primary w-full inline-flex items-center justify-center gap-2">
-                    Filtrar
+                <button type="submit" class="btn btn-primary w-full lg:w-auto inline-flex items-center justify-center gap-2">
+                    Buscar
                     {% include "partials/_icon.html" with name="filter" %}
                     <span id="loading-indicator" class="htmx-indicator loading loading-spinner loading-sm"></span>
                 </button>
             </div>
         </div>
 
-        <div class="mt-5 pt-5 border-t border-base-300">
-            <p class="text-sm font-medium mb-3">Equipamentos</p>
-            <div class="flex flex-wrap gap-x-5 gap-y-2">
-                {% for attr in attributes %}
-                <label class="flex items-center gap-2 cursor-pointer text-sm">
+        {# Filtros avançados ficam recolhidos: são a exceção, não o caminho comum. #}
+        <details class="mt-4 pt-4 border-t border-base-300"
+                 {% if location or selected_attributes %}open{% endif %}>
+            <summary class="text-sm text-muted hover:text-base-content cursor-pointer inline-flex items-center gap-1.5 select-none">
+                <span class="disclosure-marker text-muted">{% include "partials/_icon.html" with name="chevron-down" %}</span>
+                Mais filtros
+                {% if filtros_avancados_ativos %}
+                <span class="badge badge-primary badge-sm font-normal">{{ filtros_avancados_ativos }}</span>
+                {% endif %}
+            </summary>
+
+            <div class="mt-4 space-y-4">
+                <div class="form-control max-w-sm">
+                    <label class="label py-1" for="location">
+                        <span class="label-text text-sm font-medium">Localização</span>
+                    </label>
                     <input
-                        type="checkbox"
-                        name="attributes"
-                        value="{{ attr.name }}"
-                        class="checkbox checkbox-sm"
-                        {% if attr.name in selected_attributes %}checked{% endif %}
-                        hx-get="{% url 'space_list' %}"
-                        hx-target="#space-results"
-                        hx-include="closest form"
-                        hx-indicator="#loading-indicator"
+                        type="text"
+                        id="location"
+                        name="location"
+                        value="{{ location }}"
+                        placeholder="Ex.: Bloco A"
+                        class="input input-bordered w-full"
                     >
-                    <span>{{ attr.name }}</span>
-                </label>
-                {% endfor %}
+                </div>
+
+                <div>
+                    <p class="text-sm font-medium mb-3">Equipamentos</p>
+                    {% if featured_attributes %}
+                    {# Em destaque: os que um administrador marcou como decisivos. #}
+                    <div class="flex flex-wrap gap-x-5 gap-y-2">
+                        {% for attr in featured_attributes %}
+                        {% include "spaces/_attribute_checkbox.html" %}
+                        {% endfor %}
+                    </div>
+                    {% if other_attributes %}
+                    <details class="mt-3" {% if has_hidden_selection %}open{% endif %}>
+                        <summary class="text-sm text-muted hover:text-base-content cursor-pointer inline-flex items-center gap-1.5 select-none">
+                            <span class="disclosure-marker text-muted">{% include "partials/_icon.html" with name="chevron-down" %}</span>
+                            Mais equipamentos
+                            <span class="text-muted">({{ other_attributes|length }})</span>
+                        </summary>
+                        <div class="mt-3 space-y-3">
+                            {% regroup other_attributes by category as grupos %}
+                            {% for grupo in grupos %}
+                            <div>
+                                {% if grupo.grouper %}
+                                <p class="text-[11px] font-medium uppercase tracking-wider text-muted mb-1.5">{{ grupo.grouper }}</p>
+                                {% endif %}
+                                <div class="flex flex-wrap gap-x-5 gap-y-2">
+                                    {% for attr in grupo.list %}
+                                    {% include "spaces/_attribute_checkbox.html" %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% endif %}
+                    {% else %}
+                    {# Sem nenhum destaque marcado, a tela lista tudo — como antes. #}
+                    <div class="flex flex-wrap gap-x-5 gap-y-2">
+                        {% for attr in attributes %}
+                        {% include "spaces/_attribute_checkbox.html" %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-        </div>
+        </details>
     </form>
 
     <div id="space-results">
         {% include "spaces/_space_list_results.html" %}
     </div>
+
+    {% include "spaces/_selection_summary.html" %}
 </div>
 {% endblock %}
