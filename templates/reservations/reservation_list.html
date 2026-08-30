@@ -6,21 +6,21 @@
 <div class="max-w-3xl space-y-6">
     <header>
         <h1 class="text-2xl font-semibold tracking-tight">Minhas reservas</h1>
-        <p class="mt-1 text-sm text-base-content/55">Acompanhe e gerencie suas reservas.</p>
+        <p class="mt-1 text-sm text-muted">Acompanhe e gerencie suas reservas.</p>
     </header>
 
     {% if reservations %}
     <div class="flex flex-wrap gap-1 border-b border-base-300 pb-px">
         <a
-            class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors {% if active_tab == 'active' %}border-primary text-primary{% else %}border-transparent text-base-content/55 hover:text-base-content{% endif %}"
+            class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors {% if active_tab == 'active' %}border-primary text-primary{% else %}border-transparent text-muted hover:text-base-content{% endif %}"
             href="?tab=active"
         >Ativas ({{ active_count }})</a>
         <a
-            class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors {% if active_tab == 'past' %}border-primary text-primary{% else %}border-transparent text-base-content/55 hover:text-base-content{% endif %}"
+            class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors {% if active_tab == 'past' %}border-primary text-primary{% else %}border-transparent text-muted hover:text-base-content{% endif %}"
             href="?tab=past"
         >Passadas ({{ past_count }})</a>
         <a
-            class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors {% if active_tab == 'cancelled' %}border-primary text-primary{% else %}border-transparent text-base-content/55 hover:text-base-content{% endif %}"
+            class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors {% if active_tab == 'cancelled' %}border-primary text-primary{% else %}border-transparent text-muted hover:text-base-content{% endif %}"
             href="?tab=cancelled"
         >Canceladas ({{ cancelled_count }})</a>
     </div>
@@ -32,10 +32,10 @@
             <div class="flex justify-between items-start gap-3">
                 <div class="min-w-0">
                     <h2 class="font-semibold truncate">{{ reservation.space.name }}</h2>
-                    <p class="text-sm text-base-content/60 mt-0.5">
+                    <p class="text-sm text-muted mt-0.5">
                         {{ reservation.start_time|date:"d/m/Y H:i" }} — {{ reservation.end_time|date:"H:i" }}
                     </p>
-                    <p class="text-xs text-base-content/45 mt-1">{{ reservation.space.location }}</p>
+                    <p class="text-xs text-muted mt-1">{{ reservation.space.location }}</p>
                 </div>
                 {% include "components/_reservation_status_badge.html" with reservation=reservation %}
             </div>

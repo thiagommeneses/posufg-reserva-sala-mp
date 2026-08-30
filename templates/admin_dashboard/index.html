@@ -3,25 +3,25 @@
 {% block admin_content %}
 <div class="space-y-8">
     <header>
-        <h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p class="mt-1 text-sm text-base-content/55">Visão geral da ocupação e indicadores do dia.</p>
+        <h1 class="text-2xl font-semibold tracking-tight">Visão geral</h1>
+        <p class="mt-1 text-sm text-muted">Visão geral da ocupação e indicadores do dia.</p>
     </header>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div class="surface p-4 sm:p-5">
-            <p class="text-xs uppercase tracking-wide text-base-content/50">Espaços totais</p>
+            <p class="text-xs uppercase tracking-wide text-muted">Espaços totais</p>
             <p class="mt-1 text-2xl font-semibold tabular-nums">{{ total_spaces }}</p>
         </div>
         <div class="surface p-4 sm:p-5">
-            <p class="text-xs uppercase tracking-wide text-base-content/50">Ocupados agora</p>
+            <p class="text-xs uppercase tracking-wide text-muted">Ocupados agora</p>
             <p class="mt-1 text-2xl font-semibold tabular-nums text-error">{{ occupied_now }}</p>
         </div>
         <div class="surface p-4 sm:p-5">
-            <p class="text-xs uppercase tracking-wide text-base-content/50">Disponíveis agora</p>
+            <p class="text-xs uppercase tracking-wide text-muted">Disponíveis agora</p>
             <p class="mt-1 text-2xl font-semibold tabular-nums text-success">{{ available_now }}</p>
         </div>
         <div class="surface p-4 sm:p-5">
-            <p class="text-xs uppercase tracking-wide text-base-content/50">No-shows hoje</p>
+            <p class="text-xs uppercase tracking-wide text-muted">No-shows hoje</p>
             <p class="mt-1 text-2xl font-semibold tabular-nums text-warning">{{ no_shows_today }}</p>
         </div>
     </div>
@@ -29,7 +29,7 @@
     <section>
         <div class="mb-4">
             <h2 class="text-base font-semibold">Ocupação em tempo real</h2>
-            <p class="mt-1 text-sm text-base-content/50">Atualiza automaticamente a cada 30 segundos.</p>
+            <p class="mt-1 text-sm text-muted">Atualiza automaticamente a cada 30 segundos.</p>
         </div>
         <div
             id="occupancy-grid"

@@ -2,7 +2,7 @@
     <div class="overflow-x-auto">
         <table class="table">
             <thead>
-                <tr class="border-b border-base-300 text-xs text-base-content/50">
+                <tr class="border-b border-base-300 text-xs text-muted">
                     <th class="bg-base-100 font-medium">Usuário</th>
                     <th class="bg-base-100 font-medium">Espaço</th>
                     <th class="bg-base-100 font-medium">Início</th>
@@ -16,7 +16,7 @@
                 {% include "admin_dashboard/_reservation_row.html" %}
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="py-10 text-center text-sm text-base-content/50">Nenhuma reserva encontrada.</td>
+                    <td colspan="6" class="py-10 text-center text-sm text-muted">Nenhuma reserva encontrada.</td>
                 </tr>
                 {% endfor %}
             </tbody>

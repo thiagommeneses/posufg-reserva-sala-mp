@@ -38,7 +38,7 @@
         <h3 class="text-sm font-semibold">Fontes utilizadas</h3>
         <span class="badge badge-ghost badge-sm font-normal">{{ result.sources|length }}</span>
     </div>
-    <p class="px-5 pt-3 text-xs text-base-content/50">
+    <p class="px-5 pt-3 text-xs text-muted">
         Os números correspondem às citações da resposta.
     </p>
     <div class="divide-y divide-base-300 mt-2">
@@ -47,7 +47,7 @@
             <summary class="cursor-pointer list-none px-5 py-3 hover:bg-base-200/60 transition-colors text-sm">
                 <span class="inline-flex items-center justify-center w-5 h-5 rounded-full border border-base-300 text-xs mr-2 tabular-nums">{{ fonte.position }}</span>
                 <span class="font-medium">{{ fonte.institution }}</span>
-                <span class="text-base-content/50"> — {{ fonte.document }}</span>
+                <span class="text-muted"> — {{ fonte.document }}</span>
             </summary>
             <div class="px-5 pb-4">
                 <p class="text-sm whitespace-pre-line bg-base-200 border border-base-300 rounded-lg p-3">{{ fonte.excerpt }}</p>

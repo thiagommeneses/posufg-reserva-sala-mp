@@ -19,7 +19,7 @@
         </div>
         <div class="surface p-6 sm:p-8">
             <h1 class="text-xl font-semibold mb-1">Criar conta</h1>
-            <p class="text-sm text-base-content/55 mb-6">Preencha os dados para começar.</p>
+            <p class="text-sm text-muted mb-6">Preencha os dados para começar.</p>
             <form method="post" action="{% url 'accounts:register' %}" class="space-y-4">
                 {% csrf_token %}
                 <div class="form-control">
@@ -71,7 +71,7 @@
                     {% include "partials/_icon.html" with name="user-plus" %}
                 </button>
             </form>
-            <p class="mt-6 text-center text-sm text-base-content/55">
+            <p class="mt-6 text-center text-sm text-muted">
                 Já tem conta?
                 <a href="{% url 'accounts:login' %}" class="font-medium text-base-content hover:underline underline-offset-4">Entrar</a>
             </p>

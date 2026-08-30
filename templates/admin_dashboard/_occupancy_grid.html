@@ -5,11 +5,11 @@
             <h3 class="font-semibold text-sm leading-snug">{{ card.name }}</h3>
             <span class="badge badge-outline badge-sm font-normal shrink-0 {{ card.status_class }}">{{ card.status_label }}</span>
         </div>
-        <p class="text-sm text-base-content/55">{{ card.location }}</p>
+        <p class="text-sm text-muted">{{ card.location }}</p>
         <div class="flex flex-wrap gap-1 mt-auto pt-1">
             <span class="badge badge-ghost badge-sm font-normal">{{ card.capacity }} lugares</span>
             {% if not card.is_active %}
-            <span class="badge badge-ghost badge-sm font-normal text-base-content/45">Inativo</span>
+            <span class="badge badge-ghost badge-sm font-normal text-muted">Inativo</span>
             {% endif %}
         </div>
     </article>

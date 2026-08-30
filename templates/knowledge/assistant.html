@@ -6,9 +6,9 @@
 <div class="space-y-5">
     <header>
         <h1 class="text-2xl font-semibold tracking-tight">Consultar normas</h1>
-        <p class="mt-1 text-sm text-base-content/55">
+        <p class="mt-1 text-sm text-muted">
             Pergunte em linguagem natural. Respostas fundamentadas no corpus indexado.
-            <span class="text-base-content/40 tabular-nums"> · {{ document_count }} docs · {{ institution_count }} instituições</span>
+            <span class="text-muted tabular-nums"> · {{ document_count }} docs · {{ institution_count }} instituições</span>
         </p>
     </header>
 
@@ -42,7 +42,7 @@
                     {% for pergunta in suggested_questions %}
                     <button
                         type="button"
-                        class="btn btn-ghost btn-xs font-normal text-base-content/60 border border-base-300 hover:border-base-content/20 hover:text-base-content"
+                        class="btn btn-ghost btn-xs font-normal text-muted border border-base-300 hover:border-base-content/20 hover:text-base-content"
                         onclick="document.getElementById('question').value = this.textContent.trim(); htmx.trigger(this.closest('form'), 'submit');"
                     >{{ pergunta }}</button>
                     {% endfor %}
@@ -58,10 +58,10 @@
                     <div class="flex items-center justify-between gap-2">
                         <h2 class="text-sm font-semibold tracking-tight">Histórico</h2>
                         {% if history %}
-                        <span class="text-[11px] tabular-nums text-base-content/40">{{ history|length }}</span>
+                        <span class="text-[11px] tabular-nums text-muted">{{ history|length }}</span>
                         {% endif %}
                     </div>
-                    <p class="mt-0.5 text-[11px] text-base-content/45">
+                    <p class="mt-0.5 text-[11px] text-muted">
                         Clique para reutilizar. As 3 últimas entram no contexto.
                     </p>
                 </div>
@@ -80,10 +80,10 @@
                             <p class="text-sm font-medium leading-snug text-base-content/90 line-clamp-2">
                                 {{ turno.question }}
                             </p>
-                            <p class="mt-1.5 text-xs text-base-content/50 line-clamp-2 leading-relaxed">
+                            <p class="mt-1.5 text-xs text-muted line-clamp-2 leading-relaxed">
                                 {{ turno.answer|truncatechars:90 }}
                             </p>
-                            <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-base-content/40">
+                            <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted">
                                 <time datetime="{{ turno.created_at|date:'c' }}">{{ turno.created_at|date:"d/m H:i" }}</time>
                                 {% if turno.used_context %}
                                 <span>· {{ turno.source_count }} fonte{{ turno.source_count|pluralize }}</span>
@@ -96,7 +96,7 @@
                 {% else %}
                 <div class="p-6 text-center">
                     <p class="text-sm font-medium text-base-content/70">Nenhuma consulta ainda</p>
-                    <p class="mt-1 text-xs text-base-content/45 leading-relaxed">
+                    <p class="mt-1 text-xs text-muted leading-relaxed">
                         Suas perguntas aparecerão aqui.
                     </p>
                 </div>

@@ -5,7 +5,7 @@
     <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold tracking-tight">Manutenção</h1>
-            <p class="mt-1 text-sm text-base-content/55">Bloqueie espaços e remova bloqueios quando necessário.</p>
+            <p class="mt-1 text-sm text-muted">Bloqueie espaços e remova bloqueios quando necessário.</p>
         </div>
         <a href="{% url 'admin_dashboard:maintenance_create' %}" class="btn btn-primary btn-sm shrink-0 inline-flex items-center gap-1.5">
             {% include "partials/_icon.html" with name="plus" %}
@@ -17,7 +17,7 @@
         <div class="overflow-x-auto">
             <table class="table">
                 <thead>
-                    <tr class="border-b border-base-300 text-xs text-base-content/50">
+                    <tr class="border-b border-base-300 text-xs text-muted">
                         <th class="bg-base-100 font-medium">Espaço</th>
                         <th class="bg-base-100 font-medium">Início</th>
                         <th class="bg-base-100 font-medium">Término</th>
@@ -30,7 +30,7 @@
                     {% include "admin_dashboard/_maintenance_row.html" %}
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="py-10 text-center text-sm text-base-content/50">Nenhum bloqueio encontrado.</td>
+                        <td colspan="5" class="py-10 text-center text-sm text-muted">Nenhum bloqueio encontrado.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
