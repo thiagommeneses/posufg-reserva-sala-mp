@@ -1,0 +1,54 @@
+{% comment %}
+Uma entrada do calendário.
+
+Três origens, três aparências — e nenhuma delas depende só da cor: a reserva
+própria mostra o assunto, a de terceiro mostra a palavra "Ocupado" e a
+manutenção mostra "Manutenção". Quem não distingue as cores lê a diferença.
+
+Só a própria reserva é link: não existe tela da reserva de outra pessoa, e um
+link que leva a uma recusa é pior do que texto.
+
+Parâmetros:
+    entrada: o dicionário montado por ``reservations.calendario``.
+    compacta: em ``True``, imprime uma linha só (grade do mês).
+{% endcomment %}
+{% if compacta %}
+    {% if entrada.propria %}
+    <a href="{% url 'reservation_detail' entrada.pk %}"
+       class="block truncate rounded px-1.5 py-0.5 text-[11px] leading-tight bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+       title="{{ entrada.inicio|date:'H:i' }}–{{ entrada.fim|date:'H:i' }} · {{ entrada.espaco }}">
+        <span class="tabular-nums font-medium">{{ entrada.inicio|date:"H:i" }}</span>
+        {{ entrada.rotulo }}
+    </a>
+    {% else %}
+    <span class="block truncate rounded px-1.5 py-0.5 text-[11px] leading-tight {% if entrada.tipo == 'manutencao' %}bg-warning/25 text-base-content/70{% else %}bg-base-300/60 text-muted{% endif %}"
+          title="{{ entrada.inicio|date:'H:i' }}–{{ entrada.fim|date:'H:i' }} · {{ entrada.espaco }}">
+        <span class="tabular-nums">{{ entrada.inicio|date:"H:i" }}</span>
+        {{ entrada.rotulo }}
+    </span>
+    {% endif %}
+{% else %}
+    {% if entrada.propria %}
+    <a href="{% url 'reservation_detail' entrada.pk %}"
+       class="block rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 hover:bg-primary/10 transition-colors"
+       title="{{ entrada.rotulo }} · {{ entrada.espaco }}">
+        <span class="block text-xs tabular-nums text-primary font-medium whitespace-nowrap">
+            {{ entrada.inicio|date:"H:i" }} – {{ entrada.fim|date:"H:i" }}
+        </span>
+        <span class="block text-sm font-medium truncate mt-0.5">{{ entrada.rotulo }}</span>
+        <span class="block text-xs text-muted truncate">{{ entrada.espaco }}</span>
+    </a>
+    {% else %}
+    <div class="rounded-lg border border-base-300 border-dashed bg-base-200/60 px-3 py-2 min-w-0"
+         title="{{ entrada.rotulo }} · {{ entrada.espaco }}">
+        <span class="block text-xs tabular-nums text-muted whitespace-nowrap">
+            {{ entrada.inicio|date:"H:i" }} – {{ entrada.fim|date:"H:i" }}
+        </span>
+        <span class="flex items-center gap-1 text-sm font-medium text-muted mt-0.5 min-w-0">
+            {% if entrada.tipo == "manutencao" %}<span class="shrink-0">{% include "partials/_icon.html" with name="wrench" %}</span>{% endif %}
+            <span class="truncate">{{ entrada.rotulo }}</span>
+        </span>
+        <span class="block text-xs text-muted truncate">{{ entrada.espaco }}</span>
+    </div>
+    {% endif %}
+{% endif %}

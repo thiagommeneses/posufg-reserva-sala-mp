@@ -1,0 +1,55 @@
+{% comment %}
+Grade do mês.
+
+Sete colunas em qualquer largura: um mês é uma coisa de sete colunas, e
+empilhá-lo no celular destruiria justamente a leitura que ele oferece. O que
+muda com a largura é o conteúdo da célula — abaixo de ``sm`` não cabe texto
+legível, então cada dia mostra quantas entradas tem e leva à visão de dia.
+{% endcomment %}
+<div class="surface overflow-hidden">
+    <div class="grid grid-cols-7 border-b border-base-300 bg-base-200/50">
+        {% for dia in dias_da_semana %}
+        <div class="px-1 py-2 text-center text-[10px] sm:text-xs font-medium uppercase tracking-wider text-muted">
+            {# A abreviação é para os olhos; o leitor de tela recebe o nome #}
+            {# inteiro, que é o que uma pessoa diria em voz alta.           #}
+            <span aria-hidden="true">{{ dia.curto }}</span>
+            <span class="sr-only">{{ dia.longo }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% for semana in semanas %}
+    <div class="grid grid-cols-7 {% if not forloop.last %}border-b border-base-300{% endif %}">
+        {% for celula in semana %}
+        <div class="min-h-20 sm:min-h-28 p-1 sm:p-1.5 flex flex-col gap-1 {% if not forloop.last %}border-r border-base-300{% endif %} {% if not celula.no_mes or celula.fechado %}bg-base-200/40{% endif %}">
+            <a href="{{ celula.url_do_dia }}"
+               class="self-start inline-flex items-center justify-center min-w-6 h-6 px-1 rounded-full text-xs tabular-nums transition-colors
+                      {% if celula.hoje %}bg-primary text-primary-content font-semibold{% elif celula.no_mes %}text-base-content/70 hover:bg-base-200{% else %}text-muted hover:bg-base-200{% endif %}"
+               {% if celula.hoje %}aria-current="date"{% endif %}>
+                <span class="sr-only">{{ celula.data|date:"j \d\e F" }}{% if celula.hoje %} (hoje){% endif %}{% if celula.fechado %}, fechado{% endif %}: {{ celula.quantidade }} registro{{ celula.quantidade|pluralize:"s" }}</span>
+                <span aria-hidden="true">{{ celula.data.day }}</span>
+            </a>
+
+            {# Abaixo de ``sm`` não há espaço para texto honesto: em vez de #}
+            {# cortar palavras, a célula diz quantas entradas existem.      #}
+            {% if celula.quantidade %}
+            <span class="sm:hidden self-start rounded-full bg-base-300/70 px-1.5 text-[10px] tabular-nums text-muted" aria-hidden="true">
+                {{ celula.quantidade }}
+            </span>
+            {% endif %}
+
+            <div class="hidden sm:flex flex-col gap-0.5 min-w-0">
+                {% for entrada in celula.entradas|slice:":3" %}
+                {% include modelo_de_entrada with entrada=entrada compacta=True %}
+                {% endfor %}
+                {% if celula.quantidade > 3 %}
+                <a href="{{ celula.url_do_dia }}" class="px-1.5 text-[11px] text-muted hover:text-base-content transition-colors">
+                    + {{ celula.quantidade|add:"-3" }} mais
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>

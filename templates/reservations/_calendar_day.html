@@ -1,0 +1,51 @@
+{% comment %}
+Grade do dia.
+
+Linhas de hora, da abertura ao fechamento — esticadas quando houver algo fora
+da janela, porque uma reserva antiga feita sob outra política continua
+existindo e escondê-la faria a tela mentir sobre o dia.
+
+Cada entrada aparece na linha em que começa, com o horário completo escrito.
+Repeti-la em todas as horas que atravessa encheria a tela de cópias da mesma
+reserva.
+{% endcomment %}
+{% if fechado %}
+{# Dia fechado com a grade de horas desenhada seria uma tela mentindo: ela  #}
+{# mostraria 08:00–18:00 vazias, como se bastasse escolher um horário.      #}
+<div class="notice">
+    <span>
+        O prédio não abre neste dia.
+        {% if proximo_aberto %}Abre novamente em {{ proximo_aberto|date:"d/m/Y" }}.{% endif %}
+    </span>
+</div>
+{% endif %}
+
+{% if not fechado or celula.quantidade %}
+{# Mesmo fechado, o que já estava marcado precisa aparecer: reservas feitas #}
+{# antes de o dia virar fechado continuam existindo, e escondê-las faria a  #}
+{# administração descobri-las pela porta trancada.                          #}
+<div class="surface overflow-hidden{% if fechado %} mt-3{% endif %}">
+    {% for linha in horas %}
+    <div class="grid grid-cols-[3.25rem_1fr] sm:grid-cols-[4rem_1fr] {% if not forloop.last %}border-b border-base-300{% endif %}">
+        <div class="px-2 sm:px-3 py-2 text-right text-xs tabular-nums text-muted border-r border-base-300 bg-base-200/40">
+            {{ linha.rotulo }}
+        </div>
+        <div class="p-1.5 sm:p-2 flex flex-col gap-1.5 min-w-0">
+            {% for entrada in linha.entradas %}
+            <div>
+                {% include modelo_de_entrada with entrada=entrada compacta=False %}
+                {% if entrada.vem_de_ontem or entrada.segue_amanha %}
+                <p class="mt-0.5 px-1 text-[11px] text-muted">
+                    {% if entrada.vem_de_ontem %}Começou no dia anterior.{% endif %}
+                    {% if entrada.segue_amanha %}Continua no dia seguinte.{% endif %}
+                </p>
+                {% endif %}
+            </div>
+            {% empty %}
+            <span class="sr-only">Nada marcado às {{ linha.rotulo }}.</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

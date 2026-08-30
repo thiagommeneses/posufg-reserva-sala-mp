@@ -1,0 +1,36 @@
+{% comment %}
+Grade da semana.
+
+Sete colunas só a partir de ``xl``, e não de ``lg``: com a sidebar de 240px, uma
+tela de 1024px deixa cerca de 90px por coluna — largura em que "Manutenção"
+não cabe, o horário quebra em duas linhas e o nome do espaço vira reticências.
+Foi o que a verificação visual mostrou. Abaixo disso a semana empilha; uma
+semana empilhada continua sendo uma semana, porque a ordem dos dias é a
+informação, e ela sobrevive.
+{% endcomment %}
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-2">
+    {% for celula in celulas %}
+    <section class="surface p-2 flex flex-col gap-2 {% if celula.hoje %}border-primary/40{% endif %}"
+             aria-labelledby="dia-{{ celula.data|date:'Y-m-d' }}">
+        <a href="{{ celula.url_do_dia }}"
+           id="dia-{{ celula.data|date:'Y-m-d' }}"
+           class="flex xl:flex-col items-baseline xl:items-start gap-1.5 xl:gap-0 rounded px-1 py-0.5 hover:bg-base-200 transition-colors"
+           {% if celula.hoje %}aria-current="date"{% endif %}>
+            <span class="text-[10px] font-medium uppercase tracking-wider {% if celula.hoje %}text-primary{% else %}text-muted{% endif %}">
+                {{ celula.dia_curto }}
+            </span>
+            <span class="text-sm tabular-nums {% if celula.hoje %}font-semibold text-primary{% else %}text-base-content/70{% endif %}">
+                {{ celula.data|date:"d/m" }}{% if celula.hoje %} <span class="text-[10px] font-normal">· hoje</span>{% endif %}
+            </span>
+        </a>
+
+        <div class="flex flex-col gap-1.5 min-w-0">
+            {% for entrada in celula.entradas %}
+            {% include modelo_de_entrada with entrada=entrada compacta=False %}
+            {% empty %}
+            <p class="px-1 text-xs text-muted">Nada marcado.</p>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+</div>
