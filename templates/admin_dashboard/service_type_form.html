@@ -1,0 +1,88 @@
+{% extends "base_admin.html" %}
+
+{% block title %}{% if object %}Editar serviço{% else %}Novo serviço{% endif %} - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="mx-auto max-w-2xl space-y-6">
+    <header>
+        <a href="{% url 'admin_dashboard:service_type_list' %}" class="text-sm text-muted hover:text-base-content inline-flex items-center gap-1">
+            {% include "partials/_icon.html" with name="arrow-left" %}
+            Voltar
+        </a>
+        <h1 class="mt-2 text-2xl font-semibold tracking-tight">
+            {% if object %}Editar serviço{% else %}Novo serviço{% endif %}
+        </h1>
+    </header>
+
+    <div class="surface p-5 sm:p-6">
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="notice notice-error" role="alert">{{ form.non_field_errors|first }}</div>
+            {% endif %}
+
+            {% for field in form %}
+            {% if field.name == "spaces" %}
+            <div class="form-control pt-2 border-t border-base-300">
+                <label class="label py-1">
+                    <span class="label-text text-sm font-medium">{{ field.label }}</span>
+                </label>
+                <p class="text-xs text-muted mb-2">{{ field.help_text }}</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2 max-h-64 overflow-y-auto">
+                    {% for opcao in field %}
+                    <label class="flex items-center gap-2 cursor-pointer text-sm">
+                        {{ opcao.tag }}
+                        <span>{{ opcao.choice_label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% if field.errors %}
+                <p class="text-xs text-error mt-1">{{ field.errors|first }}</p>
+                {% endif %}
+            </div>
+            {% elif field.name == "requires_notes" or field.name == "is_active" %}
+            <div class="form-control">
+                <label class="flex items-start gap-3 cursor-pointer" for="{{ field.id_for_label }}">
+                    {{ field }}
+                    <span class="min-w-0">
+                        <span class="text-sm font-medium block">{{ field.label }}</span>
+                        {% if field.help_text %}
+                        <span class="text-xs text-muted">{{ field.help_text }}</span>
+                        {% endif %}
+                    </span>
+                </label>
+                {% if field.errors %}
+                <p class="text-xs text-error mt-1">{{ field.errors|first }}</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="form-control">
+                <label class="label py-1" for="{{ field.id_for_label }}">
+                    <span class="label-text text-sm font-medium">{{ field.label }}</span>
+                </label>
+                {{ field }}
+                {% if field.help_text %}
+                <p class="text-xs text-muted mt-1">{{ field.help_text }}</p>
+                {% endif %}
+                {% if field.errors %}
+                <p class="text-xs text-error mt-1">{{ field.errors|first }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+
+            <div class="flex flex-wrap gap-2 pt-2">
+                <button type="submit" class="btn btn-primary btn-sm inline-flex items-center gap-1.5">
+                    Salvar
+                    {% include "partials/_icon.html" with name="save" %}
+                </button>
+                <a href="{% url 'admin_dashboard:service_type_list' %}" class="btn btn-ghost btn-sm inline-flex items-center gap-1.5">
+                    {% include "partials/_icon.html" with name="x" %}
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

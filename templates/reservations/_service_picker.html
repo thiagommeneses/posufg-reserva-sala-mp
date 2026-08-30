@@ -1,0 +1,117 @@
+{% comment %}
+Seleção de serviços do passo 3.
+
+Progressive disclosure sem JavaScript: o checkbox é o ``peer`` e o campo de
+detalhamento é irmão posterior com ``hidden peer-checked:block``. Enquanto o
+serviço não é marcado, o campo não existe visualmente — e o formulário não
+pergunta nada que o usuário não pediu.
+
+O campo escondido **não** leva ``required``: um controle obrigatório com
+``display:none`` trava o envio no navegador com uma mensagem que ninguém
+consegue ver nem alcançar pelo teclado. A exigência é do servidor
+(``services.services.montar_pedidos``), que devolve o formulário com o erro à
+vista.
+
+Quando o espaço não oferece nenhum serviço, este arquivo não renderiza nada —
+o pacote V2 é explícito: serviço não aplicável não aparece ao usuário.
+{% endcomment %}
+{% if servicos_grupos %}
+<section class="surface p-5 sm:p-6 space-y-4" aria-labelledby="bloco-apoio">
+    <div>
+        {# O título é o do pacote V2, e é uma pergunta de propósito: "Serviços" #}
+        {# descreve o catálogo da administração, não o que o usuário precisa.   #}
+        <h2 id="bloco-apoio" class="font-semibold">Precisa de algum apoio?</h2>
+        <p class="text-xs text-muted mt-0.5">
+            Opcional. Solicite apenas o que precisar; a administração recebe o pedido junto com a reserva.
+        </p>
+    </div>
+
+    {% for grupo in servicos_grupos %}
+    <fieldset class="space-y-2">
+        <legend class="text-[10px] font-medium uppercase tracking-wider text-muted mb-1.5">
+            {% if grupo.categoria %}{{ grupo.categoria }}{% else %}Outros{% endif %}
+        </legend>
+        {% for item in grupo.itens %}
+        <div class="flex flex-wrap items-start gap-x-3 gap-y-2 rounded-lg border border-base-300 p-3">
+            {% comment %}
+            Um pedido que a administração já pegou vem marcado e desabilitado —
+            desmarcá-lo não o tiraria da fila, e oferecer a caixa seria prometer
+            uma ação que não acontece. O ``hidden`` mantém o pedido no envio:
+            sem ele o servidor veria "desmarcado" e teria de avisar toda vez que
+            a pessoa salvasse qualquer outra coisa.
+            {% endcomment %}
+            <input
+                type="checkbox"
+                {% if item.travado %}disabled checked{% else %}name="services" value="{{ item.servico.pk }}"{% if item.marcado %} checked{% endif %}{% endif %}
+                id="servico-{{ item.servico.pk }}"
+                class="peer checkbox checkbox-sm mt-0.5 shrink-0"
+                {% if item.travado %}aria-describedby="servico-{{ item.servico.pk }}-travado"
+                {% elif item.detalhamento_obrigatorio %}aria-describedby="servico-{{ item.servico.pk }}-exige"{% endif %}
+            >
+            {% if item.travado %}
+            <input type="hidden" name="services" value="{{ item.servico.pk }}">
+            <input type="hidden" name="service_notes_{{ item.servico.pk }}" value="{{ item.detalhamento }}">
+            {% endif %}
+            <label for="servico-{{ item.servico.pk }}" class="flex-1 min-w-0 cursor-pointer">
+                <span class="inline-flex items-center gap-1.5 text-sm font-medium">
+                    {% if item.servico.icon_name %}{% include "partials/_icon.html" with name=item.servico.icon_name %}{% endif %}
+                    {{ item.servico.name }}
+                </span>
+                {% if item.servico.description %}
+                <span class="block text-xs text-muted mt-0.5">{{ item.servico.description }}</span>
+                {% endif %}
+                {% if item.servico.min_lead_time_hours %}
+                <span class="block text-xs text-muted mt-0.5">
+                    Precisa de {{ item.servico.min_lead_time_hours }} hora{{ item.servico.min_lead_time_hours|pluralize:"s" }} de antecedência.
+                </span>
+                {% endif %}
+                {% if item.travado %}
+                <span id="servico-{{ item.servico.pk }}-travado" class="block text-xs text-warning mt-1">
+                    {{ item.motivo_travado }}
+                </span>
+                {% endif %}
+            </label>
+            {% if item.detalhamento_obrigatorio %}
+            <div class="hidden peer-checked:block w-full">
+                <label class="label py-1" for="servico-{{ item.servico.pk }}-notas">
+                    <span class="label-text text-xs font-medium">O que você precisa</span>
+                </label>
+                {# Travado: o campo fica visível para leitura, mas não editável.  #}
+                {# A administração já leu este texto; mudá-lo agora sem avisá-la   #}
+                {# faria a fila trabalhar com uma informação e a pessoa acreditar  #}
+                {# noutra. O valor viaja no ``hidden`` acima.                      #}
+                <textarea
+                    {% if not item.travado %}name="service_notes_{{ item.servico.pk }}"{% endif %}
+                    id="servico-{{ item.servico.pk }}-notas"
+                    rows="2"
+                    class="textarea textarea-bordered textarea-sm w-full{% if item.com_erro %} textarea-error{% endif %}"
+                    {% if item.travado %}disabled{% endif %}
+                    {% if item.com_erro %}aria-invalid="true" autofocus{% endif %}
+                >{{ item.detalhamento }}</textarea>
+                <p id="servico-{{ item.servico.pk }}-exige" class="text-xs text-muted mt-1">
+                    Obrigatório para solicitar este serviço.
+                </p>
+            </div>
+            {% else %}
+            <div class="hidden peer-checked:block w-full">
+                <label class="label py-1" for="servico-{{ item.servico.pk }}-notas">
+                    <span class="label-text text-xs font-medium">
+                        Detalhes
+                        <span class="font-normal text-muted">(opcional)</span>
+                    </span>
+                </label>
+                <textarea
+                    {% if not item.travado %}name="service_notes_{{ item.servico.pk }}"{% endif %}
+                    id="servico-{{ item.servico.pk }}-notas"
+                    rows="2"
+                    class="textarea textarea-bordered textarea-sm w-full"
+                    {% if item.travado %}disabled{% endif %}
+                >{{ item.detalhamento }}</textarea>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </fieldset>
+    {% endfor %}
+</section>
+{% endif %}

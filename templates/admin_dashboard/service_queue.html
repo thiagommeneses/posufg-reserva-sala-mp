@@ -1,0 +1,137 @@
+{% extends "base_admin.html" %}
+
+{% comment %}
+Fila operacional de serviços.
+
+É o motivo de `ReservationServiceRequest` ser uma tabela em vez de um booleano
+por serviço na reserva: sem situação e sem responsável não existe fila de
+trabalho, só um aviso de que alguém pediu alguma coisa.
+
+A ordem é por início da reserva — o que acontece primeiro precisa ser resolvido
+primeiro —, e não por data do pedido.
+{% endcomment %}
+
+{% block title %}Solicitações de serviço - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <header>
+        <h1 class="text-2xl font-semibold tracking-tight">Solicitações de serviço</h1>
+        <p class="mt-1 text-sm text-muted">
+            {% if total_pendentes %}
+            {{ total_pendentes }} pedido{{ total_pendentes|pluralize:"s" }} aguardando
+            atendimento, do mais próximo ao mais distante.
+            {% else %}
+            Nenhum pedido aguardando atendimento.
+            {% endif %}
+        </p>
+    </header>
+
+    <nav class="flex flex-wrap gap-2" aria-label="Filtrar por situação">
+        <a href="?status=pendentes"
+           class="btn btn-sm font-normal {% if situacao == 'pendentes' %}btn-primary{% else %}btn-outline border-base-300 text-base-content/70{% endif %}"
+           {% if situacao == 'pendentes' %}aria-current="page"{% endif %}>Pendentes</a>
+        {% for valor, rotulo in situacoes %}
+        <a href="?status={{ valor }}"
+           class="btn btn-sm font-normal {% if situacao == valor %}btn-primary{% else %}btn-outline border-base-300 text-base-content/70{% endif %}"
+           {% if situacao == valor %}aria-current="page"{% endif %}>{{ rotulo }}</a>
+        {% endfor %}
+        <a href="?status=todas"
+           class="btn btn-sm font-normal {% if situacao == 'todas' %}btn-primary{% else %}btn-outline border-base-300 text-base-content/70{% endif %}"
+           {% if situacao == 'todas' %}aria-current="page"{% endif %}>Todas</a>
+    </nav>
+
+    <div class="surface overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="table">
+                <thead>
+                    <tr class="border-b border-base-300 text-xs text-muted">
+                        <th class="bg-base-100 font-medium">Quando</th>
+                        <th class="bg-base-100 font-medium">Espaço</th>
+                        <th class="bg-base-100 font-medium">Serviço</th>
+                        <th class="bg-base-100 font-medium">Solicitante</th>
+                        <th class="bg-base-100 font-medium">Situação</th>
+                        <th class="bg-base-100 font-medium">Atender</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pedido in requests %}
+                    <tr class="border-b border-base-300 hover:bg-base-200/50 align-top">
+                        <td class="text-sm whitespace-nowrap tabular-nums">
+                            {{ pedido.reservation.start_time|date:"d/m" }}
+                            <span class="text-muted">{{ pedido.reservation.start_time|time:"H:i" }}</span>
+                        </td>
+                        <td class="text-sm">
+                            {{ pedido.reservation.space.name }}
+                            {% if pedido.reservation.title %}
+                            <span class="block text-xs text-muted">{{ pedido.reservation.title }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-sm">
+                            <span class="inline-flex items-center gap-1.5 font-medium">
+                                {% if pedido.service_type.icon_name %}{% include "partials/_icon.html" with name=pedido.service_type.icon_name %}{% endif %}
+                                {{ pedido.service_type.name }}
+                            </span>
+                            {% if pedido.notes %}
+                            <span class="block text-xs text-muted mt-0.5 max-w-xs whitespace-pre-line">{{ pedido.notes }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-sm text-base-content/70">{{ pedido.reservation.user.username }}</td>
+                        <td>
+                            <span class="badge badge-sm font-normal
+                                {% if pedido.status == 'completed' %}badge-success badge-outline
+                                {% elif pedido.status == 'declined' or pedido.status == 'cancelled' %}badge-ghost text-muted
+                                {% elif pedido.status == 'in_progress' %}badge-warning badge-outline
+                                {% else %}badge-outline{% endif %}">
+                                {{ pedido.get_status_display }}
+                            </span>
+                            {% if pedido.processed_by %}
+                            <span class="block text-xs text-muted mt-1">
+                                {{ pedido.processed_by.username }} · {{ pedido.processed_at|date:"d/m H:i" }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="post" action="{% url 'admin_dashboard:service_request_update' pedido.pk %}"
+                                  class="flex items-center gap-1.5">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <label class="sr-only" for="status-{{ pedido.pk }}">
+                                    Situação de {{ pedido.service_type.name }}
+                                </label>
+                                <select name="status" id="status-{{ pedido.pk }}" class="select select-bordered select-xs">
+                                    {% for valor, rotulo in situacoes %}
+                                    <option value="{{ valor }}" {% if pedido.status == valor %}selected{% endif %}>{{ rotulo }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-ghost btn-xs">Aplicar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-10 text-center text-sm text-muted">
+                            Nenhuma solicitação nesta situação.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if is_paginated %}
+    <nav class="flex items-center justify-center gap-2" aria-label="Paginação">
+        {% if page_obj.has_previous %}
+        <a href="?status={{ situacao }}&page={{ page_obj.previous_page_number }}" class="btn btn-outline btn-sm">Anterior</a>
+        {% endif %}
+        <span class="text-sm text-muted">
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </span>
+        {% if page_obj.has_next %}
+        <a href="?status={{ situacao }}&page={{ page_obj.next_page_number }}" class="btn btn-outline btn-sm">Próxima</a>
+        {% endif %}
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
