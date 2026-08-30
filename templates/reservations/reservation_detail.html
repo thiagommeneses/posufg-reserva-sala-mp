@@ -7,7 +7,9 @@
     <header class="flex items-start justify-between gap-3">
         <div>
             <h1 class="text-2xl font-semibold tracking-tight">Detalhes da reserva</h1>
-            <p class="mt-1 text-sm text-base-content/55">{{ reservation.space.name }}</p>
+            <p class="mt-1 text-sm text-muted">
+                {% if reservation.title %}{{ reservation.title }}{% else %}{{ reservation.space.name }}{% endif %}
+            </p>
         </div>
         {% include "components/_reservation_status_badge.html" with reservation=reservation %}
     </header>
@@ -15,42 +17,99 @@
     <div class="surface p-5 sm:p-6 space-y-3 text-sm" id="reservation-actions">
         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
             <div>
-                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Espaço</dt>
+                <dt class="text-muted text-xs uppercase tracking-wide">Espaço</dt>
                 <dd class="font-medium mt-0.5">{{ reservation.space.name }}</dd>
             </div>
             <div>
-                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Localização</dt>
+                <dt class="text-muted text-xs uppercase tracking-wide">Localização</dt>
                 <dd class="font-medium mt-0.5">{{ reservation.space.location }}</dd>
             </div>
             <div>
-                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Capacidade</dt>
-                <dd class="font-medium mt-0.5">{{ reservation.space.capacity }} pessoas</dd>
+                <dt class="text-muted text-xs uppercase tracking-wide">Capacidade</dt>
+                <dd class="font-medium mt-0.5">Até {{ reservation.space.capacity }} pessoa{{ reservation.space.capacity|pluralize:"s" }}</dd>
             </div>
+            {# A linha "Status" saiu daqui: o badge do cabeçalho já diz a  #}
+            {# mesma coisa. Ela nasceu de uma duplicação e agravava um erro #}
+            {# de idioma, já corrigido na origem — o que sobra é a razão    #}
+            {# original: o mesmo dado, duas vezes, na mesma tela.           #}
             <div>
-                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Status</dt>
-                <dd class="font-medium mt-0.5">{{ reservation.get_status_display }}</dd>
-            </div>
-            <div>
-                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Início</dt>
+                <dt class="text-muted text-xs uppercase tracking-wide">Início</dt>
                 <dd class="font-medium mt-0.5">{{ reservation.start_time|date:"d/m/Y H:i" }}</dd>
             </div>
             <div>
-                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Término</dt>
+                <dt class="text-muted text-xs uppercase tracking-wide">Término</dt>
                 <dd class="font-medium mt-0.5">{{ reservation.end_time|date:"d/m/Y H:i" }}</dd>
             </div>
+            {# Campos da Fase 10: só aparecem quando a reserva os tem. As #}
+            {# reservas anteriores não têm, e um rótulo vazio seria pior. #}
+            {% if reservation.title %}
+            <div class="sm:col-span-2">
+                <dt class="text-muted text-xs uppercase tracking-wide">Assunto</dt>
+                <dd class="font-medium mt-0.5">{{ reservation.title }}</dd>
+            </div>
+            {% endif %}
+            {% if reservation.attendee_count %}
+            <div>
+                <dt class="text-muted text-xs uppercase tracking-wide">Participantes</dt>
+                <dd class="font-medium mt-0.5">{{ reservation.attendee_count }}</dd>
+            </div>
+            {% endif %}
+            <div>
+                <dt class="text-muted text-xs uppercase tracking-wide">Organizador</dt>
+                <dd class="font-medium mt-0.5">
+                    {{ organizador }}{% if organizador_lotacao %}<span class="font-normal text-muted"> · {{ organizador_lotacao }}</span>{% endif %}
+                </dd>
+            </div>
+            {% if reservation.notes %}
+            <div class="sm:col-span-2">
+                <dt class="text-muted text-xs uppercase tracking-wide">Observações</dt>
+                <dd class="mt-0.5 whitespace-pre-line text-base-content/75">{{ reservation.notes }}</dd>
+            </div>
+            {% endif %}
+            {# Serviços vêm do próprio objeto, e não do contexto, porque esta #}
+            {# tela também é renderizada como fragmento HTMX depois de        #}
+            {# cancelar ou fazer check-in — e ali o contexto é reduzido.      #}
+            {% with pedidos_de_servico=reservation.service_requests.all %}
+            {% if pedidos_de_servico %}
+            <div class="sm:col-span-2">
+                <dt class="text-muted text-xs uppercase tracking-wide">Serviços solicitados</dt>
+                <dd class="mt-1.5 space-y-2">
+                    {% for pedido in pedidos_de_servico %}
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="font-medium">{{ pedido.service_type.name }}</span>
+                            <span class="badge badge-outline badge-sm font-normal">{{ pedido.get_status_display }}</span>
+                        </div>
+                        {% if pedido.notes %}
+                        <p class="text-xs text-muted mt-0.5 whitespace-pre-line">{{ pedido.notes }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </dd>
+            </div>
+            {% endif %}
+            {% endwith %}
             {% if reservation.checked_in_at %}
             <div class="sm:col-span-2">
-                <dt class="text-base-content/45 text-xs uppercase tracking-wide">Check-in</dt>
+                <dt class="text-muted text-xs uppercase tracking-wide">Check-in</dt>
                 <dd class="font-medium mt-0.5">{{ reservation.checked_in_at|date:"d/m/Y H:i" }}</dd>
             </div>
             {% endif %}
         </dl>
 
         <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-base-300">
-            <a href="{% url 'reservation_list' %}" class="btn btn-ghost btn-sm text-base-content/60 inline-flex items-center gap-1.5">
-                {% include "partials/_icon.html" with name="arrow-left" %}
-                Voltar
-            </a>
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{% url 'reservation_list' %}" class="btn btn-ghost btn-sm text-muted inline-flex items-center gap-1.5">
+                    {% include "partials/_icon.html" with name="arrow-left" %}
+                    Voltar
+                </a>
+                {# Fecha o passo 4: quem acabou de confirmar já está vendo a #}
+                {# reserva, e daqui alcança o dia dela no calendário.        #}
+                <a href="{{ url_calendario }}" class="btn btn-ghost btn-sm text-muted inline-flex items-center gap-1.5">
+                    {% include "partials/_icon.html" with name="calendar" %}
+                    Ver no calendário
+                </a>
+            </div>
             <div class="flex flex-wrap gap-2">
                 {% if can_check_in %}
                 <form method="post" action="{% url 'reservation_checkin' reservation.id %}">
@@ -64,6 +123,15 @@
                         {% include "partials/_icon.html" with name="check" %}
                     </button>
                 </form>
+                {% endif %}
+                {% if can_edit %}
+                {# "Editar" mexe no que a reserva é; "Reagendar" mexe em quando #}
+                {# ela acontece. São ações diferentes porque disputam coisas    #}
+                {# diferentes — a segunda concorre com a agenda de terceiros.   #}
+                <a href="{% url 'reservation_details_edit' reservation.id %}" class="btn btn-outline btn-sm inline-flex items-center gap-1.5">
+                    Editar
+                    {% include "partials/_icon.html" with name="pencil" %}
+                </a>
                 {% endif %}
                 {% if can_reschedule %}
                 <a href="{% url 'reservation_reschedule' reservation.id %}" class="btn btn-outline btn-sm inline-flex items-center gap-1.5">

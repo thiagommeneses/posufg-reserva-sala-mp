@@ -5,6 +5,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
+from accounts.models import Profile
+
 
 class UserRegistrationForm(forms.ModelForm):
     """Form for creating a new user account with password confirmation."""
@@ -64,3 +66,24 @@ class UserRegistrationForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+
+class ProfileForm(forms.ModelForm):
+    """Form for the fields the reservation flow reads from the user."""
+
+    class Meta:
+        """Meta options for ProfileForm."""
+
+        model = Profile
+        fields = ["full_name", "department"]
+        widgets = {
+            "full_name": forms.TextInput(
+                attrs={"class": "input input-bordered w-full", "placeholder": "Ex.: Maria Silva"}
+            ),
+            "department": forms.TextInput(
+                attrs={
+                    "class": "input input-bordered w-full",
+                    "placeholder": "Ex.: 3ª Promotoria de Justiça",
+                }
+            ),
+        }

@@ -11,14 +11,15 @@ class ReservationAdmin(admin.ModelAdmin):
 
     list_display = [
         "space",
+        "title",
         "user",
         "start_time",
         "end_time",
+        "attendee_count",
         "status",
-        "created_at",
     ]
     list_filter = ["status", "space", "created_at"]
-    search_fields = ["space__name", "user__username"]
+    search_fields = ["space__name", "user__username", "title"]
     ordering = ["-start_time"]
 
 
