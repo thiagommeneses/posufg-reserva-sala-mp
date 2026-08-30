@@ -1,0 +1,334 @@
+{% extends "base_admin.html" %}
+
+{% comment %}
+Relatórios.
+
+Sem biblioteca de gráficos: as barras são divs com largura proporcional ao
+maior valor da série. O pacote V2 é explícito — "não criar gráficos apenas
+decorativos", "gráficos devem responder perguntas reais" —, e a única pergunta
+aqui que uma tabela responde mal é "a que horas o prédio enche". Barra
+horizontal responde isso de relance; o resto é tabela, que é o que se copia
+para um e-mail.
+
+Cada número que depende de algo que o sistema pode não estar fazendo vem com o
+que o sustenta ao lado. Um "0 não comparecimentos" sem dizer que a rotina está
+desligada seria a tela mentindo por omissão.
+{% endcomment %}
+
+{% block title %}Relatórios — Admin{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <header class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight">Relatórios</h1>
+            <p class="mt-1 text-sm text-muted">
+                Uso dos espaços em {{ periodo.rotulo|lower }} —
+                {{ periodo.primeiro_dia|date:"d/m/Y" }} a {{ periodo.ultimo_dia|date:"d/m/Y" }}.
+            </p>
+        </div>
+        <a href="{{ url_csv }}" class="btn btn-outline btn-sm inline-flex items-center gap-1.5">
+            {% include "partials/_icon.html" with name="save" %}
+            Exportar CSV
+        </a>
+    </header>
+
+    <div class="surface p-4 space-y-3">
+        <div class="flex flex-wrap gap-1.5" role="group" aria-label="Período do relatório">
+            {% for preset in presets %}
+            <a href="{{ preset.url }}"
+               {% if preset.atual %}aria-current="page"{% endif %}
+               class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors {% if preset.atual %}bg-primary text-primary-content{% else %}bg-base-200 text-muted hover:text-base-content{% endif %}">
+                {{ preset.rotulo }}
+            </a>
+            {% endfor %}
+        </div>
+
+        {# Período digitado: o formulário GET põe as datas na querystring, então #}
+        {# um recorte específico pode ser mandado por link.                       #}
+        <form method="get" class="flex flex-wrap items-end gap-3 pt-1 border-t border-base-300">
+            <div class="form-control">
+                <label class="label py-1" for="periodo-de">
+                    <span class="label-text text-xs font-medium">De</span>
+                </label>
+                <input type="date" name="de" id="periodo-de" value="{{ periodo.primeiro_dia|date:'Y-m-d' }}"
+                       class="input input-bordered input-sm">
+            </div>
+            <div class="form-control">
+                <label class="label py-1" for="periodo-ate">
+                    <span class="label-text text-xs font-medium">Até</span>
+                </label>
+                <input type="date" name="ate" id="periodo-ate" value="{{ periodo.ultimo_dia|date:'Y-m-d' }}"
+                       class="input input-bordered input-sm">
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Aplicar</button>
+        </form>
+    </div>
+
+    {# ---- Números que cabem numa linha ---- #}
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="surface p-4">
+            <p class="text-xs uppercase tracking-wider text-muted">Cancelamentos</p>
+            <p class="text-2xl font-semibold tabular-nums mt-1">{{ cancelamentos.total }}</p>
+            <p class="text-xs text-muted mt-1">
+                {{ cancelamentos.percentual|floatformat:1 }}% das {{ cancelamentos.marcadas_no_periodo }}
+                reserva{{ cancelamentos.marcadas_no_periodo|pluralize:"s" }} do período.
+            </p>
+            {# As duas parcelas medem coisas diferentes; somá-las em silêncio #}
+            {# esconderia que parte do número responde a outra pergunta.      #}
+            {% if cancelamentos.sem_data %}
+            <p class="text-xs text-muted mt-1">
+                {{ cancelamentos.sem_data }} sem data de cancelamento, contado{{ cancelamentos.sem_data|pluralize:"s" }}
+                pelo horário da reserva.
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="surface p-4">
+            <p class="text-xs uppercase tracking-wider text-muted">Não comparecimentos</p>
+            <p class="text-2xl font-semibold tabular-nums mt-1">{{ no_shows.total }}</p>
+            <p class="text-xs text-muted mt-1">{{ no_shows.percentual|floatformat:1 }}% das reservas do período.</p>
+            {% if not no_shows.regra_ligada %}
+            {# Zero por não haver faltas e zero por não haver medição são #}
+            {# resultados opostos, e a tela precisa dizer qual é este.     #}
+            <p class="text-xs text-warning mt-1">
+                A liberação automática está desligada: nada marca no-show sozinho, então este
+                número só conta o que foi marcado à mão.
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="surface p-4">
+            <p class="text-xs uppercase tracking-wider text-muted">Antecedência</p>
+            {% if antecedencia.amostra %}
+            <p class="text-2xl font-semibold tabular-nums mt-1">{{ antecedencia.mediana_horas|floatformat:0 }}h</p>
+            <p class="text-xs text-muted mt-1">
+                Mediana. A média é {{ antecedencia.media_horas|floatformat:0 }}h,
+                sobre {{ antecedencia.amostra }} reserva{{ antecedencia.amostra|pluralize:"s" }}.
+            </p>
+            {% else %}
+            <p class="text-2xl font-semibold tabular-nums mt-1 text-muted">—</p>
+            <p class="text-xs text-muted mt-1">Nenhuma reserva no período.</p>
+            {% endif %}
+        </div>
+
+        <div class="surface p-4">
+            <p class="text-xs uppercase tracking-wider text-muted">Expediente</p>
+            <p class="text-2xl font-semibold tabular-nums mt-1">{{ expediente_minutos|floatformat:0 }} min</p>
+            <p class="text-xs text-muted mt-1">
+                Por espaço, {{ politica.opening_time|time:"H:i" }}–{{ politica.closing_time|time:"H:i" }}
+                nos dias de funcionamento. É o divisor das taxas abaixo.
+            </p>
+        </div>
+    </div>
+
+    {# ---- Ocupação ---- #}
+    <section class="surface overflow-hidden" aria-labelledby="titulo-ocupacao">
+        <div class="px-4 py-3 border-b border-base-300">
+            <h2 id="titulo-ocupacao" class="font-semibold">Ocupação por espaço</h2>
+            <p class="text-xs text-muted mt-0.5">
+                Minutos reservados dentro do expediente, sobre os minutos disponíveis.
+            </p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Espaço</th>
+                        <th class="text-right">Reservas</th>
+                        <th class="text-right">Minutos</th>
+                        <th>Ocupação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for linha in ocupacao %}
+                    <tr>
+                        <td class="font-medium">{{ linha.espaco.name }}</td>
+                        <td class="text-right tabular-nums">{{ linha.reservas }}</td>
+                        <td class="text-right tabular-nums">{{ linha.minutos_ocupados|floatformat:0 }}</td>
+                        <td>
+                            <div class="flex items-center gap-2 min-w-40">
+                                <div class="h-2 flex-1 rounded-full bg-base-200 overflow-hidden">
+                                    <div class="h-full rounded-full bg-primary"
+                                         style="width: {{ linha.largura }}%"></div>
+                                </div>
+                                <span class="tabular-nums text-xs w-12 text-right">{{ linha.percentual|floatformat:1 }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-muted">Nenhum espaço cadastrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {# ---- Picos ---- #}
+    <div class="grid gap-4 lg:grid-cols-2">
+        <section class="surface p-4" aria-labelledby="titulo-pico-hora">
+            <h2 id="titulo-pico-hora" class="font-semibold">Horários de pico</h2>
+            <p class="text-xs text-muted mt-0.5 mb-3">
+                Quantas reservas ocupavam o prédio em cada hora.
+            </p>
+            <ul class="space-y-1">
+                {% for linha in picos.por_hora %}
+                <li class="flex items-center gap-2">
+                    <span class="text-xs tabular-nums text-muted w-10">{{ linha.rotulo }}</span>
+                    <div class="h-3 flex-1 rounded bg-base-200 overflow-hidden">
+                        {% if linha.reservas %}
+                        <div class="h-full rounded bg-primary/70"
+                             style="width: {% widthratio linha.reservas pico_maximo 100 %}%"></div>
+                        {% endif %}
+                    </div>
+                    <span class="text-xs tabular-nums w-6 text-right">{{ linha.reservas }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section class="surface p-4" aria-labelledby="titulo-pico-dia">
+            <h2 id="titulo-pico-dia" class="font-semibold">Dias de pico</h2>
+            <p class="text-xs text-muted mt-0.5 mb-3">
+                Só os dias em que o prédio abre — os outros seriam zero por definição.
+            </p>
+            <ul class="space-y-1">
+                {% for linha in picos.por_dia_da_semana %}
+                <li class="flex items-center gap-2">
+                    <span class="text-xs tabular-nums text-muted w-10">{{ linha.rotulo }}</span>
+                    <div class="h-3 flex-1 rounded bg-base-200 overflow-hidden">
+                        {% if linha.reservas %}
+                        <div class="h-full rounded bg-primary/70"
+                             style="width: {% widthratio linha.reservas pico_maximo_dia 100 %}%"></div>
+                        {% endif %}
+                    </div>
+                    <span class="text-xs tabular-nums w-6 text-right">{{ linha.reservas }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+    </div>
+
+    {# ---- Capacidade ---- #}
+    <section class="surface overflow-hidden" aria-labelledby="titulo-capacidade">
+        <div class="px-4 py-3 border-b border-base-300">
+            <h2 id="titulo-capacidade" class="font-semibold">Uso da capacidade</h2>
+            <p class="text-xs text-muted mt-0.5">
+                Média de participantes sobre a capacidade, da menor para a maior. A coluna
+                “informaram” é o que sustenta a média: participantes é campo opcional.
+            </p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Espaço</th>
+                        <th class="text-right">Capacidade</th>
+                        <th class="text-right">Média</th>
+                        <th class="text-right">Uso</th>
+                        <th class="text-right">Informaram</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for linha in subutilizacao %}
+                    <tr>
+                        <td class="font-medium">{{ linha.espaco }}</td>
+                        <td class="text-right tabular-nums">{{ linha.capacidade }}</td>
+                        <td class="text-right tabular-nums">{{ linha.media_participantes|floatformat:1 }}</td>
+                        <td class="text-right tabular-nums">{{ linha.percentual|floatformat:1 }}%</td>
+                        <td class="text-right tabular-nums text-muted">
+                            {{ linha.com_informacao }} de {{ linha.total }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-muted">
+                            Nenhuma reserva do período informou participantes.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {# ---- Manutenção e serviços ---- #}
+    <div class="grid gap-4 lg:grid-cols-2">
+        <section class="surface overflow-hidden" aria-labelledby="titulo-manutencao">
+            <div class="px-4 py-3 border-b border-base-300">
+                <h2 id="titulo-manutencao" class="font-semibold">Manutenção</h2>
+                <p class="text-xs text-muted mt-0.5">
+                    Parada dentro do expediente. Bloqueio fora dele não tira hora de ninguém.
+                </p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Espaço</th>
+                            <th class="text-right">Minutos</th>
+                            <th class="text-right">Do expediente</th>
+                            <th class="text-right">Bloqueios</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for linha in manutencao %}
+                        <tr>
+                            <td class="font-medium">{{ linha.espaco }}</td>
+                            <td class="text-right tabular-nums">{{ linha.minutos|floatformat:0 }}</td>
+                            <td class="text-right tabular-nums">{{ linha.percentual|floatformat:2 }}%</td>
+                            <td class="text-right tabular-nums">{{ linha.bloqueios }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-muted">
+                                Nenhuma parada dentro do expediente neste período.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="surface overflow-hidden" aria-labelledby="titulo-servicos">
+            <div class="px-4 py-3 border-b border-base-300">
+                <h2 id="titulo-servicos" class="font-semibold">Serviços solicitados</h2>
+                <p class="text-xs text-muted mt-0.5">
+                    Pelas reservas do período, não pela data do pedido.
+                </p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Serviço</th>
+                            <th class="text-right">Total</th>
+                            <th>Situação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for linha in servicos %}
+                        <tr>
+                            <td class="font-medium">{{ linha.servico }}</td>
+                            <td class="text-right tabular-nums">{{ linha.total }}</td>
+                            <td class="text-xs text-muted">
+                                {% for rotulo, quantidade in linha.por_situacao.items %}
+                                {{ rotulo }}: {{ quantidade }}{% if not forloop.last %} · {% endif %}
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-muted">
+                                Nenhum serviço solicitado neste período.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
