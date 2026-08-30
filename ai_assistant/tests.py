@@ -317,9 +317,7 @@ class TestMessageForGroqError:
 
     def test_rate_limit_includes_retry_hint(self):
         """Daily quota exhaustion should mention approximate wait time."""
-        exc = self._rate_limit_error(
-            "Rate limit reached for model. Please try again in 33m50.4s."
-        )
+        exc = self._rate_limit_error("Rate limit reached for model. Please try again in 33m50.4s.")
 
         error = _ai_error_from_groq(exc)
 

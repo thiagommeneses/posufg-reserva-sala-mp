@@ -1,14 +1,20 @@
-{# Usage: {% include "components/_reservation_status_badge.html" with reservation=reservation %} #}
-{% if reservation.status == "confirmed" %}
-<span class="badge badge-outline badge-sm border-success/40 text-success font-normal">Confirmada</span>
-{% elif reservation.status == "checked_in" %}
-<span class="badge badge-outline badge-sm font-normal">Check-in</span>
-{% elif reservation.status == "completed" %}
-<span class="badge badge-ghost badge-sm font-normal text-base-content/50">Concluída</span>
-{% elif reservation.status == "no_show" %}
-<span class="badge badge-outline badge-sm border-error/40 text-error font-normal">No-show</span>
-{% elif reservation.status == "cancelled" %}
-<span class="badge badge-ghost badge-sm font-normal text-base-content/50">Cancelada</span>
-{% else %}
-<span class="badge badge-outline badge-sm font-normal">{{ reservation.get_status_display }}</span>
-{% endif %}
+{% comment %}
+Situação de uma reserva, como badge.
+
+Uso: {% include "components/_reservation_status_badge.html" with reservation=reservation %}
+
+O texto vem de ``get_status_display``, ou seja, de ``ReservationStatus``. Antes
+estava escrito aqui, traduzido à mão, porque os rótulos do enum estavam em
+inglês — duas fontes para a mesma frase, e a que aparecia dependia da tela. Com
+os rótulos traduzidos na origem, aqui sobra o que é de fato decisão visual: a
+cor. Um status novo passa a aparecer sozinho, em cinza, em vez de sumir.
+
+A cor nunca é o único sinal: o rótulo vem escrito ao lado dela.
+{% endcomment %}
+<span class="badge badge-outline badge-sm font-normal
+    {% if reservation.status == "confirmed" %}border-success/40 text-success
+    {% elif reservation.status == "no_show" %}border-error/40 text-error
+    {% elif reservation.status == "completed" or reservation.status == "cancelled" %}badge-ghost text-muted
+    {% endif %}">
+    {{ reservation.get_status_display }}
+</span>
