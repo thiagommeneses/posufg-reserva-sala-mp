@@ -42,6 +42,24 @@ services:
       db:
         condition: service_healthy
 
+  # O agendador roda as rotinas periódicas — hoje só a liberação de reservas
+  # sem check-in. Serviço próprio, e não um cron dentro do web, porque aquele
+  # contêiner roda um processo só. Reaproveita a mesma imagem: nada a manter em
+  # separado. `restart` porque um laço que morre precisa voltar sozinho.
+  scheduler:
+    build: .
+    command: python manage.py agendador
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=django-insecure-docker-dev
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   fastembed_cache:
