@@ -26,8 +26,10 @@ class SpaceAdmin(admin.ModelAdmin):
 class AttributeAdmin(admin.ModelAdmin):
     """Admin interface for Attribute model."""
 
-    list_display = ["name"]
-    search_fields = ["name"]
+    list_display = ["name", "category", "is_featured", "sort_order"]
+    list_filter = ["is_featured", "category"]
+    list_editable = ["is_featured", "sort_order"]
+    search_fields = ["name", "category"]
 
 
 @admin.register(SpaceAttribute)

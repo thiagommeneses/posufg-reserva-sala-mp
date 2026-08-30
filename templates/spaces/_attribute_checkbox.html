@@ -1,0 +1,26 @@
+{% comment %}
+Um filtro de equipamento. Espera `attr` e `selected_attributes`.
+
+O nome vai escrito por extenso sempre — o ícone é reforço, nunca a única
+informação. Um equipamento sem ícone cadastrado renderiza só o texto, e a linha
+continua íntegra.
+{% endcomment %}
+<label class="flex items-center gap-2 cursor-pointer text-sm">
+    <input
+        type="checkbox"
+        name="attributes"
+        value="{{ attr.name }}"
+        class="checkbox checkbox-sm"
+        {% if attr.name in selected_attributes %}checked{% endif %}
+        hx-get="{% url 'space_list' %}"
+        hx-target="#space-results"
+        hx-include="closest form"
+        hx-indicator="#loading-indicator"
+    >
+    <span class="inline-flex items-center gap-1.5">
+        {% if attr.icon_name %}
+        <span class="text-muted">{% include "partials/_icon.html" with name=attr.icon_name %}</span>
+        {% endif %}
+        {{ attr.name }}
+    </span>
+</label>
