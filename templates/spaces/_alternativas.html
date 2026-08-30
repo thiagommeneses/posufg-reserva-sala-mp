@@ -1,0 +1,65 @@
+{% comment %}
+Sugestões de recuperação quando o horário pedido não está disponível.
+
+Dizer "indisponível" e parar devolveria o problema para o usuário. As duas
+perguntas que ele faria em seguida — "então quando?" e "então onde?" — já vêm
+respondidas: horários próximos neste espaço, e espaços equivalentes neste
+horário.
+
+Nada aqui aparece quando o horário pedido está livre, nem quando não houve
+horário pedido: sugestão sem problema a resolver é ruído.
+{% endcomment %}
+{% if horarios_alternativos or espacos_alternativos %}
+<div class="surface-elevated rounded-lg border border-base-300 p-5 space-y-5">
+    <p class="text-sm font-semibold">Alternativas</p>
+
+    {% if horarios_alternativos %}
+    <div>
+        <p class="text-sm text-muted mb-2.5">
+            Horários próximos em <span class="font-medium text-base-content/80">{{ space.name }}</span>:
+        </p>
+        <ul class="flex flex-wrap gap-2 list-none p-0 m-0">
+            {% for slot in horarios_alternativos %}
+            <li>
+                <a href="/reservations/new/?space={{ space.id }}&start={{ slot.inicio|date:'c' }}&end={{ slot.fim|date:'c' }}"
+                   class="btn btn-outline btn-sm font-normal border-success/40 text-success hover:bg-success hover:text-success-content hover:border-success">
+                    {{ slot.inicio|time:"H:i" }} – {{ slot.fim|time:"H:i" }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if espacos_alternativos %}
+    <div>
+        <p class="text-sm text-muted mb-2.5">
+            Outros espaços livres às {{ horario_pedido|time:"H:i" }}:
+        </p>
+        <ul class="space-y-2 list-none p-0 m-0">
+            {% for alternativo in espacos_alternativos %}
+            <li>
+                <a href="{% url 'space_detail' alternativo.pk %}?date={{ selected_date|date:'Y-m-d' }}&start={{ horario_pedido|time:'H:i' }}{% if duracao_pedida %}&duration={{ duracao_pedida }}{% endif %}"
+                   class="flex items-center justify-between gap-4 rounded-md border border-base-300 px-4 py-2.5 hover:bg-base-200/50 transition-colors">
+                    <span class="min-w-0">
+                        <span class="block text-sm font-medium truncate">{{ alternativo.name }}</span>
+                        <span class="block text-xs text-muted">
+                            Até {{ alternativo.capacity }} pessoa{{ alternativo.capacity|pluralize:"s" }} · {{ alternativo.location }}
+                        </span>
+                    </span>
+                    <span class="text-muted shrink-0">{% include "partials/_icon.html" with name="calendar" %}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% elif horario_pedido and not horario_disponivel %}
+<div class="notice" role="status">
+    <span>
+        Não encontrei horário próximo neste espaço nem outro espaço equivalente
+        livre às {{ horario_pedido|time:"H:i" }}. Tente outra data.
+    </span>
+</div>
+{% endif %}
