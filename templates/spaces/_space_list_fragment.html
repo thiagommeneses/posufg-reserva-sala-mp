@@ -1,0 +1,12 @@
+{% comment %}
+Resposta HTMX do passo 1.
+
+Traz os cartões, que substituem `#space-results`, e o resumo da seleção, que
+viaja fora de banda porque fica em outro ponto da página. Sem isso, escolher um
+espaço trocaria os cartões e deixaria o resumo desatualizado.
+
+Este template existe só para o caminho HTMX: na página completa cada bloco é
+incluído no seu lugar, e duplicar o id aqui quebraria a página.
+{% endcomment %}
+{% include "spaces/_space_list_results.html" %}
+{% include "spaces/_selection_summary.html" with oob=True %}

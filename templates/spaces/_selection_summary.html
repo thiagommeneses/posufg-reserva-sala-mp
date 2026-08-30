@@ -1,0 +1,60 @@
+{% comment %}
+Resumo da seleção do passo 1.
+
+Fica colado na base da tela enquanto a página rola e só aparece quando há espaço
+escolhido — uma barra vazia ocupando a tela o tempo todo seria ruído. O botão
+leva ao passo 2 já com a data escolhida, para que o usuário não a informe duas
+vezes.
+
+Este arquivo renderiza o próprio ``#resumo-selecao``, com id e classes. Antes o
+id ficava num ``<div>`` de fora que envolvia o elemento ``sticky``: como esse
+invólucro tinha exatamente a altura do filho, o ``position: sticky`` ficava sem
+margem para deslocar e a barra simplesmente não colava. Um elemento ``sticky``
+precisa de um bloco contêiner mais alto que ele, e aqui esse contêiner é a
+coluna inteira da página.
+
+Como a resposta HTMX substitui este elemento fora de banda, id e classes
+precisam ser idênticos nos dois caminhos — por isso moram aqui, num lugar só, e
+o caminho HTMX passa ``oob=True``.
+
+``role="status"`` porque o bloco surge sem o usuário navegar até ele: quem usa
+leitor de tela precisa saber que a escolha foi registrada.
+{% endcomment %}
+<div id="resumo-selecao"
+     class="sticky bottom-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pb-4 pt-2{% if espaco_selecionado %} bg-gradient-to-t from-base-200 via-base-200 to-transparent{% endif %}"
+     {% if oob %}hx-swap-oob="true"{% endif %}>
+{% if espaco_selecionado %}
+    <div class="surface surface-elevated p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+         role="status">
+        <div class="min-w-0 flex items-center gap-3">
+            <span class="text-primary shrink-0" aria-hidden="true">{% include "partials/_icon.html" with name="check" %}</span>
+            <div class="min-w-0">
+                <p class="text-sm font-medium truncate">{{ espaco_selecionado.name }}</p>
+                <p class="text-xs text-muted truncate">
+                    {{ selected_date|date:"d/m/Y" }}
+                    {% if people %} · {{ people }} pessoa{{ people|pluralize:"s" }}{% endif %}
+                    {% if espaco_selecionado.resumo_disponibilidade %}
+                    · {{ espaco_selecionado.resumo_disponibilidade.rotulo }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+            <a href="?{{ querystring_sem_espaco }}"
+               class="btn btn-ghost btn-sm text-muted inline-flex items-center gap-1.5">
+                {% include "partials/_icon.html" with name="x" %}
+                <span class="hidden sm:inline">Trocar</span>
+                <span class="sr-only sm:hidden">Trocar espaço</span>
+            </a>
+            {# O horário pedido vai junto: o passo 2 precisa saber se já pode #}
+            {# destacar aquele bloco ou se terá de oferecer alternativas. #}
+            <a href="{% url 'space_detail' espaco_selecionado.pk %}?date={{ selected_date|date:'Y-m-d' }}{% if horario_pedido %}&start={{ horario_pedido|time:'H:i' }}{% endif %}{% if duracao_pedida %}&duration={{ duracao_pedida }}{% endif %}{% if people %}&people={{ people }}{% endif %}"
+               class="btn btn-primary btn-sm inline-flex items-center gap-1.5">
+                Escolher horário
+                {% include "partials/_icon.html" with name="calendar" %}
+            </a>
+        </div>
+    </div>
+{% endif %}
+</div>
