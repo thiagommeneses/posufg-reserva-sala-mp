@@ -5,6 +5,7 @@ that views stay thin and the AI logic can be unit tested by mocking a single
 function (:func:`_run_json_completion`).
 """
 
+import datetime
 import json
 import logging
 import re
@@ -150,6 +151,27 @@ _ROOM_SEARCH_SYSTEM_PROMPT = (
     "Se algo não for mencionado, use null ou lista vazia."
 )
 
+#: Acrescentado ao prompt quando o chamador informa o contexto temporal.
+#:
+#: Sem uma data de referência explícita, "amanhã" não significa nada para o
+#: modelo: ele não sabe que dia é hoje. E sem a janela de funcionamento, "de
+#: manhã" viraria um palpite. Os dois entram como fato, não como sugestão.
+_PROMPT_TEMPORAL = (
+    "\nO JSON deve trazer TAMBÉM estes três campos: "
+    '"date": <"AAAA-MM-DD" ou null>, "start_time": <"HH:MM" ou null>, '
+    '"duration_minutes": <int ou null>.\n'
+    "Hoje é {hoje} ({dia_da_semana}). Resolva expressões relativas a partir "
+    "desta data: 'hoje', 'amanhã', 'depois de amanhã', 'segunda que vem', "
+    "'dia 12'. Nunca devolva uma data no passado.\n"
+    "O expediente vai das {abertura} às {fechamento}. Períodos do dia: "
+    "'de manhã' → {abertura}; 'à tarde' → 13:00; 'no fim do dia' → duas horas "
+    "antes do fechamento. Horário explícito ('às 14h', '14:30') vence o período.\n"
+    "duration_minutes vem de 'por N horas', 'reunião de N minutos', 'a manhã "
+    "toda'. Sem menção, use null — não invente duração.\n"
+    "Se a pessoa não falar de tempo, os três campos são null."
+)
+
+
 _MAINTENANCE_SYSTEM_PROMPT = (
     "Você é um classificador de motivos de bloqueio de manutenção de salas. Dado um "
     "texto curto descrevendo o motivo, classifique em exatamente uma das categorias: "
@@ -163,6 +185,22 @@ _MAINTENANCE_SYSTEM_PROMPT = (
     '"confidence": <"alta", "media" ou "baixa">, '
     '"justification": <string curta em português explicando a escolha>}.'
 )
+
+
+def _prompt_de_busca(contexto=None):
+    """Return the room-search prompt, with temporal context when available.
+
+    Args:
+        contexto: Dicionário com ``hoje``, ``dia_da_semana``, ``abertura`` e
+            ``fechamento``. Quando ausente, o prompt não pede campos de tempo —
+            perguntar por data sem dizer que dia é hoje só produziria chute.
+
+    Returns:
+        str: O prompt de sistema.
+    """
+    if not contexto:
+        return _ROOM_SEARCH_SYSTEM_PROMPT
+    return _ROOM_SEARCH_SYSTEM_PROMPT + _PROMPT_TEMPORAL.format(**contexto)
 
 
 def _format_retry_wait(exc: RateLimitError) -> str:
@@ -351,26 +389,142 @@ def _coerce_capacity(value) -> int | None:
     return capacity
 
 
-def extract_room_search_filters(query: str) -> dict:
+def _coerce_date(valor, contexto, avisos):
+    """Convert an LLM date to a usable ``date``, or ``None``.
+
+    A regra de negócio não é do modelo: uma data no passado ou além do horizonte
+    de agendamento é recusada aqui, do lado de cá. Quando isso acontece, o
+    motivo entra em ``avisos`` — descartar em silêncio deixaria o resumo da IA
+    dizendo "amanhã" enquanto a tela mostra hoje.
+
+    Args:
+        valor: O que o modelo devolveu.
+        contexto: O contexto temporal, com ``hoje_date`` e ``horizonte``.
+        avisos: Lista onde registrar o que foi descartado e por quê.
+
+    Returns:
+        datetime.date | None: A data utilizável.
+    """
+    if not valor or not isinstance(valor, str):
+        return None
+    try:
+        escolhida = datetime.datetime.strptime(valor.strip(), "%Y-%m-%d").date()
+    except ValueError:
+        avisos.append("Não consegui entender a data pedida.")
+        return None
+
+    hoje = contexto["hoje_date"]
+    if escolhida < hoje:
+        avisos.append("A data pedida já passou; mostrando hoje.")
+        return None
+    if escolhida > hoje + datetime.timedelta(days=contexto["horizonte"]):
+        avisos.append(
+            f"Só é possível reservar com até {contexto['horizonte']} dias de "
+            "antecedência; mostrando hoje."
+        )
+        return None
+    return escolhida
+
+
+def _coerce_time(valor, contexto, avisos):
+    """Convert an LLM time to a ``time`` inside the operating window, or ``None``.
+
+    Args:
+        valor: O que o modelo devolveu.
+        contexto: O contexto temporal, com ``abertura_time`` e ``fechamento_time``.
+        avisos: Lista onde registrar o que foi descartado e por quê.
+
+    Returns:
+        datetime.time | None: O horário utilizável.
+    """
+    if not valor or not isinstance(valor, str):
+        return None
+    try:
+        horario = datetime.datetime.strptime(valor.strip(), "%H:%M").time()
+    except ValueError:
+        avisos.append("Não consegui entender o horário pedido.")
+        return None
+
+    if not (contexto["abertura_time"] <= horario < contexto["fechamento_time"]):
+        avisos.append(
+            f"O horário pedido está fora do expediente "
+            f"({contexto['abertura']} às {contexto['fechamento']})."
+        )
+        return None
+    return horario
+
+
+def _coerce_duration(valor, contexto, avisos):
+    """Convert an LLM duration to a value the policy accepts, or ``None``.
+
+    Não arredonda para o limite mais próximo: encurtar ou esticar a reunião de
+    alguém sem avisar é pior do que ignorar o pedido e deixar a pessoa escolher.
+
+    Args:
+        valor: O que o modelo devolveu.
+        contexto: O contexto temporal, com ``duracao_minima`` e ``duracao_maxima``.
+        avisos: Lista onde registrar o que foi descartado e por quê.
+
+    Returns:
+        int | None: A duração utilizável, em minutos.
+    """
+    if valor is None or valor == "":
+        return None
+    try:
+        minutos = int(valor)
+    except (TypeError, ValueError):
+        return None
+    if minutos < contexto["duracao_minima"] or minutos > contexto["duracao_maxima"]:
+        avisos.append(
+            f"A duração pedida está fora do permitido "
+            f"(de {contexto['duracao_minima']} a {contexto['duracao_maxima']} minutos)."
+        )
+        return None
+    return minutos
+
+
+def extract_room_search_filters(query: str, contexto_temporal: dict | None = None) -> dict:
     """Use an LLM to turn a natural-language room request into structured search filters.
 
     Args:
         query: free-text description of the desired space, e.g. "sala para 8
             pessoas com projetor amanhã de manhã".
+        contexto_temporal: quando informado, habilita a extração de data e
+            horário. Precisa trazer ``hoje``, ``hoje_date``, ``dia_da_semana``,
+            ``abertura``, ``abertura_time``, ``fechamento``, ``fechamento_time``,
+            ``horizonte``, ``duracao_minima`` e ``duracao_maxima``. Sem ele o
+            comportamento é exatamente o de antes — "amanhã" não significa nada
+            para um modelo que não sabe que dia é hoje.
 
     Returns:
         A dict with keys ``min_capacity``, ``max_capacity``, ``attributes``,
-        ``location`` and ``summary``. Attribute labels are normalized to catalog
-        names when possible (e.g. ``internet`` → ``Wi-Fi``).
+        ``location``, ``summary``, ``date``, ``start_time``, ``duration_minutes``
+        and ``avisos``. Attribute labels are normalized to catalog names when
+        possible (e.g. ``internet`` → ``Wi-Fi``). Os três campos temporais são
+        ``None`` quando não houve contexto ou quando o valor devolvido não
+        passou na validação — e, nesse caso, ``avisos`` explica o motivo.
     """
     logger.info("Extraindo filtros de busca de sala a partir de linguagem natural.")
-    data = _run_json_completion(_ROOM_SEARCH_SYSTEM_PROMPT, query)
+    data = _run_json_completion(_prompt_de_busca(contexto_temporal), query)
+
+    avisos: list[str] = []
+    if contexto_temporal:
+        data_pedida = _coerce_date(data.get("date"), contexto_temporal, avisos)
+        horario = _coerce_time(data.get("start_time"), contexto_temporal, avisos)
+        duracao = _coerce_duration(data.get("duration_minutes"), contexto_temporal, avisos)
+    else:
+        data_pedida = horario = duracao = None
+
     return {
         "min_capacity": _coerce_capacity(data.get("min_capacity")),
         "max_capacity": _coerce_capacity(data.get("max_capacity")),
         "attributes": normalize_room_search_attributes(data.get("attributes") or []),
         "location": data.get("location"),
         "summary": data.get("summary", ""),
+        "date": data_pedida,
+        "start_time": horario,
+        "duration_minutes": duracao,
+        "avisos": avisos,
     }
 
 
@@ -540,12 +694,8 @@ def rewrite_followup_question(question: str, history: list | None) -> str:
     if not history:
         return question
 
-    trocas = "\n".join(
-        f"- {turn.question}" for turn in reversed(history)
-    )
-    user_content = (
-        f"Histórico recente:\n{trocas}\n\nPergunta atual: {question}"
-    )
+    trocas = "\n".join(f"- {turn.question}" for turn in reversed(history))
+    user_content = f"Histórico recente:\n{trocas}\n\nPergunta atual: {question}"
     try:
         reescrita = _run_text_completion(_FOLLOWUP_REWRITE_SYSTEM_PROMPT, user_content)
     except AIServiceError:
