@@ -1,0 +1,194 @@
+{% extends "base_user.html" %}
+
+{% comment %}
+Passo 4 — Revisão e confirmação.
+
+O pacote V2 chama isto de "uma tela de confiança, não outro formulário": nada
+aqui é editável. Cada bloco mostra o que vai acontecer e oferece ``Alterar``.
+
+Todo o estado do passo 3 viaja em campos escondidos deste formulário. Isso é o
+que permite que ``Alterar`` seja um ``formaction`` para o passo 3 em vez de um
+link: um ``<a>`` levaria a pessoa de volta a um formulário vazio, e ela teria de
+digitar tudo outra vez. O botão "Alterar detalhes" e o "Confirmar reserva"
+postam os mesmos dados para destinos diferentes.
+
+"Alterar espaço" é a exceção e é link mesmo: trocar de espaço invalida o
+horário e os serviços — que são do espaço antigo —, então não há estado de
+passo 3 que faça sentido preservar. A data e o número de pessoas vão junto na
+URL para a pessoa não escolhê-los de novo.
+{% endcomment %}
+
+{% block title %}Revisão e confirmação — Reserva de Espaços{% endblock %}
+
+{% block user_content %}
+{# A página é larga para o stepper de quatro etapas caber sem cortar; o #}
+{# conteúdo é que fica estreito, porque texto de revisão em linha longa #}
+{# se lê pior.                                                          #}
+<div class="max-w-5xl space-y-6">
+    {% include "components/_reservation_steps.html" %}
+
+    <header>
+        <h1 class="text-2xl font-semibold tracking-tight">Confira antes de confirmar</h1>
+        <p class="mt-1 text-sm text-muted">Nada foi reservado ainda. Revise e confirme.</p>
+    </header>
+
+    {# Uma coluna só, e sem o resumo lateral dos passos 1 a 3: aqui a     #}
+    {# página inteira já é o resumo. Repeti-lo na lateral colocava dois   #}
+    {# "Alterar" para a mesma data e horário — duas portas para o mesmo   #}
+    {# lugar é uma pergunta que o usuário não deveria precisar responder. #}
+    <form method="post" action="{% url 'reservation_create' %}" class="max-w-3xl space-y-6">
+        {% csrf_token %}
+
+        {# O estado inteiro do passo 3, para o Alterar e o Confirmar terem o  #}
+        {# que postar. Sem isto a revisão seria um beco sem saída.            #}
+        <input type="hidden" name="space" value="{{ space.id }}">
+        <input type="hidden" name="date" value="{{ campos.date_str }}">
+        <input type="hidden" name="start_time" value="{{ campos.start_time_str }}">
+        <input type="hidden" name="end_time" value="{{ campos.end_time_str }}">
+        <input type="hidden" name="title" value="{{ campos.title }}">
+        <input type="hidden" name="attendee_count" value="{{ campos.attendee_raw }}">
+        <input type="hidden" name="notes" value="{{ campos.notes }}">
+        {% for pedido in servicos_pedidos %}
+        <input type="hidden" name="services" value="{{ pedido.servico.pk }}">
+        <input type="hidden" name="service_notes_{{ pedido.servico.pk }}" value="{{ pedido.detalhamento }}">
+        {% endfor %}
+
+        <div class="space-y-6">
+            <section class="surface p-5 sm:p-6" aria-labelledby="revisao-espaco">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <h2 id="revisao-espaco" class="font-semibold">Espaço</h2>
+                    <a href="{{ url_dos_espacos }}" class="link link-hover text-xs text-primary">
+                        Alterar<span class="sr-only"> espaço</span>
+                    </a>
+                </div>
+                <div class="flex gap-4">
+                    <div class="w-28 shrink-0 hidden sm:block">
+                        {% include "partials/_space_image.html" with space=space classe="rounded-md" eager=True %}
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-medium">{{ space.name }}</p>
+                        <p class="text-sm text-muted mt-0.5">
+                            {{ space.location }} · até {{ space.capacity }} pessoa{{ space.capacity|pluralize:"s" }}
+                        </p>
+                        {% with attrs=space.space_attributes.all %}
+                        {% if attrs %}
+                        <div class="flex flex-wrap gap-1 mt-2">
+                            {% for space_attr in attrs %}
+                            <span class="badge badge-outline badge-sm font-normal gap-1">
+                                {% if space_attr.attribute.icon_name %}{% include "partials/_icon.html" with name=space_attr.attribute.icon_name %}{% endif %}
+                                {{ space_attr.attribute.name }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </section>
+
+            <section class="surface p-5 sm:p-6" aria-labelledby="revisao-detalhes">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <h2 id="revisao-detalhes" class="font-semibold">Data, horário e detalhes</h2>
+                    {# ``formaction`` e não link: o estado precisa ir junto. #}
+                    <button type="submit"
+                            formaction="{% url 'reservation_edit' %}"
+                            formnovalidate
+                            class="link link-hover text-xs text-primary bg-transparent border-0 p-0 cursor-pointer">
+                        Alterar<span class="sr-only"> data, horário e detalhes</span>
+                    </button>
+                </div>
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                    <div>
+                        <dt class="text-muted text-xs uppercase tracking-wide">Data</dt>
+                        <dd class="font-medium mt-0.5">{{ resumo.inicio|date:"d/m/Y" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted text-xs uppercase tracking-wide">Horário</dt>
+                        <dd class="font-medium mt-0.5">{{ resumo.inicio|date:"H:i" }} às {{ resumo.fim|date:"H:i" }}</dd>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <dt class="text-muted text-xs uppercase tracking-wide">Assunto</dt>
+                        <dd class="font-medium mt-0.5">{{ campos.title }}</dd>
+                    </div>
+                    {% if campos.attendee_raw %}
+                    <div>
+                        <dt class="text-muted text-xs uppercase tracking-wide">Participantes</dt>
+                        <dd class="font-medium mt-0.5">{{ campos.attendee_raw }}</dd>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <dt class="text-muted text-xs uppercase tracking-wide">Organizador</dt>
+                        <dd class="font-medium mt-0.5">{{ organizador }}</dd>
+                    </div>
+                    {% if campos.notes %}
+                    <div class="sm:col-span-2">
+                        <dt class="text-muted text-xs uppercase tracking-wide">Observações</dt>
+                        <dd class="mt-0.5 whitespace-pre-line text-base-content/75">{{ campos.notes }}</dd>
+                    </div>
+                    {% endif %}
+                </dl>
+            </section>
+
+            <section class="surface p-5 sm:p-6" aria-labelledby="revisao-servicos">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <h2 id="revisao-servicos" class="font-semibold">Serviços</h2>
+                    <button type="submit"
+                            formaction="{% url 'reservation_edit' %}#bloco-apoio"
+                            formnovalidate
+                            class="link link-hover text-xs text-primary bg-transparent border-0 p-0 cursor-pointer">
+                        Alterar<span class="sr-only"> serviços</span>
+                    </button>
+                </div>
+                {% if servicos_pedidos %}
+                <ul class="space-y-2.5 text-sm">
+                    {% for pedido in servicos_pedidos %}
+                    <li>
+                        <span class="inline-flex items-center gap-1.5 font-medium">
+                            {% if pedido.servico.icon_name %}{% include "partials/_icon.html" with name=pedido.servico.icon_name %}{% endif %}
+                            {{ pedido.servico.name }}
+                        </span>
+                        {% if pedido.detalhamento %}
+                        <p class="text-xs text-muted mt-0.5 whitespace-pre-line">{{ pedido.detalhamento }}</p>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-muted">Nenhum serviço solicitado.</p>
+                {% endif %}
+            </section>
+
+            {% comment %}
+            As regras vêm da política vigente, e não de um texto fixo: um número
+            escrito à mão aqui viraria mentira no dia em que a administração
+            mudasse a configuração. A regra de no-show não entra porque o
+            comando que a aplica não tem agendador — prometer o que não
+            acontece é pior do que não avisar.
+            {% endcomment %}
+            <section class="surface p-5 sm:p-6" aria-labelledby="revisao-regras">
+                <h2 id="revisao-regras" class="font-semibold mb-2">O que vale para esta reserva</h2>
+                <ul class="text-sm text-muted space-y-1.5 list-disc pl-5">
+                    <li>O check-in fica disponível de 15 minutos antes do início até o horário de término.</li>
+                    <li>Você pode cancelar ou reagendar pela tela da reserva enquanto ela estiver confirmada.</li>
+                    <li>Serviços solicitados chegam à administração junto com a reserva e são atendidos por ela.</li>
+                </ul>
+            </section>
+
+            <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+                <button type="submit"
+                        formaction="{% url 'reservation_edit' %}"
+                        formnovalidate
+                        class="btn btn-ghost btn-sm text-muted inline-flex items-center justify-center gap-1.5">
+                    {% include "partials/_icon.html" with name="arrow-left" %}
+                    Voltar e editar
+                </button>
+                <button type="submit" name="confirmar" value="1"
+                        class="btn btn-primary inline-flex items-center justify-center gap-2 w-full sm:w-auto">
+                    Confirmar reserva
+                    {% include "partials/_icon.html" with name="check" %}
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
