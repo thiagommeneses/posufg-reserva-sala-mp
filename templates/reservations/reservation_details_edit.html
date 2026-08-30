@@ -1,0 +1,118 @@
+{% extends "base_user.html" %}
+
+{% comment %}
+Editar os detalhes de uma reserva já criada.
+
+Os mesmos blocos do passo 3 — "Sobre a reserva" e "Precisa de algum apoio?" —,
+e de propósito **sem** stepper: isto não é uma etapa de um fluxo, é a mesma
+pergunta feita depois. Um stepper aqui prometeria um caminho de quatro passos
+que a pessoa não está percorrendo.
+
+Data, hora e espaço não aparecem. Mudar quando ou onde disputa a agenda com
+outras pessoas e passa por revalidação completa — é o que "Reagendar" faz.
+{% endcomment %}
+
+{% block title %}Editar reserva — Reserva de Espaços{% endblock %}
+
+{% block user_content %}
+<div class="max-w-3xl space-y-6">
+    <header>
+        <h1 class="text-2xl font-semibold tracking-tight">Editar reserva</h1>
+        <p class="mt-1 text-sm text-muted">
+            {{ reservation.space.name }} ·
+            {{ reservation.start_time|date:"d/m/Y" }},
+            {{ reservation.start_time|date:"H:i" }} às {{ reservation.end_time|date:"H:i" }}
+        </p>
+    </header>
+
+    {% if error %}
+    <div class="notice notice-error" role="alert">
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <section class="surface p-5 sm:p-6 space-y-4" aria-labelledby="bloco-sobre">
+            <div>
+                <h2 id="bloco-sobre" class="font-semibold">Sobre a reserva</h2>
+                <p class="text-xs text-muted mt-0.5">
+                    Para mudar data, horário ou espaço, use
+                    <a href="{% url 'reservation_reschedule' reservation.pk %}"
+                       class="link link-hover text-primary">Reagendar</a>.
+                </p>
+            </div>
+
+            <div class="form-control">
+                <label class="label py-1" for="id_title">
+                    <span class="label-text text-sm font-medium">Assunto</span>
+                </label>
+                <input
+                    type="text"
+                    name="title"
+                    id="id_title"
+                    value="{{ prefill_title }}"
+                    maxlength="160"
+                    placeholder="Ex.: Reunião de alinhamento do projeto"
+                    class="input input-bordered w-full"
+                    required
+                >
+            </div>
+
+            <div class="form-control">
+                <label class="label py-1" for="id_attendee_count">
+                    <span class="label-text text-sm font-medium">
+                        Participantes
+                        <span class="font-normal text-muted">(opcional)</span>
+                    </span>
+                </label>
+                <div class="sm:max-w-[12rem]">
+                    <input
+                        type="number"
+                        name="attendee_count"
+                        id="id_attendee_count"
+                        value="{{ prefill_attendee_count }}"
+                        min="1"
+                        max="{{ space.capacity }}"
+                        class="input input-bordered w-full"
+                    >
+                </div>
+                <p class="text-xs text-muted mt-1">
+                    {{ space.name }} comporta até {{ space.capacity }} pessoa{{ space.capacity|pluralize:"s" }}.
+                </p>
+            </div>
+
+            <div class="form-control">
+                <label class="label py-1" for="id_notes">
+                    <span class="label-text text-sm font-medium">
+                        Observações
+                        <span class="font-normal text-muted">(opcional)</span>
+                    </span>
+                </label>
+                <textarea
+                    name="notes"
+                    id="id_notes"
+                    rows="3"
+                    placeholder="Algo que a administração precise saber."
+                    class="textarea textarea-bordered w-full"
+                >{{ prefill_notes }}</textarea>
+            </div>
+        </section>
+
+        {% include "reservations/_service_picker.html" %}
+
+        <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+            <a href="{% url 'reservation_detail' reservation.pk %}"
+               class="btn btn-ghost btn-sm text-muted inline-flex items-center justify-center gap-1.5">
+                {% include "partials/_icon.html" with name="arrow-left" %}
+                Cancelar edição
+            </a>
+            <button type="submit" class="btn btn-primary inline-flex items-center justify-center gap-2 w-full sm:w-auto">
+                Salvar alterações
+                {% include "partials/_icon.html" with name="save" %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
