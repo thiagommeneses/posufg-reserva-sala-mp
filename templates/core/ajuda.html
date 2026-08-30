@@ -1,0 +1,105 @@
+{% extends "base_user.html" %}
+
+{% comment %}
+Tela de Ajuda.
+
+Duas metades, com origens diferentes e propositalmente separadas na tela:
+
+1. "Como funciona" — derivado de `core.ajuda.perguntas_frequentes`, que lê a
+   política vigente. Nenhum número aqui é digitado; se o administrador mudar o
+   horário de funcionamento, esta tela muda junto. É a razão de a metade existir
+   como código e não como texto.
+
+2. "Orientações da administração" — blocos de `core.models.HelpArticle`,
+   escritos por quem sabe. Texto puro, escapado pelo template: um bloco editável
+   nunca vira marcação.
+
+Não há seção de contato porque não há contato real cadastrado no sistema.
+Inventar um telefone na tela de ajuda seria o pior lugar possível para um dado
+falso. No lugar, o rodapé encaminha para Consultar Normas, que existe.
+
+Acessibilidade: o índice é um `nav` com lista de âncoras; cada pergunta é uma
+`section` com `aria-labelledby` apontando para o próprio título, de modo que um
+leitor de tela anuncie a pergunta antes da resposta.
+{% endcomment %}
+
+{% block title %}Ajuda - Reserva de Espaços{% endblock %}
+
+{% block user_content %}
+<div class="space-y-6">
+    <header>
+        <h1 class="text-2xl font-semibold tracking-tight">Ajuda</h1>
+        <p class="mt-1 text-sm text-base-content/70">
+            As respostas abaixo refletem as regras que o sistema aplica hoje.
+        </p>
+    </header>
+
+    {# ---------- Índice ---------- #}
+    <nav class="surface p-4 sm:p-5" aria-label="Índice da ajuda">
+        <h2 class="text-sm font-semibold mb-3">Nesta página</h2>
+        {# `columns-2` e não `grid-cols-2`: a grade preenche por linha, e o #}
+        {# índice passaria a ser lido em ziguezague — o segundo item ficaria à #}
+        {# direita do primeiro, não abaixo dele. Colunas de texto fluem para #}
+        {# baixo e só então para o lado, que é como se lê um índice. #}
+        <ul class="sm:columns-2 sm:gap-x-6 space-y-1.5">
+            {% for item in perguntas %}
+            <li class="break-inside-avoid">
+                <a href="#{{ item.id }}" class="text-sm text-primary hover:underline">{{ item.pergunta }}</a>
+            </li>
+            {% endfor %}
+            {% for bloco in blocos %}
+            <li class="break-inside-avoid">
+                <a href="#{{ bloco.slug }}" class="text-sm text-primary hover:underline">{{ bloco.title }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </nav>
+
+    {# ---------- Metade derivada ---------- #}
+    <section aria-labelledby="titulo-como-funciona" class="space-y-3">
+        <h2 id="titulo-como-funciona" class="text-sm font-semibold">Como funciona</h2>
+
+        {% for item in perguntas %}
+        <section id="{{ item.id }}" aria-labelledby="pergunta-{{ item.id }}" class="surface p-5 sm:p-6 scroll-mt-6">
+            <h3 id="pergunta-{{ item.id }}" class="text-base font-semibold leading-snug">{{ item.pergunta }}</h3>
+            <div class="mt-2 space-y-2">
+                {% for paragrafo in item.respostas %}
+                <p class="text-sm text-base-content/70 leading-relaxed">{{ paragrafo }}</p>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </section>
+
+    {# ---------- Metade institucional ---------- #}
+    {% if blocos %}
+    <section aria-labelledby="titulo-orientacoes" class="space-y-3">
+        <h2 id="titulo-orientacoes" class="text-sm font-semibold">Orientações da administração</h2>
+
+        {% for bloco in blocos %}
+        <section id="{{ bloco.slug }}" aria-labelledby="bloco-{{ bloco.slug }}" class="surface p-5 sm:p-6 scroll-mt-6">
+            <h3 id="bloco-{{ bloco.slug }}" class="text-base font-semibold leading-snug">{{ bloco.title }}</h3>
+            <div class="mt-2 space-y-2">
+                {% for paragrafo in bloco.paragrafos %}
+                <p class="text-sm text-base-content/70 leading-relaxed">{{ paragrafo }}</p>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    {# ---------- Para além da ajuda ---------- #}
+    <section aria-labelledby="titulo-normas" class="surface p-5 sm:p-6">
+        <h2 id="titulo-normas" class="text-base font-semibold leading-snug">Não achou o que procurava?</h2>
+        <p class="mt-2 text-sm text-base-content/70 leading-relaxed">
+            Consultar Normas responde perguntas sobre os regulamentos de uso de
+            espaços, citando o documento de onde tirou cada resposta.
+        </p>
+        <a href="{% url 'document_assistant' %}" class="btn btn-primary btn-sm mt-4 inline-flex items-center gap-1.5">
+            {% include "partials/_icon.html" with name="book" %}
+            Consultar Normas
+        </a>
+    </section>
+</div>
+{% endblock %}

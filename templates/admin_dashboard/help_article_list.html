@@ -1,0 +1,103 @@
+{% extends "base_admin.html" %}
+
+{% comment %}
+Lista dos blocos institucionais da Ajuda.
+
+Só a metade escrita por gente aparece aqui. A metade factual da tela de Ajuda —
+horários, duração, check-in, no-show — é derivada da política a cada
+requisição, e o cartão no topo diz isso: sem essa frase, o primeiro
+administrador a abrir esta tela procuraria onde se edita o horário de
+funcionamento e concluiria que a Ajuda está incompleta.
+{% endcomment %}
+
+{% block title %}Ajuda - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight">Blocos de ajuda</h1>
+            <p class="mt-1 text-sm text-base-content/70">
+                Orientações institucionais que aparecem na tela de Ajuda do usuário.
+            </p>
+        </div>
+        <a href="{% url 'admin_dashboard:help_article_create' %}" class="btn btn-primary btn-sm shrink-0 inline-flex items-center gap-1.5">
+            {% include "partials/_icon.html" with name="plus" %}
+            Novo bloco
+        </a>
+    </header>
+
+    <div class="notice" role="note">
+        As perguntas sobre horários, duração, check-in, cancelamento e não
+        comparecimento a Ajuda já responde sozinha, a partir da
+        <a href="{% url 'admin_dashboard:booking_policy' %}" class="link">política de reserva</a>.
+        Mudou a política, mudou a resposta. Escreva aqui só o que o sistema não
+        tem como saber.
+    </div>
+
+    {% if blocos %}
+    <div class="surface overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="table">
+                <thead>
+                    <tr class="border-b border-base-300 text-xs text-base-content/70">
+                        <th class="bg-base-100 font-medium">Ordem</th>
+                        <th class="bg-base-100 font-medium">Título</th>
+                        <th class="bg-base-100 font-medium">Situação</th>
+                        <th class="bg-base-100 font-medium">Atualizado</th>
+                        <th class="bg-base-100 font-medium"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bloco in blocos %}
+                    <tr class="border-b border-base-300 hover:bg-base-200/50">
+                        <td class="text-sm tabular-nums text-base-content/70">{{ bloco.sort_order }}</td>
+                        <td>
+                            <span class="font-medium text-sm">{{ bloco.title }}</span>
+                            <span class="block text-xs text-base-content/70 mt-0.5">
+                                {{ bloco.paragrafos|length }} parágrafo{{ bloco.paragrafos|length|pluralize }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if bloco.is_published %}
+                            <span class="badge badge-success badge-sm font-normal">Publicado</span>
+                            {% else %}
+                            <span class="badge badge-ghost badge-sm font-normal">Rascunho</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-sm text-base-content/70">{{ bloco.updated_at|date:"j M Y, H:i" }}</td>
+                        <td class="text-right">
+                            <div class="inline-flex items-center gap-1">
+                                <a href="{% url 'admin_dashboard:help_article_update' bloco.pk %}" class="btn btn-ghost btn-xs inline-flex items-center gap-1">
+                                    {% include "partials/_icon.html" with name="pencil" %}
+                                    Editar
+                                </a>
+                                <form method="post" action="{% url 'admin_dashboard:help_article_delete' bloco.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-ghost btn-xs text-error inline-flex items-center gap-1">
+                                        {% include "partials/_icon.html" with name="trash" %}
+                                        Remover
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="surface p-8 text-center">
+        <p class="text-sm text-base-content/70">
+            Nenhum bloco escrito ainda. A tela de Ajuda já funciona sem eles —
+            mostra as respostas derivadas da política.
+        </p>
+        <a href="{% url 'admin_dashboard:help_article_create' %}" class="btn btn-primary btn-sm mt-4 inline-flex items-center gap-1.5">
+            {% include "partials/_icon.html" with name="plus" %}
+            Escrever o primeiro
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
