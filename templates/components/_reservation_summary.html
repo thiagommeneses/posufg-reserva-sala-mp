@@ -1,0 +1,81 @@
+{% comment %}
+Resumo da reserva em construção — o ReservationSummary do pacote V2.
+
+Espera no contexto:
+    resumo.espaco        Space
+    resumo.inicio        datetime local, ou None
+    resumo.fim           datetime local, ou None
+    resumo.participantes int|str, ou vazio
+    resumo.url_do_horario URL do passo 2, já com a data escolhida
+
+Existe para responder, a qualquer momento, "o que eu já escolhi?" sem obrigar o
+usuário a voltar. É o mesmo bloco no passo 3 e no passo 4; no desktop fica numa
+coluna lateral pregada ao topo, no mobile vira bloco comum acima do CTA — que é
+o que o pacote V2 pede para telas estreitas.
+
+``aria-labelledby`` em vez de ``role="status"``: aqui o bloco já está na tela
+quando ela carrega, não surge depois. Anunciá-lo como status faria o leitor de
+tela interromper a leitura do formulário sem motivo.
+{% endcomment %}
+<aside class="surface overflow-hidden lg:sticky lg:top-6" aria-labelledby="resumo-da-reserva">
+    <h2 id="resumo-da-reserva" class="sr-only">Resumo da reserva</h2>
+
+    {% if resumo.espaco %}
+    <div class="hidden lg:block">
+        {% include "partials/_space_image.html" with space=resumo.espaco eager=True %}
+    </div>
+    {% endif %}
+
+    <div class="p-4 sm:p-5 space-y-3.5">
+        {% if resumo.espaco %}
+        <div class="flex gap-3">
+            <div class="w-16 shrink-0 lg:hidden">
+                {% include "partials/_space_image.html" with space=resumo.espaco classe="rounded-md" eager=True %}
+            </div>
+            <div class="min-w-0">
+                {% if resumo.espaco.space_type %}
+                <p class="text-[10px] font-medium uppercase tracking-wider text-muted">{{ resumo.espaco.space_type.name }}</p>
+                {% endif %}
+                <p class="font-semibold leading-tight">{{ resumo.espaco.name }}</p>
+                <p class="text-xs text-muted mt-0.5">
+                    {{ resumo.espaco.location }} · até {{ resumo.espaco.capacity }} pessoa{{ resumo.espaco.capacity|pluralize:"s" }}
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
+        <dl class="text-sm border-t border-base-300 pt-3.5 space-y-2.5">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <dt class="text-muted text-xs uppercase tracking-wide">Data e horário</dt>
+                    <dd class="mt-0.5 font-medium">
+                        {% if resumo.inicio %}
+                        {{ resumo.inicio|date:"d/m/Y" }}
+                        <span class="font-normal text-base-content/70">
+                            · {{ resumo.inicio|date:"H:i" }}{% if resumo.fim %} às {{ resumo.fim|date:"H:i" }}{% endif %}
+                        </span>
+                        {% else %}
+                        <span class="font-normal text-muted">A definir abaixo</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                {% if resumo.url_do_horario %}
+                {# "Alterar" e não "Voltar": o usuário não está desfazendo o    #}
+                {# passo 3, está ajustando uma escolha do passo 2. Quando não   #}
+                {# há escolha nenhuma, "Alterar" mentiria — não há o que alterar.#}
+                <a href="{{ resumo.url_do_horario }}"
+                   class="link link-hover text-xs text-primary shrink-0 mt-0.5">
+                    {% if resumo.inicio %}Alterar{% else %}Escolher{% endif %}<span class="sr-only"> data e horário</span>
+                </a>
+                {% endif %}
+            </div>
+
+            {% if resumo.participantes %}
+            <div>
+                <dt class="text-muted text-xs uppercase tracking-wide">Participantes</dt>
+                <dd class="mt-0.5 font-medium">{{ resumo.participantes }}</dd>
+            </div>
+            {% endif %}
+        </dl>
+    </div>
+</aside>
