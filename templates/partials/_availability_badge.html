@@ -1,0 +1,30 @@
+{% comment %}
+Situação de um espaço numa data. Espera `resumo` — uma entrada de
+`reservations.availability.resumo_em_lote` — e usa `data_e_hoje`/`selected_date`
+do contexto para dizer a *que dia* a situação se refere.
+
+Dizer só "Disponível" seria ambíguo quando o usuário trocou a data: a frase
+precisa carregar o dia junto. O estado também não depende só da cor — o rótulo
+vem escrito, e o texto vem do módulo de disponibilidade, não daqui.
+{% endcomment %}
+{% if resumo %}
+<div class="flex flex-col gap-1">
+    <span class="inline-flex items-center gap-1.5 text-sm">
+        <span class="w-2 h-2 rounded-full shrink-0
+            {% if resumo.status == 'livre' or resumo.status == 'livre_no_horario' %}bg-success
+            {% elif resumo.status == 'poucos' %}bg-warning
+            {% elif resumo.status == 'manutencao' %}bg-warning
+            {% else %}bg-base-300{% endif %}" aria-hidden="true"></span>
+        <span class="{% if resumo.status == 'livre' or resumo.status == 'livre_no_horario' %}text-success
+            {% elif resumo.status == 'poucos' or resumo.status == 'manutencao' %}text-warning
+            {% else %}text-muted{% endif %}">
+            {{ resumo.rotulo }}{% if not rotulo_e_de_horario %}{% if data_e_hoje %} hoje{% else %} em {{ selected_date|date:"d/m" }}{% endif %}{% endif %}
+        </span>
+    </span>
+    {% if resumo.proxima_janela %}
+    <span class="text-xs text-muted pl-3.5">
+        Próximo horário: {{ resumo.proxima_janela|time:"H:i" }}
+    </span>
+    {% endif %}
+</div>
+{% endif %}
