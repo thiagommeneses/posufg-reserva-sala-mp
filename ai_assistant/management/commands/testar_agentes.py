@@ -60,7 +60,11 @@ class Command(BaseCommand):
         parser.add_argument(
             "--persistir",
             action="store_true",
-            help="Mantém as reservas criadas. Sem esta opção, tudo é revertido no fim.",
+            help=(
+                "Mantém as reservas criadas. Sem esta opção, cada pedido roda numa "
+                "transação revertida ao final — o P13 só vê o conflito do P12 se "
+                "este flag estiver ligado."
+            ),
         )
         parser.add_argument(
             "--saida",
@@ -153,6 +157,7 @@ class Command(BaseCommand):
                 f"{registro['decisao']:<20} "
                 f"esperado={registro['esperado']:<20} "
                 f"{registro['duracao_ms']:>6} ms  "
+                f"espera {registro.get('espera_ms', 0):>5} ms  "
                 f"{registro['total_tokens']:>6} tok"
             )
         )
@@ -165,21 +170,26 @@ class Command(BaseCommand):
     def _resumir(self, registros):
         """Aggregate latency, tokens and agreement across the run."""
         latencias = [r["duracao_ms"] for r in registros]
+        esperas = [r.get("espera_ms", 0) for r in registros]
         tokens = [r["total_tokens"] for r in registros]
         por_agente = {}
         for registro in registros:
             for passo in registro["passos"]:
                 acumulado = por_agente.setdefault(
-                    passo["agente"], {"execucoes": 0, "ms": [], "tokens": 0, "erros": 0}
+                    passo["agente"],
+                    {"execucoes": 0, "ms": [], "espera": [], "tokens": 0, "erros": 0},
                 )
                 acumulado["execucoes"] += 1
                 acumulado["ms"].append(passo["duracao_ms"])
+                acumulado["espera"].append(passo.get("espera_ms", 0))
                 acumulado["tokens"] += (passo["tokens"] or {}).get("total_tokens") or 0
                 acumulado["erros"] += 1 if passo["erro"] else 0
         for acumulado in por_agente.values():
             acumulado["ms_medio"] = round(statistics.mean(acumulado["ms"]), 1)
             acumulado["ms_maximo"] = max(acumulado["ms"])
+            acumulado["espera_media_ms"] = round(statistics.mean(acumulado["espera"]), 1)
             del acumulado["ms"]
+            del acumulado["espera"]
 
         return {
             "pedidos": len(registros),
@@ -187,6 +197,8 @@ class Command(BaseCommand):
             "latencia_media_ms": round(statistics.mean(latencias), 1) if latencias else 0,
             "latencia_mediana_ms": round(statistics.median(latencias), 1) if latencias else 0,
             "latencia_maxima_ms": max(latencias) if latencias else 0,
+            "espera_total_ms": sum(esperas),
+            "espera_media_ms": round(statistics.mean(esperas), 1) if esperas else 0,
             "tokens_totais": sum(tokens),
             "tokens_medios_por_pedido": round(statistics.mean(tokens), 1) if tokens else 0,
             "por_agente": por_agente,
@@ -198,9 +210,13 @@ class Command(BaseCommand):
         self.stdout.write("")
         self.stdout.write(f"Pedidos: {resumo['pedidos']} — conferem: {resumo['conferem']}")
         self.stdout.write(
-            f"Latência: média {resumo['latencia_media_ms']} ms, "
+            f"Latência líquida: média {resumo['latencia_media_ms']} ms, "
             f"mediana {resumo['latencia_mediana_ms']} ms, "
             f"máxima {resumo['latencia_maxima_ms']} ms"
+        )
+        self.stdout.write(
+            f"Espera (HTTP 429): total {resumo['espera_total_ms']} ms, "
+            f"média {resumo['espera_media_ms']} ms"
         )
         self.stdout.write(
             f"Tokens: {resumo['tokens_totais']} no total, "
@@ -210,6 +226,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"  {agente:<12} {dados['execucoes']:>2} execuções, "
                 f"{dados['ms_medio']:>7} ms médio, "
+                f"espera {dados['espera_media_ms']:>6} ms, "
                 f"{dados['tokens']:>6} tokens, {dados['erros']} erro(s)"
             )
 

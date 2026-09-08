@@ -193,6 +193,28 @@ class TestExtracaoTemporal:
         completacao.return_value = resposta(min_capacity=8)
         assert extract_room_search_filters("sala para 8", CONTEXTO)["avisos"] == []
 
+    @patch("ai_assistant.services._run_json_completion")
+    def test_corrige_data_que_nao_cai_no_dia_mencionado(self, completacao):
+        """Um domingo resolvido como terça é um erro silencioso e perigoso.
+
+        A data resultante é válida, então nenhuma outra guarda acusa. Quando o
+        pedido nomeia o dia da semana, o sistema confere e realinha.
+        """
+        completacao.return_value = resposta(date="2026-09-08")
+        resultado = extract_room_search_filters("sala no próximo domingo", CONTEXTO)
+
+        assert resultado["date"] == datetime.date(2026, 8, 30)
+        assert any("domingo" in aviso for aviso in resultado["avisos"])
+
+    @patch("ai_assistant.services._run_json_completion")
+    def test_nao_inventa_dia_da_semana_quando_o_pedido_nao_cita_nenhum(self, completacao):
+        """Sem menção a um dia, a data do modelo segue como está."""
+        completacao.return_value = resposta(date="2026-09-08")
+        resultado = extract_room_search_filters("sala amanhã", CONTEXTO)
+
+        assert resultado["date"] == datetime.date(2026, 9, 8)
+        assert resultado["avisos"] == []
+
 
 @pytest.mark.django_db
 class TestContextoTemporal:

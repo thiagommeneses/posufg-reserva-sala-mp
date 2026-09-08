@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from ai_assistant import agents
 from ai_assistant.exceptions import AIServiceError
+from ai_assistant.management.commands.testar_agentes import Command
 from reservations.models import BookingPolicy, Reservation, ReservationStatus
 from spaces.models import Attribute, Space, SpaceAttribute, SpaceType
 
@@ -441,4 +442,67 @@ class TestPipeline:
         assert resultado.decisao == agents.DECISAO_RESERVA
         assert resultado.total_tokens == 100
         assert resultado.duracao_ms >= 0
-        assert resultado.como_dict()["criterios"]["date"] == extraido["date"].isoformat()
+        assert resultado.espera_ms == 0
+        relatorio = resultado.como_dict()
+        assert relatorio["criterios"]["date"] == extraido["date"].isoformat()
+        assert relatorio["espera_ms"] == 0
+        assert relatorio["passos"][0]["espera_ms"] == 0
+
+    def test_resultado_soma_espera_dos_passos(self):
+        """Latência líquida e espera 429 viajam separados no relatório."""
+        resultado = agents.ResultadoDoPipeline(pedido="x", decisao="y", mensagem="z")
+        resultado.passos.append(
+            agents.PassoDoAgente(agente="interprete", duracao_ms=80, espera_ms=1200)
+        )
+        resultado.passos.append(
+            agents.PassoDoAgente(agente="normativo", duracao_ms=20, espera_ms=300)
+        )
+
+        assert resultado.duracao_ms == 100
+        assert resultado.espera_ms == 1500
+        assert resultado.como_dict()["espera_ms"] == 1500
+
+    def test_equipamento_fora_do_catalogo_aparece_na_mensagem(self, db, politica, sala, usuario):
+        """Descartar o requisito em silêncio entrega uma sala que não atende ao pedido."""
+        extraido = criterios_validos(attributes=[], atributos_ignorados=["esteira ergométrica"])
+        extraido.pop("faltando")
+
+        with (
+            patch("ai_assistant.services.extract_room_search_filters", return_value=extraido),
+            patch("knowledge.retrieval.search", return_value=[]),
+        ):
+            resultado = agents.executar_pipeline(
+                "sala com esteira ergométrica", usuario, policy=politica
+            )
+
+        assert resultado.decisao == agents.DECISAO_RESERVA
+        assert "esteira" in resultado.mensagem
+        assert "não consta no catálogo" in resultado.mensagem
+
+
+def test_resumo_do_runner_separa_latencia_e_espera():
+    """O bloco final do comando precisa mostrar trabalho e fila 429 à parte."""
+    resumo = Command()._resumir(
+        [
+            {
+                "duracao_ms": 100,
+                "espera_ms": 40,
+                "total_tokens": 10,
+                "confere": True,
+                "passos": [
+                    {
+                        "agente": "interprete",
+                        "duracao_ms": 100,
+                        "espera_ms": 40,
+                        "tokens": {},
+                        "erro": None,
+                    }
+                ],
+            }
+        ]
+    )
+
+    assert resumo["latencia_media_ms"] == 100
+    assert resumo["espera_total_ms"] == 40
+    assert resumo["espera_media_ms"] == 40
+    assert resumo["por_agente"]["interprete"]["espera_media_ms"] == 40

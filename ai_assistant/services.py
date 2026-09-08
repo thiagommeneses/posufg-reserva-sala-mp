@@ -9,7 +9,9 @@ import datetime
 import json
 import logging
 import re
+import time
 import unicodedata
+from typing import NamedTuple
 
 from django.conf import settings
 from groq import (
@@ -37,6 +39,12 @@ _RETRY_AFTER_PATTERN = re.compile(
     r"try again in (?:(\d+)m)?([\d.]+)s",
     re.IGNORECASE,
 )
+
+#: How many times a short HTTP 429 is retried before the error surfaces.
+MAX_TENTATIVAS_429 = 3
+
+#: Waits longer than this are daily-quota pauses, not TPM blips — do not sleep.
+MAX_ESPERA_429_S = 60.0
 
 MAINTENANCE_CATEGORIES = [
     "eletrica",
@@ -203,6 +211,23 @@ def _prompt_de_busca(contexto=None):
     return _ROOM_SEARCH_SYSTEM_PROMPT + _PROMPT_TEMPORAL.format(**contexto)
 
 
+def _retry_after_seconds(exc: RateLimitError) -> float | None:
+    """Parse the retry-after hint from a Groq rate-limit error.
+
+    Args:
+        exc: The rate-limit exception raised by the Groq client.
+
+    Returns:
+        Seconds to wait, or ``None`` when the message has no usable hint.
+    """
+    match = _RETRY_AFTER_PATTERN.search(str(exc))
+    if not match:
+        return None
+    minutes = int(match.group(1) or 0)
+    seconds = float(match.group(2))
+    return minutes * 60 + seconds
+
+
 def _format_retry_wait(exc: RateLimitError) -> str:
     """Extract a short Portuguese wait hint from a Groq rate-limit error.
 
@@ -213,13 +238,11 @@ def _format_retry_wait(exc: RateLimitError) -> str:
         A phrase such as " Tente de novo em cerca de 34 minutos." or an empty
         string when the retry hint cannot be parsed.
     """
-    match = _RETRY_AFTER_PATTERN.search(str(exc))
-    if not match:
+    total_seconds = _retry_after_seconds(exc)
+    if total_seconds is None:
         return ""
 
-    minutes = int(match.group(1) or 0)
-    seconds = float(match.group(2))
-    total_minutes = max(1, minutes + int(seconds // 60) + (1 if seconds % 60 else 0))
+    total_minutes = max(1, int(total_seconds // 60) + (1 if total_seconds % 60 else 0))
     if total_minutes == 1:
         return " Tente de novo em cerca de 1 minuto."
     return f" Tente de novo em cerca de {total_minutes} minutos."
@@ -282,7 +305,49 @@ def _get_client() -> Groq:
             "O assistente não está disponível no momento. Se continuar assim, fale com o suporte.",
             technical_detail="GROQ_API_KEY ausente na configuração do ambiente.",
         )
-    return Groq(api_key=settings.GROQ_API_KEY)
+    return Groq(api_key=settings.GROQ_API_KEY, max_retries=0)
+
+
+def _record_espera(usage_sink, espera_ms: int) -> None:
+    """Store the milliseconds spent waiting on HTTP 429 retries.
+
+    Args:
+        usage_sink: Dictionary to fill, or ``None``.
+        espera_ms: Accumulated sleep time.
+    """
+    if usage_sink is None:
+        return
+    usage_sink["espera_ms"] = espera_ms
+
+
+def _chamar_completion(criar):
+    """Call ``criar``, retrying short HTTP 429 waits.
+
+    Daily-quota hints (longer than :data:`MAX_ESPERA_429_S`) are not slept
+    through: they surface immediately so a test runner does not pause for
+    half an hour.
+
+    Args:
+        criar: Zero-argument callable that performs the Groq request.
+
+    Returns:
+        tuple: The completion and the milliseconds spent sleeping.
+
+    Raises:
+        GroqError: The last provider error, unchanged.
+    """
+    espera_ms = 0
+    for tentativa in range(MAX_TENTATIVAS_429):
+        try:
+            return criar(), espera_ms
+        except RateLimitError as exc:
+            segundos = _retry_after_seconds(exc)
+            ultima = tentativa == MAX_TENTATIVAS_429 - 1
+            if segundos is None or segundos > MAX_ESPERA_429_S or ultima:
+                raise
+            time.sleep(segundos)
+            espera_ms += int(segundos * 1000)
+    raise RuntimeError("retry loop exited without a result")  # pragma: no cover
 
 
 def _record_usage(completion, usage_sink) -> None:
@@ -330,20 +395,23 @@ def _run_json_completion(
     """
     client = _get_client()
     try:
-        completion = client.chat.completions.create(
-            model=settings.GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content},
-            ],
-            temperature=0.2,
-            response_format={"type": "json_object"},
+        completion, espera_ms = _chamar_completion(
+            lambda: client.chat.completions.create(
+                model=settings.GROQ_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
+                temperature=0.2,
+                response_format={"type": "json_object"},
+            )
         )
     except GroqError as exc:
         logger.exception("Falha ao chamar a API da Groq.")
         raise _ai_error_from_groq(exc) from None
 
     _record_usage(completion, usage_sink)
+    _record_espera(usage_sink, espera_ms)
 
     raw_content = completion.choices[0].message.content
     try:
@@ -363,19 +431,54 @@ def _normalize_lookup_key(value: str) -> str:
     return " ".join(without_accents.replace("-", " ").split())
 
 
-def normalize_room_search_attributes(attributes: list) -> list[str]:
+class AtributosDaBusca(NamedTuple):
+    """Catalog names accepted as filters, plus labels that could not be mapped."""
+
+    aceitos: list[str]
+    ignorados: list[str]
+
+
+#: Portuguese weekday names, longest first, mapped to ``date.weekday()``.
+_ALIASES_DIA_DA_SEMANA: tuple[tuple[str, int], ...] = (
+    ("segunda feira", 0),
+    ("terca feira", 1),
+    ("quarta feira", 2),
+    ("quinta feira", 3),
+    ("sexta feira", 4),
+    ("segunda", 0),
+    ("terca", 1),
+    ("quarta", 2),
+    ("quinta", 3),
+    ("sexta", 4),
+    ("sabado", 5),
+    ("domingo", 6),
+)
+
+_ROTULO_DIA_DA_SEMANA = (
+    "segunda-feira",
+    "terça-feira",
+    "quarta-feira",
+    "quinta-feira",
+    "sexta-feira",
+    "sábado",
+    "domingo",
+)
+
+
+def normalize_room_search_attributes(attributes: list) -> AtributosDaBusca:
     """Map free-form attribute labels onto canonical catalog names when possible.
 
     Args:
         attributes: raw attribute labels returned by the LLM (e.g. ``internet``).
 
     Returns:
-        Deduplicated list of catalog attribute names. Labels that cannot be mapped
-        to :data:`DEFAULT_ATTRIBUTES` are discarded so invented equipment does not
+        Accepted catalog names and the original labels that could not be mapped.
+        Unmapped labels are not used as filters so invented equipment does not
         wipe out search results.
     """
     catalog_by_key = {_normalize_lookup_key(name): name for name in DEFAULT_ATTRIBUTES}
-    normalized_attributes: list[str] = []
+    aceitos: list[str] = []
+    ignorados: list[str] = []
     seen: set[str] = set()
 
     for raw_attribute in attributes:
@@ -399,13 +502,96 @@ def normalize_room_search_attributes(attributes: list) -> list[str]:
 
         if canonical_name is None or canonical_name not in _CATALOG_ATTRIBUTE_NAMES:
             logger.info("Ignorando atributo fora do catálogo retornado pela IA: %r", trimmed)
+            ignorados.append(trimmed)
             continue
 
         if canonical_name not in seen:
             seen.add(canonical_name)
-            normalized_attributes.append(canonical_name)
+            aceitos.append(canonical_name)
 
-    return normalized_attributes
+    return AtributosDaBusca(aceitos=aceitos, ignorados=ignorados)
+
+
+def _dia_da_semana_mencionado(texto: str) -> int | None:
+    """Return the first weekday named in ``texto``, or ``None``.
+
+    Args:
+        texto: The request as the person wrote it.
+
+    Returns:
+        The ``date.weekday()`` value, or ``None`` when no weekday is named.
+    """
+    normalizado = _normalize_lookup_key(texto)
+    for alias, weekday in _ALIASES_DIA_DA_SEMANA:
+        if re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", normalizado):
+            return weekday
+    return None
+
+
+def _proxima_ocorrencia(hoje: datetime.date, weekday: int) -> datetime.date:
+    """Return the next date that falls on ``weekday``, including today.
+
+    Args:
+        hoje: The reference day.
+        weekday: Target ``date.weekday()`` value.
+
+    Returns:
+        The aligned date.
+    """
+    deslocamento = (weekday - hoje.weekday()) % 7
+    return hoje + datetime.timedelta(days=deslocamento)
+
+
+def _alinhar_data_ao_dia_mencionado(data, texto, contexto, avisos):
+    """Correct ``data`` when the request named a weekday it does not fall on.
+
+    A relative phrase such as "próximo domingo" is easy for a model to resolve
+    to a valid calendar day that is not Sunday. The date then looks fine to
+    every later check. This guard only fires when the person actually named a
+    weekday — it does not invent one.
+
+    Args:
+        data: The date already accepted by :func:`_coerce_date`.
+        texto: The original request.
+        contexto: Temporal context with ``hoje_date`` and ``horizonte``.
+        avisos: List that receives a Portuguese explanation when a date moves.
+
+    Returns:
+        The original date, the next occurrence of the named weekday, or
+        ``None`` when that occurrence sits beyond the booking horizon.
+    """
+    if data is None:
+        return None
+    pedido = _dia_da_semana_mencionado(texto)
+    if pedido is None or data.weekday() == pedido:
+        return data
+
+    corrigida = _proxima_ocorrencia(contexto["hoje_date"], pedido)
+    if corrigida > contexto["hoje_date"] + datetime.timedelta(days=contexto["horizonte"]):
+        avisos.append(
+            f"Só é possível reservar com até {contexto['horizonte']} dias de "
+            "antecedência; mostrando hoje."
+        )
+        return None
+
+    rotulo = _ROTULO_DIA_DA_SEMANA[pedido]
+    avisos.append(
+        f"A data extraída não caía no {rotulo} mencionado; ajustei para "
+        f"{corrigida.strftime('%d/%m')}."
+    )
+    return corrigida
+
+
+def aviso_de_equipamento_ignorado(termo: str) -> str:
+    """Return the user-facing sentence for a discarded equipment label.
+
+    Args:
+        termo: The label that did not map onto the catalog.
+
+    Returns:
+        A Portuguese sentence naming the discarded equipment.
+    """
+    return f"O equipamento {termo} não consta no catálogo e não foi considerado."
 
 
 def _coerce_capacity(value) -> int | None:
@@ -536,11 +722,13 @@ def extract_room_search_filters(
 
     Returns:
         A dict with keys ``min_capacity``, ``max_capacity``, ``attributes``,
-        ``location``, ``summary``, ``date``, ``start_time``, ``duration_minutes``
-        and ``avisos``. Attribute labels are normalized to catalog names when
-        possible (e.g. ``internet`` → ``Wi-Fi``). Os três campos temporais são
-        ``None`` quando não houve contexto ou quando o valor devolvido não
-        passou na validação — e, nesse caso, ``avisos`` explica o motivo.
+        ``atributos_ignorados``, ``location``, ``summary``, ``date``,
+        ``start_time``, ``duration_minutes`` and ``avisos``. Attribute labels
+        are normalized to catalog names when possible (e.g. ``internet`` →
+        ``Wi-Fi``). Labels that cannot be mapped stay in ``atributos_ignorados``
+        and are explained in ``avisos``. Os três campos temporais são ``None``
+        quando não houve contexto ou quando o valor devolvido não passou na
+        validação — e, nesse caso, ``avisos`` explica o motivo.
     """
     logger.info("Extraindo filtros de busca de sala a partir de linguagem natural.")
     data = _run_json_completion(_prompt_de_busca(contexto_temporal), query, usage_sink=usage_sink)
@@ -548,15 +736,20 @@ def extract_room_search_filters(
     avisos: list[str] = []
     if contexto_temporal:
         data_pedida = _coerce_date(data.get("date"), contexto_temporal, avisos)
+        data_pedida = _alinhar_data_ao_dia_mencionado(data_pedida, query, contexto_temporal, avisos)
         horario = _coerce_time(data.get("start_time"), contexto_temporal, avisos)
         duracao = _coerce_duration(data.get("duration_minutes"), contexto_temporal, avisos)
     else:
         data_pedida = horario = duracao = None
 
+    atributos = normalize_room_search_attributes(data.get("attributes") or [])
+    avisos.extend(aviso_de_equipamento_ignorado(termo) for termo in atributos.ignorados)
+
     return {
         "min_capacity": _coerce_capacity(data.get("min_capacity")),
         "max_capacity": _coerce_capacity(data.get("max_capacity")),
-        "attributes": normalize_room_search_attributes(data.get("attributes") or []),
+        "attributes": atributos.aceitos,
+        "atributos_ignorados": atributos.ignorados,
         "location": data.get("location"),
         "summary": data.get("summary", ""),
         "date": data_pedida,
@@ -652,19 +845,22 @@ def _run_text_completion(
     """
     client = _get_client()
     try:
-        completion = client.chat.completions.create(
-            model=settings.GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content},
-            ],
-            temperature=0.1,
+        completion, espera_ms = _chamar_completion(
+            lambda: client.chat.completions.create(
+                model=settings.GROQ_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
+                temperature=0.1,
+            )
         )
     except GroqError as exc:
         logger.exception("Falha ao chamar a API da Groq.")
         raise _ai_error_from_groq(exc) from None
 
     _record_usage(completion, usage_sink)
+    _record_espera(usage_sink, espera_ms)
 
     answer = (completion.choices[0].message.content or "").strip()
     if not answer:

@@ -1,5 +1,6 @@
 """Tests for the ai_assistant app."""
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import httpx
@@ -12,6 +13,7 @@ from ai_assistant.exceptions import AIServiceError
 from ai_assistant.services import (
     GENERIC_GROQ_FAILURE_MESSAGE,
     _ai_error_from_groq,
+    _run_json_completion,
     classify_maintenance_reason,
     extract_room_search_filters,
     normalize_room_search_attributes,
@@ -135,20 +137,22 @@ class TestNormalizeRoomSearchAttributes:
 
     def test_maps_common_wifi_synonyms(self):
         """Internet-related wording should resolve to Wi-Fi."""
-        assert normalize_room_search_attributes(["internet", "wifi", "Wi-Fi"]) == ["Wi-Fi"]
+        assert normalize_room_search_attributes(["internet", "wifi", "Wi-Fi"]).aceitos == ["Wi-Fi"]
 
     def test_maps_expanded_equipment_synonyms(self):
         """Popular equipment wording should resolve to catalog attributes."""
-        assert normalize_room_search_attributes(["meet"]) == ["Videoconferência"]
-        assert normalize_room_search_attributes(["slides"]) == ["Projetor"]
-        assert normalize_room_search_attributes(["monitor"]) == ["TV"]
-        assert normalize_room_search_attributes(["ac"]) == ["Ar-condicionado"]
-        assert normalize_room_search_attributes(["pizarra"]) == ["Quadro branco"]
-        assert normalize_room_search_attributes(["cam"]) == ["Webcam"]
+        assert normalize_room_search_attributes(["meet"]).aceitos == ["Videoconferência"]
+        assert normalize_room_search_attributes(["slides"]).aceitos == ["Projetor"]
+        assert normalize_room_search_attributes(["monitor"]).aceitos == ["TV"]
+        assert normalize_room_search_attributes(["ac"]).aceitos == ["Ar-condicionado"]
+        assert normalize_room_search_attributes(["pizarra"]).aceitos == ["Quadro branco"]
+        assert normalize_room_search_attributes(["cam"]).aceitos == ["Webcam"]
 
     def test_drops_unknown_attributes(self):
         """Labels outside the catalog should be discarded, not used as filters."""
-        assert normalize_room_search_attributes(["som surround", "internet"]) == ["Wi-Fi"]
+        resultado = normalize_room_search_attributes(["som surround", "internet"])
+        assert resultado.aceitos == ["Wi-Fi"]
+        assert resultado.ignorados == ["som surround"]
 
 
 class TestClassifyMaintenanceReason:
@@ -354,3 +358,49 @@ class TestMessageForGroqError:
 
         assert error.user_message == GENERIC_GROQ_FAILURE_MESSAGE
         assert "GroqError: boom" in error.technical_detail
+
+
+class TestEsperaHttp429:
+    """Short TPM waits are retried; daily-quota waits are not slept through."""
+
+    def _rate_limit_error(self, message: str) -> RateLimitError:
+        """Build a RateLimitError with a controllable message string."""
+        request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+        response = httpx.Response(429, request=request)
+        return RateLimitError(message, response=response, body=None)
+
+    def _completion(self, payload: str):
+        """Build a Groq-shaped completion object."""
+        return SimpleNamespace(
+            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+            choices=[SimpleNamespace(message=SimpleNamespace(content=payload))],
+        )
+
+    @patch("ai_assistant.services.time.sleep")
+    @patch("ai_assistant.services._get_client")
+    def test_retry_curto_registra_espera(self, mock_get_client, mock_sleep):
+        """A 1.5s TPM pause is slept and recorded separately from token usage."""
+        erro = self._rate_limit_error("Please try again in 1.5s.")
+        mock_get_client.return_value.chat.completions.create.side_effect = [
+            erro,
+            self._completion('{"ok": true}'),
+        ]
+        sink = {}
+
+        result = _run_json_completion("sistema", "usuario", usage_sink=sink)
+
+        assert result == {"ok": True}
+        mock_sleep.assert_called_once_with(1.5)
+        assert sink["espera_ms"] == 1500
+
+    @patch("ai_assistant.services.time.sleep")
+    @patch("ai_assistant.services._get_client")
+    def test_cota_diaria_nao_dorme(self, mock_get_client, mock_sleep):
+        """A half-hour daily quota must not freeze the test runner."""
+        erro = self._rate_limit_error("Please try again in 33m50.4s.")
+        mock_get_client.return_value.chat.completions.create.side_effect = erro
+
+        with pytest.raises(AIServiceError):
+            _run_json_completion("sistema", "usuario")
+
+        mock_sleep.assert_not_called()

@@ -98,6 +98,7 @@ class PassoDoAgente:
     duracao_ms: int
     saida: dict = dataclasses.field(default_factory=dict)
     tokens: dict = dataclasses.field(default_factory=dict)
+    espera_ms: int = 0
     erro: str | None = None
 
     @property
@@ -121,8 +122,13 @@ class ResultadoDoPipeline:
 
     @property
     def duracao_ms(self) -> int:
-        """Return the total wall-clock time of every step."""
+        """Return the net processing time of every step, excluding 429 waits."""
         return sum(passo.duracao_ms for passo in self.passos)
+
+    @property
+    def espera_ms(self) -> int:
+        """Return the milliseconds spent waiting on HTTP 429 retries."""
+        return sum(passo.espera_ms for passo in self.passos)
 
     @property
     def total_tokens(self) -> int:
@@ -140,17 +146,76 @@ class ResultadoDoPipeline:
             "alternativas": self.alternativas,
             "reserva_id": self.reserva_id,
             "duracao_ms": self.duracao_ms,
+            "espera_ms": self.espera_ms,
             "total_tokens": self.total_tokens,
             "passos": [
                 {
                     "agente": passo.agente,
                     "duracao_ms": passo.duracao_ms,
+                    "espera_ms": passo.espera_ms,
                     "tokens": passo.tokens,
                     "erro": passo.erro,
                 }
                 for passo in self.passos
             ],
         }
+
+
+def _tempo_do_passo(relogio, tokens=None) -> tuple[int, int]:
+    """Split wall-clock time into net work and 429 wait.
+
+    Args:
+        relogio: The step stopwatch.
+        tokens: Optional usage sink that may carry ``espera_ms``.
+
+    Returns:
+        tuple: Net duration in milliseconds and wait in milliseconds.
+    """
+    tokens = tokens or {}
+    espera_ms = int(tokens.pop("espera_ms", 0) or 0)
+    return max(0, relogio.decorrido_ms - espera_ms), espera_ms
+
+
+def _registrar_passo(agente, relogio, tokens=None, **kwargs) -> PassoDoAgente:
+    """Build a step record with net duration and recorded 429 wait.
+
+    Args:
+        agente: Which specialist produced the step.
+        relogio: The step stopwatch.
+        tokens: Optional usage sink.
+        **kwargs: Extra fields for :class:`PassoDoAgente`.
+
+    Returns:
+        The filled step record.
+    """
+    duracao_ms, espera_ms = _tempo_do_passo(relogio, tokens)
+    return PassoDoAgente(
+        agente=agente,
+        duracao_ms=duracao_ms,
+        espera_ms=espera_ms,
+        tokens=tokens or {},
+        **kwargs,
+    )
+
+
+def _anexar_avisos_de_catalogo(mensagem: str, criterios: dict) -> str:
+    """Append discarded-equipment warnings that are not already in the message.
+
+    Args:
+        mensagem: The decision text already built.
+        criterios: The interpreter output, possibly with ``atributos_ignorados``.
+
+    Returns:
+        The message plus any missing catalog warnings.
+    """
+    extras = []
+    for termo in criterios.get("atributos_ignorados") or []:
+        aviso = services.aviso_de_equipamento_ignorado(termo)
+        if aviso not in mensagem:
+            extras.append(aviso)
+    if not extras:
+        return mensagem
+    return f"{mensagem} {' '.join(extras)}".strip()
 
 
 def _criterios_serializaveis(criterios: dict) -> dict:
@@ -207,20 +272,12 @@ def interpretar_pedido(texto: str, *, policy=None) -> tuple[dict, PassoDoAgente]
         try:
             criterios = services.extract_room_search_filters(texto, contexto, usage_sink=tokens)
         except AIServiceError as exc:
-            passo = PassoDoAgente(
-                agente=AGENTE_INTERPRETE,
-                duracao_ms=relogio.decorrido_ms,
-                tokens=tokens,
-                erro=str(exc),
-            )
+            passo = _registrar_passo(AGENTE_INTERPRETE, relogio, tokens, erro=str(exc))
             return {}, passo
 
     criterios["faltando"] = [campo for campo in CAMPOS_ESSENCIAIS if criterios.get(campo) is None]
-    passo = PassoDoAgente(
-        agente=AGENTE_INTERPRETE,
-        duracao_ms=relogio.duracao_ms,
-        saida=_criterios_serializaveis(criterios),
-        tokens=tokens,
+    passo = _registrar_passo(
+        AGENTE_INTERPRETE, relogio, tokens, saida=_criterios_serializaveis(criterios)
     )
     return criterios, passo
 
@@ -346,12 +403,7 @@ def emitir_parecer(criterios: dict, *, texto: str = "", policy=None, top_k: int 
                 "fontes": [{"origem": "política cadastrada"}],
                 "origem": "politica",
             }
-            passo = PassoDoAgente(
-                agente=AGENTE_NORMATIVO,
-                duracao_ms=relogio.decorrido_ms,
-                saida=parecer,
-                tokens=tokens,
-            )
+            passo = _registrar_passo(AGENTE_NORMATIVO, relogio, tokens, saida=parecer)
             return parecer, passo
 
         try:
@@ -359,11 +411,8 @@ def emitir_parecer(criterios: dict, *, texto: str = "", policy=None, top_k: int 
                 _pergunta_normativa(criterios, texto), top_k or PARECER_TOP_K, hybrid=True
             )
         except (EmbeddingError, AIServiceError) as exc:
-            passo = PassoDoAgente(
-                agente=AGENTE_NORMATIVO,
-                duracao_ms=relogio.decorrido_ms,
-                tokens=tokens,
-                erro=f"{type(exc).__name__}: {exc}",
+            passo = _registrar_passo(
+                AGENTE_NORMATIVO, relogio, tokens, erro=f"{type(exc).__name__}: {exc}"
             )
             return {}, passo
 
@@ -382,12 +431,7 @@ def emitir_parecer(criterios: dict, *, texto: str = "", policy=None, top_k: int 
                 "origem": "sem_referencia",
                 "avisos": [],
             }
-            passo = PassoDoAgente(
-                agente=AGENTE_NORMATIVO,
-                duracao_ms=relogio.decorrido_ms,
-                saida=parecer,
-                tokens=tokens,
-            )
+            passo = _registrar_passo(AGENTE_NORMATIVO, relogio, tokens, saida=parecer)
             return parecer, passo
 
         contexto = services._build_context(trechos)
@@ -401,12 +445,7 @@ def emitir_parecer(criterios: dict, *, texto: str = "", policy=None, top_k: int 
                 _PARECER_SYSTEM_PROMPT, conteudo, usage_sink=tokens
             )
         except AIServiceError as exc:
-            passo = PassoDoAgente(
-                agente=AGENTE_NORMATIVO,
-                duracao_ms=relogio.decorrido_ms,
-                tokens=tokens,
-                erro=str(exc),
-            )
+            passo = _registrar_passo(AGENTE_NORMATIVO, relogio, tokens, erro=str(exc))
             return {}, passo
 
     veredito = str(bruto.get("parecer", "")).strip().lower()
@@ -442,11 +481,11 @@ def emitir_parecer(criterios: dict, *, texto: str = "", policy=None, top_k: int 
         "origem": "corpus",
         "avisos": avisos,
     }
-    passo = PassoDoAgente(
-        agente=AGENTE_NORMATIVO,
-        duracao_ms=relogio.duracao_ms,
+    passo = _registrar_passo(
+        AGENTE_NORMATIVO,
+        relogio,
+        tokens,
         saida={**parecer, "fontes": [f["instituicao"] for f in fontes]},
-        tokens=tokens,
     )
     return parecer, passo
 
@@ -565,11 +604,7 @@ def alocar(criterios: dict, parecer: dict, user, *, policy=None):
                 "alternativas": [],
                 "reserva_id": None,
             }
-            passo = PassoDoAgente(
-                agente=AGENTE_ALOCADOR,
-                duracao_ms=relogio.decorrido_ms,
-                saida=resultado,
-            )
+            passo = _registrar_passo(AGENTE_ALOCADOR, relogio, saida=resultado)
             return resultado, passo
 
         inicio, fim = _janela_pedida(criterios)
@@ -590,9 +625,7 @@ def alocar(criterios: dict, parecer: dict, user, *, policy=None):
                 "alternativas": opcoes,
                 "reserva_id": None,
             }
-            passo = PassoDoAgente(
-                agente=AGENTE_ALOCADOR, duracao_ms=relogio.duracao_ms, saida=resultado
-            )
+            passo = _registrar_passo(AGENTE_ALOCADOR, relogio, saida=resultado)
             return resultado, passo
 
         escolhido = next((space for space in candidatos if _esta_livre(space, inicio, fim)), None)
@@ -606,9 +639,9 @@ def alocar(criterios: dict, parecer: dict, user, *, policy=None):
                     "alternativas": [],
                     "reserva_id": None,
                 }
-                passo = PassoDoAgente(
-                    agente=AGENTE_ALOCADOR,
-                    duracao_ms=relogio.duracao_ms,
+                passo = _registrar_passo(
+                    AGENTE_ALOCADOR,
+                    relogio,
                     saida=resultado,
                     erro=f"{type(exc).__name__}: {exc}",
                 )
@@ -624,9 +657,7 @@ def alocar(criterios: dict, parecer: dict, user, *, policy=None):
                 "alternativas": [],
                 "reserva_id": reserva.pk,
             }
-            passo = PassoDoAgente(
-                agente=AGENTE_ALOCADOR, duracao_ms=relogio.duracao_ms, saida=resultado
-            )
+            passo = _registrar_passo(AGENTE_ALOCADOR, relogio, saida=resultado)
             return resultado, passo
 
         opcoes = _alternativas(criterios, policy)
@@ -640,9 +671,7 @@ def alocar(criterios: dict, parecer: dict, user, *, policy=None):
             "alternativas": opcoes,
             "reserva_id": None,
         }
-        passo = PassoDoAgente(
-            agente=AGENTE_ALOCADOR, duracao_ms=relogio.duracao_ms, saida=resultado
-        )
+        passo = _registrar_passo(AGENTE_ALOCADOR, relogio, saida=resultado)
         return resultado, passo
 
 
@@ -676,7 +705,9 @@ def executar_pipeline(texto: str, user, *, policy=None) -> ResultadoDoPipeline:
 
     if criterios.get("faltando"):
         resultado.decisao = DECISAO_ESCLARECIMENTO
-        resultado.mensagem = pergunta_de_esclarecimento(criterios)
+        resultado.mensagem = _anexar_avisos_de_catalogo(
+            pergunta_de_esclarecimento(criterios), criterios
+        )
         return resultado
 
     parecer, passo2 = emitir_parecer(criterios, texto=texto, policy=policy)
@@ -689,7 +720,7 @@ def executar_pipeline(texto: str, user, *, policy=None) -> ResultadoDoPipeline:
     decisao, passo3 = alocar(criterios, parecer, user, policy=policy)
     resultado.passos.append(passo3)
     resultado.decisao = decisao["decisao"]
-    resultado.mensagem = decisao["mensagem"]
+    resultado.mensagem = _anexar_avisos_de_catalogo(decisao["mensagem"], criterios)
     resultado.alternativas = decisao["alternativas"]
     resultado.reserva_id = decisao["reserva_id"]
     return resultado
