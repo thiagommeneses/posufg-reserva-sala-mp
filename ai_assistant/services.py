@@ -285,12 +285,42 @@ def _get_client() -> Groq:
     return Groq(api_key=settings.GROQ_API_KEY)
 
 
-def _run_json_completion(system_prompt: str, user_content: str) -> dict:
+def _record_usage(completion, usage_sink) -> None:
+    """Copy the provider's token counters into ``usage_sink`` when one was given.
+
+    Medir custo exige o número que o provedor devolve, não uma estimativa nossa.
+    O parâmetro é opcional para que o caminho normal siga sem saber que existe
+    instrumentação — só o runner de testes passa um destino.
+
+    Args:
+        completion: A resposta da API da Groq.
+        usage_sink: Dicionário a preencher, ou ``None``.
+    """
+    if usage_sink is None:
+        return
+    usage = getattr(completion, "usage", None)
+    usage_sink.update(
+        {
+            "prompt_tokens": getattr(usage, "prompt_tokens", None),
+            "completion_tokens": getattr(usage, "completion_tokens", None),
+            "total_tokens": getattr(usage, "total_tokens", None),
+            "model": settings.GROQ_MODEL,
+        }
+    )
+
+
+def _run_json_completion(
+    system_prompt: str,
+    user_content: str,
+    *,
+    usage_sink: dict | None = None,
+) -> dict:
     """Call the Groq chat completion API and parse a JSON object from the response.
 
     Args:
         system_prompt: instructions describing the expected output format.
         user_content: the user-provided text to process.
+        usage_sink: quando informado, recebe os contadores de tokens da chamada.
 
     Returns:
         The parsed JSON response as a dict.
@@ -312,6 +342,8 @@ def _run_json_completion(system_prompt: str, user_content: str) -> dict:
     except GroqError as exc:
         logger.exception("Falha ao chamar a API da Groq.")
         raise _ai_error_from_groq(exc) from None
+
+    _record_usage(completion, usage_sink)
 
     raw_content = completion.choices[0].message.content
     try:
@@ -483,7 +515,12 @@ def _coerce_duration(valor, contexto, avisos):
     return minutos
 
 
-def extract_room_search_filters(query: str, contexto_temporal: dict | None = None) -> dict:
+def extract_room_search_filters(
+    query: str,
+    contexto_temporal: dict | None = None,
+    *,
+    usage_sink: dict | None = None,
+) -> dict:
     """Use an LLM to turn a natural-language room request into structured search filters.
 
     Args:
@@ -495,6 +532,7 @@ def extract_room_search_filters(query: str, contexto_temporal: dict | None = Non
             ``horizonte``, ``duracao_minima`` e ``duracao_maxima``. Sem ele o
             comportamento é exatamente o de antes — "amanhã" não significa nada
             para um modelo que não sabe que dia é hoje.
+        usage_sink: quando informado, recebe os contadores de tokens da chamada.
 
     Returns:
         A dict with keys ``min_capacity``, ``max_capacity``, ``attributes``,
@@ -505,7 +543,7 @@ def extract_room_search_filters(query: str, contexto_temporal: dict | None = Non
         passou na validação — e, nesse caso, ``avisos`` explica o motivo.
     """
     logger.info("Extraindo filtros de busca de sala a partir de linguagem natural.")
-    data = _run_json_completion(_prompt_de_busca(contexto_temporal), query)
+    data = _run_json_completion(_prompt_de_busca(contexto_temporal), query, usage_sink=usage_sink)
 
     avisos: list[str] = []
     if contexto_temporal:
@@ -593,12 +631,18 @@ NO_CONTEXT_ANSWER = (
 MIN_FOLLOWUP_REWRITE_LENGTH = 8
 
 
-def _run_text_completion(system_prompt: str, user_content: str) -> str:
+def _run_text_completion(
+    system_prompt: str,
+    user_content: str,
+    *,
+    usage_sink: dict | None = None,
+) -> str:
     """Call the Groq chat completion API and return the raw text answer.
 
     Args:
         system_prompt: Instructions describing how to answer.
         user_content: The question plus its retrieved context.
+        usage_sink: quando informado, recebe os contadores de tokens da chamada.
 
     Returns:
         str: The model's answer.
@@ -619,6 +663,8 @@ def _run_text_completion(system_prompt: str, user_content: str) -> str:
     except GroqError as exc:
         logger.exception("Falha ao chamar a API da Groq.")
         raise _ai_error_from_groq(exc) from None
+
+    _record_usage(completion, usage_sink)
 
     answer = (completion.choices[0].message.content or "").strip()
     if not answer:

@@ -1,0 +1,322 @@
+{
+  "resumo": {
+    "pedidos": 4,
+    "conferem": 4,
+    "latencia_media_ms": 7484.8,
+    "latencia_mediana_ms": 3230.0,
+    "latencia_maxima_ms": 22085,
+    "tokens_totais": 10862,
+    "tokens_medios_por_pedido": 2715.5,
+    "por_agente": {
+      "interprete": {
+        "execucoes": 4,
+        "tokens": 5188,
+        "erros": 0,
+        "ms_medio": 1473.2,
+        "ms_maximo": 1714
+      },
+      "normativo": {
+        "execucoes": 4,
+        "tokens": 5674,
+        "erros": 0,
+        "ms_medio": 6011.5,
+        "ms_maximo": 20651
+      },
+      "alocador": {
+        "execucoes": 4,
+        "tokens": 0,
+        "erros": 0,
+        "ms_medio": 0,
+        "ms_maximo": 0
+      }
+    },
+    "modelo": "openai/gpt-oss-120b"
+  },
+  "execucoes": [
+    {
+      "pedido": "Preciso de uma sala para 12 pessoas com TV, na próxima quinta às 9h, por duas horas.",
+      "decisao": "reserva_confirmada",
+      "mensagem": "Reservado: Auditório Central, 10/09 09:00 às 11:00.",
+      "criterios": {
+        "min_capacity": 12,
+        "max_capacity": null,
+        "attributes": [
+          "TV"
+        ],
+        "location": null,
+        "summary": "Sala para 12 pessoas com TV, na quinta-feira 10/09 às 09:00, por 2 horas.",
+        "date": "2026-09-10",
+        "start_time": "09:00:00",
+        "duration_minutes": 120,
+        "avisos": [],
+        "faltando": []
+      },
+      "parecer": {
+        "parecer": "admissivel",
+        "fundamentacao": "O pedido atende à política interna quanto à capacidade, horário e antecedência, não envolve cobrança, público externo, finalidade político‑partidária ou religiosa, nem reserva em nome de terceiro.",
+        "fontes": [],
+        "origem": "corpus",
+        "avisos": []
+      },
+      "alternativas": [],
+      "reserva_id": 5,
+      "duracao_ms": 4306,
+      "total_tokens": 3226,
+      "passos": [
+        {
+          "agente": "interprete",
+          "duracao_ms": 1714,
+          "tokens": {
+            "prompt_tokens": 805,
+            "completion_tokens": 557,
+            "total_tokens": 1362,
+            "model": "openai/gpt-oss-120b"
+          },
+          "erro": null
+        },
+        {
+          "agente": "normativo",
+          "duracao_ms": 2592,
+          "tokens": {
+            "prompt_tokens": 1567,
+            "completion_tokens": 297,
+            "total_tokens": 1864,
+            "model": "openai/gpt-oss-120b"
+          },
+          "erro": null
+        },
+        {
+          "agente": "alocador",
+          "duracao_ms": 0,
+          "tokens": {},
+          "erro": null
+        }
+      ],
+      "id": "P01",
+      "esperado": "reserva_confirmada",
+      "sonda": "caminho feliz: pedido completo, dentro da política e com espaço livre",
+      "confere": true
+    },
+    {
+      "pedido": "Sala para 6 pessoas no próximo domingo às 10h por 1 hora.",
+      "decisao": "alternativas",
+      "mensagem": "O pedido não é admissível como está. Seguem alternativas dentro da regra.",
+      "criterios": {
+        "min_capacity": 6,
+        "max_capacity": null,
+        "attributes": [],
+        "location": null,
+        "summary": "Sala para 6 pessoas no próximo domingo às 10h por 1 hora",
+        "date": "2026-09-13",
+        "start_time": "10:00:00",
+        "duration_minutes": 60,
+        "avisos": [],
+        "faltando": []
+      },
+      "parecer": {
+        "parecer": "inadmissivel",
+        "fundamentacao": "Política de reserva vigente: o espaço não funciona no dia da semana pedido.",
+        "fontes": [
+          {
+            "origem": "política cadastrada"
+          }
+        ],
+        "origem": "politica"
+      },
+      "alternativas": [
+        {
+          "espaco": "Sala Executiva",
+          "espaco_id": 5,
+          "capacidade": 6,
+          "inicio": "14/09 08:00",
+          "fim": "09:00"
+        },
+        {
+          "espaco": "Sala de Reunião Alfa",
+          "espaco_id": 1,
+          "capacidade": 8,
+          "inicio": "14/09 08:00",
+          "fim": "09:00"
+        },
+        {
+          "espaco": "Sala de Reunião Beta",
+          "espaco_id": 2,
+          "capacidade": 12,
+          "inicio": "14/09 08:00",
+          "fim": "09:00"
+        }
+      ],
+      "reserva_id": null,
+      "duracao_ms": 1394,
+      "total_tokens": 1253,
+      "passos": [
+        {
+          "agente": "interprete",
+          "duracao_ms": 1394,
+          "tokens": {
+            "prompt_tokens": 798,
+            "completion_tokens": 455,
+            "total_tokens": 1253,
+            "model": "openai/gpt-oss-120b"
+          },
+          "erro": null
+        },
+        {
+          "agente": "normativo",
+          "duracao_ms": 0,
+          "tokens": {},
+          "erro": null
+        },
+        {
+          "agente": "alocador",
+          "duracao_ms": 0,
+          "tokens": {},
+          "erro": null
+        }
+      ],
+      "id": "P07",
+      "esperado": "alternativas",
+      "sonda": "dia sem funcionamento na política",
+      "confere": true
+    },
+    {
+      "pedido": "Sala para 8 pessoas com esteira ergométrica amanhã às 15h por 1 hora.",
+      "decisao": "reserva_confirmada",
+      "mensagem": "Reservado: Sala de Reunião Alfa, 08/09 15:00 às 16:00.",
+      "criterios": {
+        "min_capacity": 8,
+        "max_capacity": null,
+        "attributes": [],
+        "location": null,
+        "summary": "Sala para 8 pessoas, amanhã às 15h, duração de 1 hora.",
+        "date": "2026-09-08",
+        "start_time": "15:00:00",
+        "duration_minutes": 60,
+        "avisos": [],
+        "faltando": []
+      },
+      "parecer": {
+        "parecer": "admissivel",
+        "fundamentacao": "O pedido atende à política interna quanto à capacidade, horário e duração, não envolve público externo, cobrança ou finalidade político‑partidária ou religiosa, nem reserva em nome de terceiro.",
+        "fontes": [],
+        "origem": "corpus",
+        "avisos": []
+      },
+      "alternativas": [],
+      "reserva_id": 6,
+      "duracao_ms": 2154,
+      "total_tokens": 3053,
+      "passos": [
+        {
+          "agente": "interprete",
+          "duracao_ms": 1351,
+          "tokens": {
+            "prompt_tokens": 802,
+            "completion_tokens": 470,
+            "total_tokens": 1272,
+            "model": "openai/gpt-oss-120b"
+          },
+          "erro": null
+        },
+        {
+          "agente": "normativo",
+          "duracao_ms": 803,
+          "tokens": {
+            "prompt_tokens": 1585,
+            "completion_tokens": 196,
+            "total_tokens": 1781,
+            "model": "openai/gpt-oss-120b"
+          },
+          "erro": null
+        },
+        {
+          "agente": "alocador",
+          "duracao_ms": 0,
+          "tokens": {},
+          "erro": null
+        }
+      ],
+      "id": "P09",
+      "esperado": "reserva_confirmada",
+      "sonda": "atributo fora do catálogo — o Agente 1 não pode inventar equipamento",
+      "confere": true
+    },
+    {
+      "pedido": "Posso ceder o auditório para uma associação de bairro fazer um evento aberto ao público, na próxima quinta às 14h por 2 horas?",
+      "decisao": "escalonamento",
+      "mensagem": "O pedido toca ponto que a política interna não cobre. Encaminhado ao administrador com o pedido original, os critérios extraídos e as referências consultadas.",
+      "criterios": {
+        "min_capacity": 30,
+        "max_capacity": null,
+        "attributes": [],
+        "location": null,
+        "summary": "Reserva de auditório para evento aberto ao público na próxima quinta às 14h por 2 horas, capacidade mínima de 30 pessoas.",
+        "date": "2026-09-10",
+        "start_time": "14:00:00",
+        "duration_minutes": 120,
+        "avisos": [],
+        "faltando": []
+      },
+      "parecer": {
+        "parecer": "requer_decisao_humana",
+        "fundamentacao": "O pedido envolve cedência do auditório a uma associação de bairro e evento aberto ao público, o que ultrapassa o uso interno padrão e requer avaliação institucional. Conforme as normas que priorizam o público interno e exigem avaliação para casos excepcionais, a decisão deve ser tomada por autoridade competente.",
+        "fontes": [
+          {
+            "posicao": 3,
+            "instituicao": "UFES - CCE",
+            "documento": "Orientacoes e Regulamento para Utilizacao do Auditorio CCE",
+            "url": "https://cce.ufes.br/sites/cce.ufes.br/files/field/anexo/regulamento_orientacoes_auditorio_0.pdf",
+            "trecho": "são de responsabilidade do organizador.\nHORÁRIO DE ATENDIMENTO:\n1º - O funcionamento do auditório é de segunda à sexta-feira (exceto feriados) das 13\nàs 22h, divididos em dois períodos para reserva e utilização:\nPERÍODO MATUTINO: SEM DISPONIBILIDADE\nPERÍODO VESPERTINO/NOTURNO: das 13h às 22h\n2º - O agendamento excepcional para eventos fora dos períodos e dias aqui\nestabelecidos passará por prévia avaliação e autorização da Direção do CCE. A\ndespesa/custo será arcado pelo organizador.\nDAS RESERVAS:\n1º- Terão prioridade de utilização do auditório as solicitações da comunidade\nacadêmica do CCE:\n1º - Público Interno CCE : Direção CCE, Departamentos CCE, Coordenações de\nCursos e demais setores do Centro; 2º - Público Interno UFES: Outras unidades,\nsetores e os órgãos da UFES."
+          },
+          {
+            "posicao": 4,
+            "instituicao": "UFPA - IFCH",
+            "documento": "Regulamento no 1/2025 - Uso do Auditorio do IFCH",
+            "url": "https://ifch.ufpa.br/images/PDF/2025/Regula_Auditrio.pdf",
+            "trecho": "Art. 8º O auditório funcionará, ordinariamente, no período das 9h às 12h e das 13:30h às 17:30h\n, de segunda a sexta-feira.\n§1º Cabe ao solicitante observar rigorosamente esse horário no momento da reserva e durante a\nutilização do espaço.\n§2º Situações excepcionais que demandem o uso do auditório fora do horário estabelecido\ndeverão ser formalmente justificadas no momento da solicitação, ficando a autorização condicionada à\nviabilidade técnica e administrativa do atendimento.\nCAPÍTULO V\nPROCEDIMENTOS PARA SOLICITAÇÃO"
+          }
+        ],
+        "origem": "corpus",
+        "avisos": []
+      },
+      "alternativas": [],
+      "reserva_id": null,
+      "duracao_ms": 22085,
+      "total_tokens": 3330,
+      "passos": [
+        {
+          "agente": "interprete",
+          "duracao_ms": 1434,
+          "tokens": {
+            "prompt_tokens": 812,
+            "completion_tokens": 489,
+            "total_tokens": 1301,
+            "model": "openai/gpt-oss-120b"
+          },
+          "erro": null
+        },
+        {
+          "agente": "normativo",
+          "duracao_ms": 20651,
+          "tokens": {
+            "prompt_tokens": 1539,
+            "completion_tokens": 490,
+            "total_tokens": 2029,
+            "model": "openai/gpt-oss-120b"
+          },
+          "erro": null
+        },
+        {
+          "agente": "alocador",
+          "duracao_ms": 0,
+          "tokens": {},
+          "erro": null
+        }
+      ],
+      "id": "P11",
+      "esperado": "escalonamento",
+      "sonda": "uso por entidade externa e evento aberto ao público, dentro do expediente — o único caminho que exige decisão humana",
+      "confere": true
+    }
+  ]
+}

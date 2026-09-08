@@ -1,0 +1,72 @@
+{
+  "descricao": "Conjunto de pedidos para exercitar o pipeline dos três agentes. O campo 'esperado' registra o que a equipe previa antes de rodar — divergência não é defeito do teste, é o achado que vai para o Log de Iteração.",
+  "revisao": "Após a rodada #02, quatro expectativas foram corrigidas (P05, P06, P08, P10): a equipe havia previsto 'alternativas' para pedidos que a política interna recusa, quando o desfecho correto é recusa fundamentada. Não foi o sistema que errou nesses casos, foi a previsão. O histórico do git guarda a versão original. P11 entrou para exercitar a escalação legítima, que nenhum pedido anterior alcançava.",
+  "pedidos": [
+    {
+      "id": "P01",
+      "texto": "Preciso de uma sala para 12 pessoas com TV, na próxima quinta às 9h, por duas horas.",
+      "esperado": "reserva_confirmada",
+      "sonda": "caminho feliz: pedido completo, dentro da política e com espaço livre"
+    },
+    {
+      "id": "P02",
+      "texto": "Quero reservar uma sala de reunião.",
+      "esperado": "esclarecimento",
+      "sonda": "faltam data, horário e duração — o Agente 1 deve parar o fluxo"
+    },
+    {
+      "id": "P03",
+      "texto": "Sala para 4 pessoas com projetor amanhã às 14h por 1 hora.",
+      "esperado": "reserva_confirmada",
+      "sonda": "pedido simples com atributo do catálogo"
+    },
+    {
+      "id": "P04",
+      "texto": "Auditório para 200 pessoas na sexta às 10h por 3 horas.",
+      "esperado": "escalonamento",
+      "sonda": "capacidade acima de qualquer espaço cadastrado"
+    },
+    {
+      "id": "P05",
+      "texto": "Sala pequena hoje às 8h por 15 minutos.",
+      "esperado": "esclarecimento",
+      "sonda": "duração abaixo do mínimo da política — recusa fundamentada, não pergunta"
+    },
+    {
+      "id": "P06",
+      "texto": "Sala com ar-condicionado ontem às 10h por uma hora.",
+      "esperado": "esclarecimento",
+      "sonda": "data no passado; o Intérprete devolve null e o pipeline explica"
+    },
+    {
+      "id": "P07",
+      "texto": "Sala para 6 pessoas no próximo domingo às 10h por 1 hora.",
+      "esperado": "alternativas",
+      "sonda": "dia sem funcionamento na política"
+    },
+    {
+      "id": "P08",
+      "texto": "Sala para 10 pessoas com lousa amanhã às 9h, o dia todo.",
+      "esperado": "esclarecimento",
+      "sonda": "'o dia todo' não vira duração; o pipeline pede o dado que falta"
+    },
+    {
+      "id": "P09",
+      "texto": "Sala para 8 pessoas com esteira ergométrica amanhã às 15h por 1 hora.",
+      "esperado": "reserva_confirmada",
+      "sonda": "atributo fora do catálogo — o Agente 1 não pode inventar equipamento"
+    },
+    {
+      "id": "P10",
+      "texto": "Posso usar o auditório para um evento externo com cobrança de ingresso, amanhã às 19h por 2 horas?",
+      "esperado": "esclarecimento",
+      "sonda": "19h está fora do expediente: a política barra antes de o Consultor ver a cobrança de ingresso"
+    },
+    {
+      "id": "P11",
+      "texto": "Posso ceder o auditório para uma associação de bairro fazer um evento aberto ao público, na próxima quinta às 14h por 2 horas?",
+      "esperado": "escalonamento",
+      "sonda": "uso por entidade externa e evento aberto ao público, dentro do expediente — o único caminho que exige decisão humana"
+    }
+  ]
+}
