@@ -1,0 +1,67 @@
+{% comment %}
+Confirmação quando a busca com IA devolve uma sala só.
+
+O dialog é a seleção pendente: avançar segue para o horário; cancelar
+volta à lista sem marcar o cartão. ``descartar_sugestao`` impede o dialog
+de reabrir no mesmo ``ai_query``.
+{% endcomment %}
+<dialog id="sugestao-ia" class="modal" aria-labelledby="sugestao-ia-titulo">
+    <div class="modal-box space-y-4" role="document">
+        <h2 id="sugestao-ia-titulo" class="text-lg font-semibold">
+            Encontrei esta sala
+        </h2>
+        {% if ai_summary %}
+        <p class="text-sm text-muted">
+            <span class="font-medium text-base-content">Entendi:</span> {{ ai_summary }}
+        </p>
+        {% endif %}
+        <div class="space-y-1">
+            <p class="font-semibold">{{ sugerir_confirmacao.name }}</p>
+            <p class="text-sm text-muted">
+                Até {{ sugerir_confirmacao.capacity }} pessoa{{ sugerir_confirmacao.capacity|pluralize:"s" }}
+                · {{ sugerir_confirmacao.location }}
+            </p>
+            {% with attrs=sugerir_confirmacao.space_attributes.all %}
+            {% if attrs %}
+            <div class="flex flex-wrap gap-1 pt-1">
+                {% for space_attr in attrs %}
+                <span class="badge badge-outline badge-sm font-normal text-muted">
+                    {{ space_attr.attribute.name }}
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+        </div>
+        <div class="modal-action">
+            <a href="{% url 'space_list' %}?{{ querystring_descartar_sugestao }}"
+               hx-get="{% url 'space_list' %}?{{ querystring_descartar_sugestao }}"
+               hx-target="#space-results"
+               hx-push-url="true"
+               class="btn btn-ghost">
+                Cancelar
+            </a>
+            <a href="{% url 'space_detail' sugerir_confirmacao.pk %}?date={{ selected_date|date:'Y-m-d' }}{% if horario_pedido %}&start={{ horario_pedido|time:'H:i' }}{% endif %}{% if duracao_pedida %}&duration={{ duracao_pedida }}{% endif %}{% if people %}&people={{ people }}{% endif %}"
+               class="btn btn-primary">
+                Avançar
+            </a>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button
+            type="submit"
+            hx-get="{% url 'space_list' %}?{{ querystring_descartar_sugestao }}"
+            hx-target="#space-results"
+            hx-push-url="true">
+            Fechar
+        </button>
+    </form>
+</dialog>
+<script>
+(function () {
+    var dialog = document.getElementById("sugestao-ia");
+    if (dialog && typeof dialog.showModal === "function" && !dialog.open) {
+        dialog.showModal();
+    }
+})();
+</script>

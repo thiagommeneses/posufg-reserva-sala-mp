@@ -317,10 +317,46 @@ class SpaceListView(LoginRequiredMixin, ListView):
         if selecionado:
             selecionado.resumo_disponibilidade = resumo.get(selecionado.pk)
         context["querystring_sem_espaco"] = self._querystring_sem("space")
+        sugerido = self._sugestao_para_confirmar(espacos)
+        context["sugerir_confirmacao"] = sugerido
+        context["querystring_descartar_sugestao"] = self._querystring_descartar_sugestao()
 
         # Etapa 1 do fluxo de reserva: escolher o espaço.
         context.update(contexto_do_stepper(1, FLUXO_V2))
         return context
+
+    def _sugestao_para_confirmar(self, espacos):
+        """Return the single AI match that still needs an explicit confirmation.
+
+        A unique result is not a reservation yet: the person still chooses
+        whether to continue or stay on the list. Manual filters, already
+        chosen rooms and a dismissed suggestion stay out of the dialog.
+
+        Args:
+            espacos: The spaces currently listed.
+
+        Returns:
+            Space | None: The room to propose, when the conditions hold.
+        """
+        if not self.request.GET.get("ai_query", "").strip():
+            return None
+        if self.request.GET.get("space", "").strip():
+            return None
+        if self.request.GET.get("descartar_sugestao") == "1":
+            return None
+        if len(espacos) != 1:
+            return None
+        return espacos[0]
+
+    def _querystring_descartar_sugestao(self):
+        """Return the current querystring plus the dismissal flag.
+
+        Returns:
+            str: The encoded querystring.
+        """
+        parametros = self.request.GET.copy()
+        parametros["descartar_sugestao"] = "1"
+        return parametros.urlencode()
 
     def _horario_pedido(self, policy):
         """Return the requested time window, from the URL or from the AI.

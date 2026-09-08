@@ -49,7 +49,6 @@ def politica_abre_todo_dia(db):
     return politica
 
 
-
 @pytest.fixture
 def logado(client, db):
     """Return a logged-in client."""
@@ -325,6 +324,77 @@ class TestBuscaComIa:
             reverse("space_list"), {"ai_query": "qualquer coisa"}
         ).content.decode()
         assert conteudo.count('name="ai_query"') == 1
+
+    def _filtros(self, **ajustes):
+        """Return a fake extractor payload.
+
+        Args:
+            **ajustes: Fields to override.
+
+        Returns:
+            dict: Payload in the shape of ``extract_room_search_filters``.
+        """
+        base = {
+            "min_capacity": None,
+            "max_capacity": None,
+            "attributes": [],
+            "location": "",
+            "summary": "sala",
+            "date": None,
+            "start_time": None,
+            "duration_minutes": None,
+            "avisos": [],
+        }
+        base.update(ajustes)
+        return base
+
+    def test_um_resultado_abre_modal_de_confirmacao(self, logado, acervo, monkeypatch):
+        """Uma sala só já é a escolha; falta só a pessoa confirmar."""
+        monkeypatch.setattr(
+            "spaces.views.extract_room_search_filters",
+            lambda _consulta, _contexto=None: self._filtros(
+                min_capacity=200, summary="auditório para 200 pessoas"
+            ),
+        )
+        resposta = logado.get(reverse("space_list"), {"ai_query": "auditório para 200"})
+        conteudo = resposta.content.decode()
+        auditorio = acervo["auditorio"]
+
+        assert resposta.context["sugerir_confirmacao"] == auditorio
+        assert 'id="sugestao-ia"' in conteudo
+        assert "Auditório Central" in conteudo
+        assert "Avançar" in conteudo
+        assert "Cancelar" in conteudo
+        assert reverse("space_detail", args=[auditorio.pk]) in conteudo
+
+    def test_dois_resultados_nao_abrem_modal(self, logado, acervo, monkeypatch):
+        """Com mais de uma sala, a pessoa ainda precisa escolher."""
+        monkeypatch.setattr(
+            "spaces.views.extract_room_search_filters",
+            lambda _consulta, _contexto=None: self._filtros(min_capacity=8),
+        )
+        resposta = logado.get(reverse("space_list"), {"ai_query": "sala para 8"})
+        assert resposta.context["sugerir_confirmacao"] is None
+        assert 'id="sugestao-ia"' not in resposta.content.decode()
+
+    def test_busca_manual_com_um_espaco_nao_abre_modal(self, logado, acervo):
+        """Sem frase da IA, um filtro estreito não deve surpreender com dialog."""
+        resposta = logado.get(reverse("space_list"), {"people": "200"})
+        assert resposta.context["sugerir_confirmacao"] is None
+        assert 'id="sugestao-ia"' not in resposta.content.decode()
+
+    def test_sugestao_descartada_nao_reabre_o_modal(self, logado, acervo, monkeypatch):
+        """Quem cancelou volta à lista e não leva o dialog de novo."""
+        monkeypatch.setattr(
+            "spaces.views.extract_room_search_filters",
+            lambda _consulta, _contexto=None: self._filtros(min_capacity=200),
+        )
+        resposta = logado.get(
+            reverse("space_list"),
+            {"ai_query": "auditório para 200", "descartar_sugestao": "1"},
+        )
+        assert resposta.context["sugerir_confirmacao"] is None
+        assert 'id="sugestao-ia"' not in resposta.content.decode()
 
 
 @pytest.mark.django_db
